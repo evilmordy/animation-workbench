@@ -178,6 +178,7 @@ const rowIssues = (id: string, k?: number) =>
                 :options="animOptions"
                 filterable
                 aria-label="动画类型"
+                :input-props="{ 'aria-label': '动画类型' }"
                 @update:value="(v: AnimType) => setType(st.id, k, v)"
               />
               <NSelect
@@ -186,6 +187,7 @@ const rowIssues = (id: string, k?: number) =>
                 :options="idOptions"
                 filterable
                 aria-label="目标元素"
+                :input-props="{ 'aria-label': '目标元素' }"
                 @update:value="(v: string) => editAnim(st.id, k, 'target', (x) => ({ ...x, target: v }))"
               />
               <template v-if="ANIMS[a.type].lifecycle === 'transform'">
@@ -196,6 +198,7 @@ const rowIssues = (id: string, k?: number) =>
                   :options="idOptions"
                   filterable
                   aria-label="变为"
+                  :input-props="{ 'aria-label': '变为' }"
                   @update:value="(v: string) => editAnim(st.id, k, 'to', (x) => ({ ...x, to: v }))"
                 />
               </template>

@@ -55,6 +55,7 @@ const fix = () =>
         type="textarea"
         :autosize="{ minRows: 2, maxRows: 6 }"
         :value="scene.description"
+        :input-props="{ 'aria-label': '描述' }"
         @update:value="(v: string) => patch('description', (s) => ({ ...s, description: v }))"
       />
     </NFormItem>
@@ -63,6 +64,7 @@ const fix = () =>
         type="textarea"
         :autosize="{ minRows: 2, maxRows: 6 }"
         :value="scene.notes ?? ''"
+        :input-props="{ 'aria-label': '讲稿' }"
         placeholder="可选，不会显示在动画里"
         @update:value="(v: string) => patch('notes', (s) => ({ ...s, notes: v || undefined }))"
       />
@@ -78,6 +80,7 @@ const fix = () =>
     </NFormItem>
     <NFormItem :label="`末尾停留（秒）· 场景总时长 ${formatTime(duration)}`">
       <NInputNumber
+        :show-button="false"
         :value="scene.hold"
         :min="0"
         :step="0.5"
@@ -87,13 +90,19 @@ const fix = () =>
     </NFormItem>
     <NFormItem label="锁定（AI 批量修改时跳过）">
       <NSwitch
+        aria-label="锁定场景"
         :value="!!scene.locked"
         @update:value="(v: boolean) => patch('locked', (s) => ({ ...s, locked: v || undefined }))"
       />
     </NFormItem>
     <NFormItem label="AI 重新生成本场景">
       <div class="regen">
-        <NInput v-model:value="extra" size="small" placeholder="附加要求（可选），如：用三个箭头表示受力" />
+        <NInput
+          v-model:value="extra"
+          size="small"
+          :input-props="{ 'aria-label': '重新生成的附加要求' }"
+          placeholder="附加要求（可选），如：用三个箭头表示受力"
+        />
         <NButton
           size="small"
           :loading="gen.editBusy"

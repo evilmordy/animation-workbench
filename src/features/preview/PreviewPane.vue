@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { NButton, NSelect, NSlider, NTooltip } from 'naive-ui';
+import { NButton, NSelect, NTooltip } from 'naive-ui';
+import RangeInput from '../shell/RangeInput.vue';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { platform } from '../../platform';
 import { PreviewMessage } from '../../shared/protocol';
@@ -8,7 +9,8 @@ import { usePreviewStore } from '../../stores/preview';
 import { useGenerationStore } from '../../stores/generation';
 import { formatTime } from '../../shared/format';
 
-const LOAD_DEBOUNCE_MS = 300;
+/** 两次重建之间至少间隔 300ms：单次编辑立即重建，连续编辑合并，最后一次一定会加载 */
+const LOAD_INTERVAL_MS = 300;
 const STALL_MS = 3000;
 
 const project = useProjectStore();
@@ -22,6 +24,7 @@ const frame = ref<HTMLIFrameElement | null>(null);
 const frameKey = ref(0);
 let lastBeat = 0;
 let loadTimer: ReturnType<typeof setTimeout> | null = null;
+let lastLoad = 0;
 let watchdog: ReturnType<typeof setInterval> | null = null;
 
 const post = (m: unknown) => frame.value?.contentWindow?.postMessage(m, '*');
@@ -30,6 +33,7 @@ function sendLoad() {
   if (!shown.value || !preview.ready) return;
   // 构建中的错误会在 loaded 之前到达，所以在发送前清空
   preview.errors = [];
+  lastLoad = performance.now();
   post({ type: 'load', storyboard: JSON.parse(JSON.stringify(shown.value)), startAt: preview.time });
 }
 
@@ -90,8 +94,13 @@ onBeforeUnmount(() => {
 });
 
 watch(shown, () => {
-  if (loadTimer) clearTimeout(loadTimer);
-  loadTimer = setTimeout(sendLoad, LOAD_DEBOUNCE_MS);
+  if (loadTimer) return;
+  const wait = LOAD_INTERVAL_MS - (performance.now() - lastLoad);
+  if (wait <= 0) return sendLoad();
+  loadTimer = setTimeout(() => {
+    loadTimer = null;
+    sendLoad();
+  }, wait);
 });
 
 const rates = [0.5, 1, 1.5, 2].map((r) => ({ label: `${r}×`, value: r }));
@@ -132,14 +141,13 @@ const timeText = computed(() => `${formatTime(preview.time)} / ${formatTime(prev
         </template>
         播放/暂停（空格）
       </NTooltip>
-      <NSlider
+      <RangeInput
         class="scrub"
         :value="preview.time"
         :min="0"
         :max="Math.max(preview.duration, 0.01)"
         :step="0.01"
-        :tooltip="false"
-        aria-label="播放进度"
+        label="播放进度"
         @update:value="(v: number) => preview.seek(v)"
       />
       <span class="time" data-testid="preview-time">{{ timeText }}</span>

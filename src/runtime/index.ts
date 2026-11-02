@@ -24,25 +24,44 @@ export interface BuildOptions {
 
 export interface Built {
   player: Player;
+  aspect: Storyboard['meta']['aspect'];
   scenes: SceneSpan[];
   duration: number;
   buildMs: number;
 }
 
-export async function build(sb: Storyboard, container: HTMLElement, opts: BuildOptions): Promise<Built> {
+/**
+ * 构建（或在同一个 Player 上重建）动画。reuse 给出时复用它：省掉 WebGL 上下文的创建，
+ * 这是编辑后重建里最贵的一步。画面比例变化时必须新建（帧尺寸在构造时确定）。
+ */
+export async function build(
+  sb: Storyboard,
+  container: HTMLElement,
+  opts: BuildOptions,
+  reuse?: Player,
+): Promise<Built> {
   const t0 = performance.now();
   const aspect = ASPECT[sb.meta.aspect];
-  container.style.aspectRatio = String(aspect);
-  container.style.width = `min(100vw, ${(100 * aspect).toFixed(3)}vh)`;
-  const player = new Player(container, {
-    frameWidth: FRAME_H * aspect,
-    frameHeight: FRAME_H,
-    backgroundColor: resolveColor(sb.meta.background, resolvePalette(sb.meta)),
-    allowExport: opts.controls,
-    allowFullscreen: opts.controls,
-    slidesMode: opts.slidesMode ?? false,
-    loop: opts.loop ?? false,
-  });
+  const background = resolveColor(sb.meta.background, resolvePalette(sb.meta));
+  let player: Player;
+  if (reuse) {
+    player = reuse;
+    player.pause();
+    player.scene.clear({ render: false });
+    player.scene.backgroundColor = background;
+  } else {
+    container.style.aspectRatio = String(aspect);
+    container.style.width = `min(100vw, ${(100 * aspect).toFixed(3)}vh)`;
+    player = new Player(container, {
+      frameWidth: FRAME_H * aspect,
+      frameHeight: FRAME_H,
+      backgroundColor: background,
+      allowExport: opts.controls,
+      allowFullscreen: opts.controls,
+      slidesMode: opts.slidesMode ?? false,
+      loop: opts.loop ?? false,
+    });
+  }
   await player.sequence((rec) => interpret(sb, rec, opts.onError));
   const slides = player.timeline.getSlides();
   // 每个分镜场景都应对应一个 slide；空场景等情况对不上时退回按 schema 计算的时长
@@ -56,6 +75,7 @@ export async function build(sb: Storyboard, container: HTMLElement, opts: BuildO
   });
   return {
     player,
+    aspect: sb.meta.aspect,
     scenes,
     duration: player.timeline.getDuration(),
     buildMs: Math.round(performance.now() - t0),
@@ -92,8 +112,10 @@ function startPreview(stage: HTMLElement) {
   document.head.append(hideBar);
 
   let current: Built | null = null;
-  let generation = 0;
   let lastT = -1;
+  // 加载串行执行，排队期间只保留最新的一次（复用 Player 时不能并发重建）
+  let queued: { data: unknown; startAt?: number } | null = null;
+  let busy = false;
 
   onLog((e) => {
     if (e.level === 'warn' || e.level === 'error') post({ type: 'log', level: e.level, message: e.message });
@@ -101,22 +123,40 @@ function startPreview(stage: HTMLElement) {
   window.addEventListener('error', (e) => post({ type: 'error', message: e.message }));
   window.addEventListener('unhandledrejection', (e) => post({ type: 'error', message: String(e.reason) }));
 
+  async function requestLoad(data: unknown, startAt?: number) {
+    queued = { data, startAt };
+    if (busy) return;
+    busy = true;
+    try {
+      while (queued) {
+        const next: { data: unknown; startAt?: number } = queued;
+        queued = null;
+        await load(next.data, next.startAt).catch((err) => post({ type: 'error', message: String(err) }));
+      }
+    } finally {
+      busy = false;
+    }
+  }
+
   async function load(data: unknown, startAt?: number) {
-    const gen = ++generation;
     const parsed = parseStoryboard(data);
     if (!parsed.ok) {
       const i = parsed.issues[0]!;
       post({ type: 'error', message: `分镜结构错误：${i.path} ${i.message}` });
       return;
     }
-    current?.player.dispose();
+    const reuse = current && current.aspect === parsed.value.meta.aspect ? current.player : undefined;
+    if (!reuse) {
+      current?.player.dispose();
+      stage.replaceChildren();
+    }
     current = null;
-    stage.replaceChildren();
-    const built = await build(parsed.value, stage, {
-      controls: false,
-      onError: (e) => post({ type: 'error', ...e }),
-    });
-    if (gen !== generation) return built.player.dispose();
+    const built = await build(
+      parsed.value,
+      stage,
+      { controls: false, onError: (e) => post({ type: 'error', ...e }) },
+      reuse,
+    );
     current = built;
     if (startAt) built.player.seek(Math.min(startAt, built.duration));
     post({ type: 'loaded', duration: built.duration, scenes: built.scenes, buildMs: built.buildMs });
@@ -129,9 +169,7 @@ function startPreview(stage: HTMLElement) {
     const p = current?.player;
     switch (m.data.type) {
       case 'load':
-        void load(m.data.storyboard, m.data.startAt).catch((err) =>
-          post({ type: 'error', message: String(err) }),
-        );
+        void requestLoad(m.data.storyboard, m.data.startAt);
         break;
       case 'play':
         if (p && p.timeline.getCurrentTime() >= current!.duration - 1e-3) p.seek(0);

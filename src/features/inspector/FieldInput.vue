@@ -5,10 +5,12 @@ import { computed } from 'vue';
 import type { Field } from '../../shared/fields';
 import ColorInput from './ColorInput.vue';
 
-const props = defineProps<{ field: Field; value: any; refOptions?: string[] }>();
+const props = defineProps<{ field: Field; value: any; refOptions?: string[]; label?: string }>();
 const emit = defineEmits<{ 'update:value': [any] }>();
 
 const set = (v: unknown) => emit('update:value', v);
+const name = computed(() => props.label ?? props.field.key);
+const aria = computed(() => ({ 'aria-label': name.value }));
 const shown = computed(() => props.value ?? props.field.defaultValue);
 const multiline = computed(() => ['text', 'latex', 'expr'].includes(props.field.key));
 const refOpts = computed(() => (props.refOptions ?? []).map((id) => ({ label: id, value: id })));
@@ -24,6 +26,7 @@ const setPoint = (i: number, j: number, v: number | null) =>
 
 <template>
   <NInputNumber
+    :show-button="false"
     v-if="field.kind === 'number'"
     size="small"
     :value="shown"
@@ -31,6 +34,7 @@ const setPoint = (i: number, j: number, v: number | null) =>
     :step="0.1"
     :clearable="field.optional"
     :placeholder="field.defaultValue !== undefined ? `默认 ${field.defaultValue}` : ''"
+    :input-props="aria"
     @update:value="set"
   />
   <NInput
@@ -39,6 +43,7 @@ const setPoint = (i: number, j: number, v: number | null) =>
     :type="multiline ? 'textarea' : 'text'"
     :autosize="multiline ? { minRows: 1, maxRows: 4 } : undefined"
     :value="shown ?? ''"
+    :input-props="aria"
     @update:value="set"
   />
   <ColorInput
@@ -62,6 +67,7 @@ const setPoint = (i: number, j: number, v: number | null) =>
     :multiple="field.kind === 'refs'"
     :clearable="field.optional"
     filterable
+    :input-props="aria"
     @update:value="set"
   />
   <div v-else-if="field.kind === 'vec2' || field.kind === 'range3'" class="tuple">
@@ -73,6 +79,9 @@ const setPoint = (i: number, j: number, v: number | null) =>
       :show-button="false"
       :value="shown?.[i - 1]"
       :placeholder="field.kind === 'vec2' ? ['x', 'y'][i - 1] : ['最小', '最大', '间隔'][i - 1]"
+      :input-props="{
+        'aria-label': `${name} ${field.kind === 'vec2' ? ['x', 'y'][i - 1] : ['最小', '最大', '间隔'][i - 1]}`,
+      }"
       @update:value="(v: number | null) => tupleAt(i - 1, v, field.kind === 'vec2' ? 2 : 3)"
     />
     <NButton v-if="field.optional && shown" size="tiny" quaternary aria-label="清除" @click="set(undefined)"
@@ -88,6 +97,7 @@ const setPoint = (i: number, j: number, v: number | null) =>
         :show-button="false"
         :step="0.1"
         :value="p[j - 1]"
+        :input-props="{ 'aria-label': `顶点 ${i + 1} ${['x', 'y'][j - 1]}` }"
         @update:value="(v: number | null) => setPoint(i, j - 1, v)"
       />
       <NButton

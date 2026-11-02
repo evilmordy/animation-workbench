@@ -94,12 +94,43 @@ export async function runSelftest(pinia: Pinia, cfg: SelftestConfig) {
     project.undo();
     await project.save();
 
+    await perfCheck(check);
     if (cfg.llm) await llmChecks(check, project.dir!);
   } catch (e) {
     check('未捕获异常', false, e instanceof Error ? e.stack : JSON.stringify(e));
   }
   await platform.selftestReport(JSON.stringify(checks));
   return undefined;
+
+  /** UX-03：20 个场景，编辑后预览更新的 p95（从修改到预览回报新时长） */
+  async function perfCheck(check: (n: string, ok: boolean, d?: unknown) => void) {
+    const base = JSON.parse(JSON.stringify(project.storyboard));
+    const scenes = [];
+    for (let k = 0; scenes.length < 20; k++)
+      for (const s of base.scenes)
+        if (scenes.length < 20) scenes.push({ ...JSON.parse(JSON.stringify(s)), id: `${s.id}_${k}` });
+    project.update({ ...base, scenes });
+    await until(() => preview.spans.length === 20, 10_000);
+    const samples: number[] = [];
+    for (let i = 1; i <= 10; i++) {
+      const sb = JSON.parse(JSON.stringify(project.storyboard));
+      sb.scenes[19].hold = 1 + i * 0.5;
+      const before = preview.duration;
+      const t0 = performance.now();
+      project.update(sb);
+      await until(() => preview.duration !== before, 5000);
+      samples.push(performance.now() - t0);
+    }
+    samples.sort((a, b) => a - b);
+    const p95 = samples[Math.ceil(samples.length * 0.95) - 1]!;
+    check(
+      'UX-03 20 个场景编辑→预览 p95 ≤ 500ms',
+      p95 <= 500,
+      `p95=${Math.round(p95)}ms 全部=${samples.map(Math.round).join(',')} 构建=${preview.buildMs}ms`,
+    );
+    while (project.canUndo) project.undo();
+    await project.save();
+  }
 
   async function llmChecks(check: (n: string, ok: boolean, d?: unknown) => void, dir: string) {
     check(

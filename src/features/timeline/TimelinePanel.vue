@@ -190,7 +190,6 @@ const ticks = computed(() => {
             tabindex="0"
             role="button"
             :aria-pressed="s.id === editor.sceneId"
-            :aria-label="`场景 ${i + 1}：${s.title}，${durations[i]?.toFixed(1)} 秒`"
             data-testid="scene-card"
             @click="select(s, i)"
             @contextmenu="openMenu($event, s.id)"

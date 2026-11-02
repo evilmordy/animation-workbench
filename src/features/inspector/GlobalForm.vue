@@ -67,7 +67,11 @@ const TOKEN_LABEL = {
 <template>
   <NForm label-placement="top" size="small" data-testid="global-form">
     <NFormItem label="动画标题">
-      <NInput :value="meta.title" @update:value="(v: string) => setMeta('title', { title: v })" />
+      <NInput
+        :value="meta.title"
+        :input-props="{ 'aria-label': '动画标题' }"
+        @update:value="(v: string) => setMeta('title', { title: v })"
+      />
     </NFormItem>
     <NFormItem label="画面比例">
       <NRadioGroup :value="meta.aspect" @update:value="(v: '16:9') => setMeta('aspect', { aspect: v })">
@@ -109,7 +113,9 @@ const TOKEN_LABEL = {
     <NDivider title-placement="left">AI 生成参数</NDivider>
     <NFormItem label="目标时长（秒）">
       <NInputNumber
+        :show-button="false"
         :value="gen.targetDuration"
+        :input-props="{ 'aria-label': '目标时长（秒）' }"
         :min="10"
         :max="600"
         :step="10"

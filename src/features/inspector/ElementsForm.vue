@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { NButton, NDivider, NEmpty, NFormItem, NInputNumber, NSelect, NSlider, NTag } from 'naive-ui';
+import { NButton, NDivider, NEmpty, NFormItem, NInputNumber, NSelect, NTag } from 'naive-ui';
+import RangeInput from '../shell/RangeInput.vue';
 import { computed, ref } from 'vue';
 import { describeObject, type Field } from '../../shared/fields';
 import { newId } from '../../shared/id';
@@ -91,6 +92,7 @@ function remove(id: string) {
         size="small"
         :options="typeOptions"
         filterable
+        :input-props="{ 'aria-label': '新元素类型' }"
         aria-label="新元素类型"
       />
       <NButton size="small" type="primary" data-testid="add-element" @click="add">添加</NButton>
@@ -190,16 +192,18 @@ function remove(id: string) {
         <ColorInput clearable :value="current.style?.fill" @update:value="(v) => setStyle('fill', v)" />
       </NFormItem>
       <NFormItem label="填充不透明度" size="small" label-placement="left" label-width="90">
-        <NSlider
+        <RangeInput
           :value="current.style?.fillOpacity ?? 0"
           :min="0"
           :max="1"
           :step="0.05"
+          label="填充不透明度"
           @update:value="(v: number) => setStyle('fillOpacity', v)"
         />
       </NFormItem>
       <NFormItem label="线宽" size="small" label-placement="left" label-width="90">
         <NInputNumber
+          :show-button="false"
           size="small"
           clearable
           :min="0"
@@ -210,6 +214,7 @@ function remove(id: string) {
       </NFormItem>
       <NFormItem label="缩放" size="small" label-placement="left" label-width="90">
         <NInputNumber
+          :show-button="false"
           size="small"
           clearable
           :min="0.05"
@@ -220,6 +225,7 @@ function remove(id: string) {
       </NFormItem>
       <NFormItem label="旋转（度）" size="small" label-placement="left" label-width="90">
         <NInputNumber
+          :show-button="false"
           size="small"
           clearable
           :step="15"

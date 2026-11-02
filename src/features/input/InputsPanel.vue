@@ -214,6 +214,7 @@ async function useAsSource() {
         <NSpace v-if="draft.pdf" align="center" class="gap">
           <span>共 {{ draft.pdf.pages }} 页，读取第</span>
           <NInputNumber
+            :show-button="false"
             v-model:value="draft.pdf.from"
             size="small"
             :min="1"
@@ -223,6 +224,7 @@ async function useAsSource() {
           />
           <span>到</span>
           <NInputNumber
+            :show-button="false"
             v-model:value="draft.pdf.to"
             size="small"
             :min="draft.pdf.from"

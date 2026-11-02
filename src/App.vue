@@ -14,6 +14,7 @@ import AppRoot from './features/shell/AppRoot.vue';
 // 提高次要文字对比度（UX-08：≥ 4.5:1）
 const overrides: GlobalThemeOverrides = {
   common: { textColor3: 'rgba(255, 255, 255, 0.62)', placeholderColor: 'rgba(255, 255, 255, 0.5)' },
+  Empty: { textColor: 'rgba(255, 255, 255, 0.62)', iconColor: 'rgba(255, 255, 255, 0.45)' },
 };
 </script>
 

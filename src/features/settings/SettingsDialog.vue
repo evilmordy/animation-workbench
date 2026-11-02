@@ -10,13 +10,13 @@ import {
   NRadioButton,
   NRadioGroup,
   NSelect,
-  NSlider,
   NSpace,
   NSwitch,
   useMessage,
 } from 'naive-ui';
 import { computed, ref, watch } from 'vue';
 import { PROVIDERS, providerById } from '../../ai/providers';
+import RangeInput from '../shell/RangeInput.vue';
 import { platform, type SecretStatus } from '../../platform';
 import { describeError } from '../../shared/errors';
 import { newId } from '../../shared/id';
@@ -204,6 +204,7 @@ const host = computed(() => {
         </NFormItem>
         <NFormItem label="JSON 模式">
           <NSwitch
+            aria-label="JSON 模式"
             :value="settings.jsonMode()"
             @update:value="
               (v: boolean) =>
@@ -212,21 +213,28 @@ const host = computed(() => {
           />
         </NFormItem>
         <NFormItem label="温度">
-          <NSlider
+          <RangeInput
             v-model:value="settings.ai.temperature"
             :min="0"
             :max="1.5"
             :step="0.1"
+            label="温度"
             style="max-width: 240px"
           />
           <span class="num">{{ settings.ai.temperature }}</span>
         </NFormItem>
         <NFormItem label="并发数">
-          <NInputNumber v-model:value="settings.ai.concurrency" :min="1" :max="4" style="width: 100px" />
+          <NInputNumber
+            :show-button="false"
+            v-model:value="settings.ai.concurrency"
+            :min="1"
+            :max="4"
+            style="width: 100px"
+          />
         </NFormItem>
       </template>
       <NFormItem label="日志完整内容">
-        <NSwitch v-model:value="logFull" />
+        <NSwitch v-model:value="logFull" aria-label="日志记录完整内容" />
         <span class="hint inline">关闭时 .awb/ai-log.jsonl 只记录耗时、用量等元数据</span>
       </NFormItem>
     </NForm>

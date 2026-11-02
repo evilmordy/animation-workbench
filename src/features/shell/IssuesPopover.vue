@@ -30,15 +30,10 @@ function go(path: string) {
 <template>
   <NPopover v-model:show="show" trigger="click" placement="top-end" style="max-height: 360px; overflow: auto">
     <template #trigger>
-      <NButton
-        text
-        size="tiny"
-        data-testid="issues-button"
-        :aria-label="`问题：${errors} 个错误，${warnings} 个警告`"
-      >
-        <span :class="{ err: errors }">● {{ errors }} 错误</span>
+      <NButton text size="tiny" data-testid="issues-button">
+        <span :class="{ err: errors }"><span aria-hidden="true">● </span>{{ errors }} 错误</span>
         &nbsp;
-        <span :class="{ warn: warnings }">▲ {{ warnings }} 警告</span>
+        <span :class="{ warn: warnings }"><span aria-hidden="true">▲ </span>{{ warnings }} 警告</span>
       </NButton>
     </template>
     <NEmpty v-if="!items.length" description="没有问题" />
