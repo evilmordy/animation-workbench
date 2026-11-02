@@ -80,6 +80,12 @@ describe('注册表', () => {
     }
   });
 
+  it('每个元素的示例 props 都合法', () => {
+    for (const [type, spec] of Object.entries(ELEMENTS)) {
+      expect(spec.props.safeParse(spec.example).success, type).toBe(true);
+    }
+  });
+
   it('props 默认值可以补齐', () => {
     expect(ELEMENTS.Circle.props.parse({})).toEqual({ radius: 1 });
     expect(ELEMENTS.MathTex.props.parse({ latex: 'a' })).toEqual({ latex: 'a', fontSize: 48 });

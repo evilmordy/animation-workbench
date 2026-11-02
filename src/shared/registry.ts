@@ -26,34 +26,58 @@ interface ElementSpec {
   label: string;
   desc: string;
   props: z.ZodObject;
+  /** 新建元素时的 props，也用作提示词里的示例 */
+  example: Record<string, unknown>;
   /** props 里引用其他元素 id 的字段（V3 检查） */
   refs?: readonly string[];
 }
 
-const el = <S extends z.ZodObject>(label: string, desc: string, props: S, refs?: readonly string[]) =>
-  ({ label, desc, props, refs }) satisfies ElementSpec;
+const el = <S extends z.ZodObject>(
+  label: string,
+  desc: string,
+  props: S,
+  example: z.input<S>,
+  refs?: readonly string[],
+) => ({ label, desc, props, example: example as Record<string, unknown>, refs }) satisfies ElementSpec;
 
 export const ELEMENTS = {
-  Circle: el('圆', '以 place.at 为圆心的圆', z.strictObject({ radius: Positive.default(1) })),
-  Square: el('正方形', '边长为 sideLength 的正方形', z.strictObject({ sideLength: Positive.default(2) })),
+  Circle: el('圆', '以 place.at 为圆心的圆', z.strictObject({ radius: Positive.default(1) }), { radius: 1 }),
+  Square: el('正方形', '边长为 sideLength 的正方形', z.strictObject({ sideLength: Positive.default(2) }), {
+    sideLength: 2,
+  }),
   Rectangle: el(
     '矩形',
     '宽 width、高 height 的矩形',
     z.strictObject({ width: Positive.default(4), height: Positive.default(2) }),
+    { width: 4, height: 2 },
   ),
-  Polygon: el('多边形', '按顶点坐标依次连接的闭合多边形', z.strictObject({ points: z.array(Vec2).min(3) })),
-  Line: el('线段', '从 start 到 end 的线段', z.strictObject({ start: Vec2, end: Vec2 })),
-  Arrow: el('箭头', '从 start 指向 end 的箭头', z.strictObject({ start: Vec2, end: Vec2 })),
-  Dot: el('点', '位于 place.at 的实心点', z.strictObject({ radius: Positive.default(0.08) })),
+  Polygon: el('多边形', '按顶点坐标依次连接的闭合多边形', z.strictObject({ points: z.array(Vec2).min(3) }), {
+    points: [
+      [-1, -1],
+      [1, -1],
+      [0, 1],
+    ],
+  }),
+  Line: el('线段', '从 start 到 end 的线段', z.strictObject({ start: Vec2, end: Vec2 }), {
+    start: [-2, 0],
+    end: [2, 0],
+  }),
+  Arrow: el('箭头', '从 start 指向 end 的箭头', z.strictObject({ start: Vec2, end: Vec2 }), {
+    start: [-2, 0],
+    end: [2, 0],
+  }),
+  Dot: el('点', '位于 place.at 的实心点', z.strictObject({ radius: Positive.default(0.08) }), {}),
   Text: el(
     '文字',
     '普通文字，中文必须用它',
     z.strictObject({ text: z.string().min(1), fontSize: Positive.default(48) }),
+    { text: '文字' },
   ),
   MathTex: el(
     '公式',
     'LaTeX 数学公式（不要放中文）',
     z.strictObject({ latex: z.string().min(1), fontSize: Positive.default(48) }),
+    { latex: 'x^2' },
   ),
   Axes: el(
     '坐标轴',
@@ -64,27 +88,35 @@ export const ELEMENTS = {
       xLength: Positive.optional(),
       yLength: Positive.optional(),
     }),
+    {},
   ),
   FunctionGraph: el(
     '函数图像',
     'expr 是关于 x 的 JS 表达式，如 Math.sin(x)；可选 axes 指定所在坐标轴',
     z.strictObject({ expr: z.string().min(1), xRange: Range2.optional(), axes: Id.optional() }),
+    { expr: 'Math.sin(x)' },
     ['axes'],
   ),
   NumberPlane: el(
     '坐标网格',
     '带网格的坐标平面',
     z.strictObject({ xRange: Range3.default([-7, 7, 1]), yRange: Range3.default([-4, 4, 1]) }),
+    {},
   ),
   Brace: el(
     '大括号',
     '贴在 target 元素 dir 一侧的大括号',
     z.strictObject({ target: Id, dir: Dir.default('DOWN') }),
+    { target: 'tri', dir: 'DOWN' },
     ['target'],
   ),
-  Group: el('组', '把 children 中的元素编为一组', z.strictObject({ children: z.array(Id).min(1) }), [
-    'children',
-  ]),
+  Group: el(
+    '组',
+    '把 children 中的元素编为一组',
+    z.strictObject({ children: z.array(Id).min(1) }),
+    { children: ['a', 'b'] },
+    ['children'],
+  ),
 } as const satisfies Record<string, ElementSpec>;
 
 export type ElementType = keyof typeof ELEMENTS;

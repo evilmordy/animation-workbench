@@ -14,6 +14,10 @@ export const useEditorStore = defineStore('editor', () => {
   const inspectorTab = ref<InspectorTab>('scene');
   const expertOpen = ref(false);
   const expertScope = ref<'scene' | 'all'>('scene');
+  const exportOpen = ref(false);
+  const settingsOpen = ref(false);
+  /** Ctrl+Enter 递增它，AI 面板监听后发送指令 */
+  const sendSignal = ref(0);
 
   const project = useProjectStore();
   const sceneIndex = computed(
@@ -55,6 +59,9 @@ export const useEditorStore = defineStore('editor', () => {
     inspectorTab,
     expertOpen,
     expertScope,
+    exportOpen,
+    settingsOpen,
+    sendSignal,
     sceneIndex,
     scene,
     selectScene,

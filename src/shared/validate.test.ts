@@ -181,3 +181,14 @@ describe('validate', () => {
     expect(pick(r, 'V8')).toMatchObject([{ level: 'error', path: 'scenes[0].elements[4].props.expr' }]);
   });
 });
+
+describe('inheritedIds', () => {
+  it('keep 场景继承上一场景结束时在场的元素', async () => {
+    const { inheritedIds } = await import('./validate');
+    const r = inheritedIds(fixture as any);
+    expect(r[0]).toEqual([]);
+    expect(r[1]!.sort()).toEqual(['la', 'lb', 'lc', 'tri']);
+    expect(r[2]).toContain('sa');
+    expect(r[2]).not.toContain('la');
+  });
+});

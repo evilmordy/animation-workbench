@@ -33,7 +33,8 @@ export function validate(data: unknown): Issue[] {
   return validateSemantics(r.value);
 }
 
-export function validateSemantics(sb: Storyboard): Issue[] {
+/** scopes 若传入，会依次填入每个场景开始时继承的在场元素 id（检查器的下拉选项用） */
+export function validateSemantics(sb: Storyboard, scopes?: string[][]): Issue[] {
   const issues: Issue[] = [];
   const add = (level: Level, code: Code, path: (string | number)[], message: string) =>
     issues.push({ level, code, path: formatPath(path), message });
@@ -48,6 +49,7 @@ export function validateSemantics(sb: Storyboard): Issue[] {
     sceneIds.add(scene.id);
 
     checkDurations(scene, si, sp, add);
+    scopes?.push(scene.enter === 'keep' && scene.kind === 'dsl' ? [...present.keys()] : []);
     if (scene.kind !== 'dsl') {
       present = new Map();
       return;
@@ -162,4 +164,11 @@ function checkElement(e: Element, ep: (string | number)[], add: Add) {
   }
   if (e.type === 'FunctionGraph' && !isSafeExpr(p.expr as string))
     add('error', 'V8', [...ep, 'props', 'expr'], '表达式只能包含 x、数字、+-*/%() 和 Math.sin 等白名单函数');
+}
+
+/** 每个场景开始时从上一场景继承的在场元素 id */
+export function inheritedIds(sb: Storyboard): string[][] {
+  const scopes: string[][] = [];
+  validateSemantics(sb, scopes);
+  return scopes;
 }

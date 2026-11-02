@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { NButton, NButtonGroup, NTooltip } from 'naive-ui';
-import { ref } from 'vue';
 import { useEditorStore } from '../../stores/editor';
 import { useProjectStore } from '../../stores/project';
 import ExportDialog from '../export/ExportDialog.vue';
@@ -8,10 +7,6 @@ import SettingsDialog from '../settings/SettingsDialog.vue';
 
 const project = useProjectStore();
 const editor = useEditorStore();
-const settingsOpen = ref(false);
-const exportOpen = ref(false);
-
-defineExpose({ openExport: () => (exportOpen.value = true) });
 </script>
 
 <template>
@@ -46,10 +41,12 @@ defineExpose({ openExport: () => (exportOpen.value = true) });
     >
       专家模式 JSON
     </NButton>
-    <NButton size="small" data-testid="open-settings" @click="settingsOpen = true">AI 设置</NButton>
-    <NButton size="small" type="primary" data-testid="open-export" @click="exportOpen = true">导出</NButton>
-    <SettingsDialog v-model:show="settingsOpen" />
-    <ExportDialog v-model:show="exportOpen" />
+    <NButton size="small" data-testid="open-settings" @click="editor.settingsOpen = true">AI 设置</NButton>
+    <NButton size="small" type="primary" data-testid="open-export" @click="editor.exportOpen = true"
+      >导出</NButton
+    >
+    <SettingsDialog v-model:show="editor.settingsOpen" />
+    <ExportDialog v-model:show="editor.exportOpen" />
   </header>
 </template>
 

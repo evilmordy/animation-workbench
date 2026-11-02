@@ -7,6 +7,14 @@ import { useSettingsStore } from './settings';
 export const useAiStore = defineStore('ai', () => {
   const settings = useSettingsStore();
   const usage = ref({ prompt: 0, completion: 0, requests: 0 });
+  /** 正在由 AI 生成/修改的场景 id（时间线显示"生成中"） */
+  const busyScenes = ref(new Set<string>());
+  const setBusy = (id: string, busy: boolean) => {
+    const next = new Set(busyScenes.value);
+    if (busy) next.add(id);
+    else next.delete(id);
+    busyScenes.value = next;
+  };
 
   const modelLabel = computed(() =>
     settings.ai.mode === 'manual'
@@ -22,5 +30,5 @@ export const useAiStore = defineStore('ai', () => {
     };
   }
 
-  return { usage, modelLabel, addUsage };
+  return { usage, modelLabel, addUsage, busyScenes, setBusy };
 });
