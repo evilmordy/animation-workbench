@@ -1,0 +1,316 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "title": "勾股定理的直观证明",
+    "mode": "2d",
+    "aspect": "16:9",
+    "background": "#000000",
+    "stylePreset": "3b1b"
+  },
+  "scenes": [
+    {
+      "id": "s_tri001",
+      "title": "引入直角三角形",
+      "description": "画出直角三角形并标注三边 a、b、c",
+      "kind": "dsl",
+      "enter": "fresh",
+      "hold": 1,
+      "elements": [
+        {
+          "id": "tri",
+          "type": "Polygon",
+          "props": {
+            "points": [
+              [-1, -0.5],
+              [1, -0.5],
+              [-1, 1]
+            ]
+          },
+          "style": {
+            "color": "$primary"
+          }
+        },
+        {
+          "id": "la",
+          "type": "MathTex",
+          "props": {
+            "latex": "a"
+          },
+          "place": {
+            "nextTo": {
+              "id": "tri",
+              "dir": "LEFT"
+            }
+          }
+        },
+        {
+          "id": "lb",
+          "type": "MathTex",
+          "props": {
+            "latex": "b"
+          },
+          "place": {
+            "nextTo": {
+              "id": "tri",
+              "dir": "DOWN"
+            }
+          }
+        },
+        {
+          "id": "lc",
+          "type": "MathTex",
+          "props": {
+            "latex": "c"
+          },
+          "place": {
+            "at": [0.3, 0.65]
+          }
+        }
+      ],
+      "steps": [
+        {
+          "id": "st_a1",
+          "kind": "play",
+          "anims": [
+            {
+              "type": "Create",
+              "target": "tri"
+            }
+          ],
+          "duration": 2
+        },
+        {
+          "id": "st_a2",
+          "kind": "play",
+          "anims": [
+            {
+              "type": "Write",
+              "target": "la"
+            },
+            {
+              "type": "Write",
+              "target": "lb"
+            },
+            {
+              "type": "Write",
+              "target": "lc"
+            }
+          ],
+          "duration": 1.5,
+          "lag": 0.3
+        }
+      ]
+    },
+    {
+      "id": "s_sq0002",
+      "title": "在三边上作正方形",
+      "description": "三边各作一个正方形，面积分别是 a²、b²、c²",
+      "kind": "dsl",
+      "enter": "keep",
+      "hold": 1,
+      "elements": [
+        {
+          "id": "sa",
+          "type": "Square",
+          "props": {
+            "sideLength": 1.5
+          },
+          "place": {
+            "at": [-1.75, 0.25]
+          },
+          "style": {
+            "color": "$secondary"
+          }
+        },
+        {
+          "id": "sb",
+          "type": "Square",
+          "props": {
+            "sideLength": 2
+          },
+          "place": {
+            "at": [0, -1.5]
+          },
+          "style": {
+            "color": "$secondary"
+          }
+        },
+        {
+          "id": "sc",
+          "type": "Square",
+          "props": {
+            "sideLength": 2.5
+          },
+          "place": {
+            "at": [0.75, 1.25]
+          },
+          "style": {
+            "color": "$accent",
+            "rotate": -36.87
+          }
+        },
+        {
+          "id": "ta",
+          "type": "MathTex",
+          "props": {
+            "latex": "a^2"
+          },
+          "place": {
+            "at": [-1.75, 0.25]
+          }
+        },
+        {
+          "id": "tb",
+          "type": "MathTex",
+          "props": {
+            "latex": "b^2"
+          },
+          "place": {
+            "at": [0, -1.5]
+          }
+        },
+        {
+          "id": "tc",
+          "type": "MathTex",
+          "props": {
+            "latex": "c^2"
+          },
+          "place": {
+            "at": [0.75, 1.25]
+          }
+        }
+      ],
+      "steps": [
+        {
+          "id": "st_b1",
+          "kind": "play",
+          "anims": [
+            {
+              "type": "FadeOut",
+              "target": "la"
+            },
+            {
+              "type": "FadeOut",
+              "target": "lb"
+            },
+            {
+              "type": "FadeOut",
+              "target": "lc"
+            }
+          ],
+          "duration": 0.5
+        },
+        {
+          "id": "st_b2",
+          "kind": "play",
+          "anims": [
+            {
+              "type": "Create",
+              "target": "sa"
+            },
+            {
+              "type": "Create",
+              "target": "sb"
+            },
+            {
+              "type": "Create",
+              "target": "sc"
+            }
+          ],
+          "duration": 2.5,
+          "lag": 0.3
+        },
+        {
+          "id": "st_b3",
+          "kind": "play",
+          "anims": [
+            {
+              "type": "Write",
+              "target": "ta"
+            },
+            {
+              "type": "Write",
+              "target": "tb"
+            },
+            {
+              "type": "Write",
+              "target": "tc"
+            }
+          ],
+          "duration": 1.5
+        }
+      ]
+    },
+    {
+      "id": "s_eq0003",
+      "title": "得出结论",
+      "description": "强调两个小正方形面积之和等于大正方形面积",
+      "kind": "dsl",
+      "enter": "keep",
+      "hold": 2,
+      "elements": [
+        {
+          "id": "eq",
+          "type": "MathTex",
+          "props": {
+            "latex": "a^2+b^2=c^2",
+            "fontSize": 56
+          },
+          "place": {
+            "toEdge": "DOWN"
+          }
+        }
+      ],
+      "steps": [
+        {
+          "id": "st_c1",
+          "kind": "play",
+          "anims": [
+            {
+              "type": "Indicate",
+              "target": "sa"
+            },
+            {
+              "type": "Indicate",
+              "target": "sb"
+            }
+          ],
+          "duration": 1
+        },
+        {
+          "id": "st_c2",
+          "kind": "play",
+          "anims": [
+            {
+              "type": "Indicate",
+              "target": "sc"
+            }
+          ],
+          "duration": 1
+        },
+        {
+          "id": "st_c3",
+          "kind": "play",
+          "anims": [
+            {
+              "type": "Write",
+              "target": "eq"
+            }
+          ],
+          "duration": 2
+        },
+        {
+          "id": "st_c4",
+          "kind": "play",
+          "anims": [
+            {
+              "type": "Circumscribe",
+              "target": "eq"
+            }
+          ],
+          "duration": 1
+        }
+      ]
+    }
+  ]
+}

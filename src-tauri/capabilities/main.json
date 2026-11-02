@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "main",
+  "description": "只授予 main 窗口；权限按任务逐项添加（PLAN §0、SEC-04）",
+  "windows": ["main"],
+  "permissions": []
+}

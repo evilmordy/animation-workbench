@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-sec-canary"
+description = "Enables the sec_canary command without any pre-configured scope."
+commands.allow = ["sec_canary"]
+
+[[permission]]
+identifier = "deny-sec-canary"
+description = "Denies the sec_canary command without any pre-configured scope."
+commands.deny = ["sec_canary"]

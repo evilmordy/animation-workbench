@@ -1,0 +1,9 @@
+*.md
+pnpm-lock.yaml
+dist/
+dist-runtime/
+spike/
+docs/
+src-tauri/
+test-results/
+playwright-report/

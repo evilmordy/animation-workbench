@@ -1,0 +1,8 @@
+{
+  "name": "awb-spike-runtime",
+  "private": true,
+  "type": "module",
+  "scripts": { "build": "vite build" },
+  "dependencies": { "manim-web": "0.40.1" },
+  "devDependencies": { "vite": "^7.0.0", "@playwright/test": "^1.50.0" }
+}

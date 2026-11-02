@@ -1,0 +1,13 @@
+{
+  "productName": "awb-spike-preview",
+  "version": "0.0.0",
+  "identifier": "dev.awb.spike.preview",
+  "build": { "frontendDist": "../ui" },
+  "app": {
+    "withGlobalTauri": true,
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; frame-src awpreview: http://awpreview.localhost; connect-src ipc: http://ipc.localhost"
+    }
+  },
+  "bundle": { "active": false, "icon": ["icons/icon.png"] }
+}

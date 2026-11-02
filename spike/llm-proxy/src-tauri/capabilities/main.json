@@ -1,0 +1,8 @@
+{
+  "identifier": "main",
+  "windows": ["main"],
+  "permissions": [
+    "allow-secret-set", "allow-secret-status", "allow-secret-remove",
+    "allow-llm-chat", "allow-llm-cancel", "allow-probe-report"
+  ]
+}
