@@ -41,6 +41,14 @@ jobs:
         shell: bash
         run: "! grep -rnE 'innerHTML|outerHTML|insertAdjacentHTML' src --include='*.ts' --include='*.vue'"
       - run: pnpm audit --prod --audit-level high
+      - name: SEC-08 许可证检查
+        run: node scripts/check-licenses.mjs
+      - name: SEC-08 cargo audit
+        if: runner.os == 'Linux'
+        uses: rustsec/audit-check@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          working-directory: src-tauri
       - run: pnpm build:runtime
       - run: cargo test --manifest-path src-tauri/Cargo.toml
       - name: Playwright（运行时与 e2e）

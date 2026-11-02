@@ -100,3 +100,23 @@ describe('id', () => {
     expect(taken.has(newId('s', taken))).toBe(false);
   });
 });
+
+describe('SEC-04 安全文件名', () => {
+  it('不能穿越目录、不能生成隐藏文件', async () => {
+    const { safeFileName } = await import('./project');
+    for (const bad of [
+      '../../etc/passwd',
+      '..\\..\\Windows\\win.ini',
+      '/etc/passwd',
+      'C:\\x',
+      '.ssh',
+      'a/../b',
+      '\u0000x',
+    ]) {
+      const r = safeFileName(bad);
+      expect(r, bad).not.toMatch(/[\\/]|^\.|\.\./);
+    }
+    expect(safeFileName('勾股定理 证明.pdf')).toBe('勾股定理_证明.pdf');
+    expect(safeFileName('...', 'animation')).toBe('animation');
+  });
+});

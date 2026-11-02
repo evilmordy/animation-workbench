@@ -28,8 +28,11 @@ pub fn run() {
     #[cfg(debug_assertions)]
     let builder = builder
         .on_page_load(|webview, payload| {
-            if matches!(payload.event(), tauri::webview::PageLoadEvent::Finished) && std::env::var_os("AWB_SELFTEST").is_some() {
-                let _ = webview.eval("window.__AWB_SELFTEST__ = true; window.dispatchEvent(new Event('awb-selftest'));");
+            if let (tauri::webview::PageLoadEvent::Finished, Ok(mode)) = (payload.event(), std::env::var("AWB_SELFTEST")) {
+                let cfg = serde_json::json!({ "mode": mode, "llm": std::env::var("AWB_SELFTEST_LLM").ok() });
+                let _ = webview.eval(format!(
+                    "window.__AWB_SELFTEST__ = {cfg}; window.dispatchEvent(new Event('awb-selftest'));"
+                ));
             }
         })
         .invoke_handler(tauri::generate_handler![

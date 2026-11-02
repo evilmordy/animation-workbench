@@ -15,7 +15,7 @@ import { SOURCE_BUDGET } from '../../ai/prompts';
 import { platform } from '../../platform';
 import { describeError } from '../../shared/errors';
 import { newId } from '../../shared/id';
-import type { InputRef } from '../../shared/project';
+import { safeFileName, type InputRef } from '../../shared/project';
 import { useEditorStore } from '../../stores/editor';
 import { useGenerationStore } from '../../stores/generation';
 import { useProjectStore } from '../../stores/project';
@@ -109,8 +109,7 @@ async function saveDraft() {
   const id = newId('in');
   const dir = await inputsDir();
   await platform.mkdir(dir);
-  const safe = d.name.replace(/[\\/:*?"<>|]/g, '_');
-  const file = `${id}-${safe}`;
+  const file = `${id}-${safeFileName(d.name)}`;
   if (d.bytes) await platform.writeBinary(await platform.join(dir, file), d.bytes);
   else await platform.writeTextAtomic(await platform.join(dir, file), d.text);
   const textFile = `${id}.txt`;

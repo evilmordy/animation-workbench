@@ -55,3 +55,17 @@ export function snapshotName(reason: string, now = new Date()): string {
 }
 
 export const PROJECT_DIRS = ['inputs', 'assets', 'versions', 'exports', '.awb'] as const;
+
+/**
+ * 用户输入或导入文件名 → 项目目录里的安全文件名（SEC-04）：
+ * 去掉路径分隔符、系统保留字符和开头的点，因此不可能穿越到项目目录之外或生成隐藏文件。
+ */
+export function safeFileName(s: string, fallback = 'file'): string {
+  const name = s
+    .replace(/[\\/:*?"<>|\u0000-\u001f]+/g, '_')
+    .replace(/\s+/g, '_')
+    .replace(/\.{2,}/g, '.')
+    .replace(/^[._]+|_+$/g, '')
+    .slice(0, 80);
+  return name || fallback;
+}

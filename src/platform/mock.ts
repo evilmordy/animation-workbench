@@ -13,7 +13,8 @@ const hasLS = typeof localStorage !== 'undefined';
 
 function persist() {
   if (!hasLS) return;
-  const text = [...files].filter(([, v]) => typeof v === 'string');
+  // 只持久化小的文本文件（导出的 HTML 有十几 MB，会超出 localStorage 配额）
+  const text = [...files].filter(([, v]) => typeof v === 'string' && v.length < 1_000_000);
   localStorage.setItem(LS_KEY, JSON.stringify({ files: text, dirs: [...dirs], settings: [...settings] }));
 }
 if (hasLS) {

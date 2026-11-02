@@ -120,6 +120,11 @@ export const useProjectStore = defineStore('project', () => {
       throw new ProjectError('这个项目由更新版本的应用创建，请升级 Animation Workbench 后再打开');
     const pj = ProjectFile.parse(pjRaw);
     const sb = await readStoryboard(await platform.join(d, SB));
+    // 上次写入中途被强杀会留下临时文件，正式文件不受影响，直接清掉
+    for (const name of [SB, PJ]) {
+      const tmp = await platform.join(d, `${name}.tmp`);
+      if (await platform.exists(tmp)) await platform.remove(tmp).catch(() => {});
+    }
     reset(d, pj, sb);
     await remember(d, pj.name);
     return true;

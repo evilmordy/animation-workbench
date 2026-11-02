@@ -76,8 +76,11 @@ if (stage && embedded) {
       slidesMode: embedded.dataset.slides === 'true',
       loop: embedded.dataset.loop === 'true',
       onError: (e) => console.error(e.message),
+    }).then((b) => {
+      // 供自动化测试检查导出文件是否正常加载
+      Object.assign(window, { __awbExport: { scenes: b.scenes, duration: b.duration } });
     });
-  }
+  } else console.error('分镜数据损坏', sb.issues);
 } else if (stage && window.parent !== window) {
   startPreview(stage);
 }

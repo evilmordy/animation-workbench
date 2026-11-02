@@ -80,8 +80,8 @@ const fix = () =>
       <NInputNumber
         :value="scene.hold"
         :min="0"
-        :max="30"
         :step="0.5"
+        :input-props="{ 'aria-label': '末尾停留（秒）' }"
         @update:value="(v: number | null) => patch('hold', (s) => ({ ...s, hold: v ?? 0 }))"
       />
     </NFormItem>
