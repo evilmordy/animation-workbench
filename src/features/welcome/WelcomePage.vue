@@ -26,6 +26,18 @@ const settingsOpen = ref(false);
         >配置 AI</NButton
       >
     </div>
+    <section class="guide" aria-label="三步上手">
+      <h2>三步上手</h2>
+      <ol>
+        <li><strong>放入素材</strong>：新建项目后，在左侧"素材"页粘贴文字或导入 txt / md / 代码 / PDF。</li>
+        <li>
+          <strong>AI 生成并精修</strong
+          >：在"AI"页生成大纲、逐个生成场景；再用时间线和右侧检查器精确调整，或用一句话让 AI 修改。没有 API
+          Key 也可以用手动模式。
+        </li>
+        <li><strong>导出</strong>：Ctrl+E 导出单文件 HTML，在浏览器里播放，或用 Chrome 导出 MP4。</li>
+      </ol>
+    </section>
     <section class="recent" aria-label="最近项目">
       <h2>最近项目</h2>
       <NEmpty v-if="!project.recent.length" description="还没有打开过项目。先看看示例吧，不需要 API Key。" />
@@ -64,5 +76,11 @@ h1 {
 }
 h2 {
   font-size: 16px;
+}
+.guide ol {
+  padding-left: 20px;
+  line-height: 1.8;
+  color: rgba(255, 255, 255, 0.85);
+  margin: 0 0 32px;
 }
 </style>

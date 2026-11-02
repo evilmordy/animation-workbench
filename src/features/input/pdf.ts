@@ -1,24 +1,19 @@
 import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist';
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import cmaps from 'virtual:pdf-cmaps';
 import { fixCjkRadicals } from './cjk';
 
 GlobalWorkerOptions.workerSrc = workerUrl;
 
 /**
- * CMap（中文等 CID 字体提取文字需要）打包进前端，按需以 base64 加载：
- * 主窗口 CSP 的 connect-src 不允许 fetch 应用自身资源，所以不能用 pdfjs 默认的 cMapUrl 加载方式。
+ * CMap（中文等 CID 字体提取文字需要）在构建时读成 base64 打进包里：
+ * 主窗口 CSP 的 connect-src 不允许运行时再去 fetch。
  */
-const cmaps = import.meta.glob<string>('/node_modules/pdfjs-dist/cmaps/*.bcmap', {
-  query: '?inline',
-  import: 'default',
-});
-
 class BundledDataFactory {
   async fetch({ kind, filename }: { kind: string; filename: string }): Promise<Uint8Array> {
-    const load = kind === 'cMapUrl' ? cmaps[`/node_modules/pdfjs-dist/cmaps/${filename}`] : undefined;
-    if (!load) throw new Error(`PDF 需要的数据不可用：${kind} ${filename}`);
-    const dataUrl = await load();
-    return Uint8Array.from(atob(dataUrl.slice(dataUrl.indexOf(',') + 1)), (c) => c.charCodeAt(0));
+    const data = kind === 'cMapUrl' ? cmaps[filename] : undefined;
+    if (!data) throw new Error(`PDF 需要的数据不可用：${kind} ${filename}`);
+    return Uint8Array.from(atob(data), (c) => c.charCodeAt(0));
   }
 }
 

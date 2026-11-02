@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Animation Workbench",
-  "version": "0.1.0",
-  "identifier": "dev.animationworkbench.app",
+  "version": "1.0.0",
+  "identifier": "dev.animationworkbench.desktop",
   "build": {
     "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:1420",
@@ -34,7 +34,21 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "publisher": "Animation Workbench",
+    "category": "Education",
+    "shortDescription": "把文字、教材和代码变成可精确编辑的 3Blue1Brown 风格动画",
+    "longDescription": "Animation Workbench 是一个可视化动画工作台：AI 生成结构化分镜，用时间线和检查器精确编辑，内置 manim-web 运行时实时预览，导出离线可用的单文件 HTML。",
+    "license": "MIT",
+    "copyright": "Copyright © 2026 Animation Workbench contributors",
+    "linux": {
+      "deb": {
+        "depends": [
+          "libwebkit2gtk-4.1-0",
+          "libgtk-3-0"
+        ]
+      }
+    }
   },
   "plugins": {
     "fs": {

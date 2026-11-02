@@ -24,6 +24,8 @@ import { useAiStore } from '../../stores/ai';
 import { useEditorStore } from '../../stores/editor';
 import { useGenerationStore, type SceneJobState } from '../../stores/generation';
 import { useProjectStore } from '../../stores/project';
+import { useSettingsStore } from '../../stores/settings';
+import { platform } from '../../platform';
 import ManualFixDialog from './ManualFixDialog.vue';
 
 const gen = useGenerationStore();
@@ -32,6 +34,25 @@ const editor = useEditorStore();
 const ai = useAiStore();
 const message = useMessage();
 const dialog = useDialog();
+const settings = useSettingsStore();
+
+/** API 模式下还没有 Key 时给出引导（UX-10：没有 Key 也能用手动模式走通） */
+const hasKey = ref(true);
+async function refreshKey() {
+  hasKey.value =
+    settings.ai.mode === 'manual' ||
+    (await platform.secretStatus(settings.ai.providerId).then(
+      (s) => s.exists,
+      () => false,
+    ));
+}
+watch(
+  () => [settings.ai.mode, settings.ai.providerId, editor.settingsOpen, settings.loaded],
+  () => void refreshKey(),
+  {
+    immediate: true,
+  },
+);
 
 const instruction = ref('');
 const scope = ref<'scene' | 'all'>('scene');
@@ -135,6 +156,13 @@ function applyFix(scene: Scene) {
 
 <template>
   <div class="ai" data-testid="ai-panel">
+    <NAlert v-if="!hasKey" type="warning" :show-icon="false" class="first" data-testid="no-key">
+      还没有配置 API Key。
+      <NSpace class="gap">
+        <NButton size="tiny" type="primary" @click="editor.settingsOpen = true">打开 AI 设置</NButton>
+        <NButton size="tiny" @click="settings.ai.mode = 'manual'">改用手动模式（无需 Key）</NButton>
+      </NSpace>
+    </NAlert>
     <h3>从素材生成</h3>
     <NInput
       v-model:value="gen.source"
@@ -394,6 +422,9 @@ h3 {
 }
 .gap {
   margin-top: 8px;
+}
+.first {
+  margin-bottom: 12px;
 }
 .jobs {
   margin-top: 10px;
