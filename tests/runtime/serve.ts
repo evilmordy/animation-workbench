@@ -22,7 +22,7 @@ export async function serveRuntime(page: Page): Promise<string[]> {
       external.push(url);
       return route.abort();
     }
-    const headers = url.startsWith('http://awpreview.test') ? { 'Content-Security-Policy': PREVIEW_CSP } : {};
+    const headers: Record<string, string> = url.startsWith('http://awpreview.test') ? { 'Content-Security-Policy': PREVIEW_CSP } : {};
     return route.fulfill({ body: readFileSync(f[0]), contentType: f[1], headers });
   });
   return external;

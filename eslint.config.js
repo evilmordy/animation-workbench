@@ -46,7 +46,7 @@ export default defineConfig(
     },
   },
   // 测试里要构造各种非法数据
-  { files: ['**/*.test.ts'], rules: { '@typescript-eslint/no-explicit-any': 'off' } },
+  { files: ['**/*.test.ts', '**/*.spec.ts'], rules: { '@typescript-eslint/no-explicit-any': 'off' } },
   {
     files: ['src/**'],
     ignores: ['src/platform/**', 'src/runtime/**', 'src/shared/**'],
