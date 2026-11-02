@@ -13,6 +13,8 @@ export default defineConfig({
   resolve: {
     alias: { pptxgenjs: fileURLToPath(new URL('./src/runtime/pptxgenjs-stub.ts', import.meta.url)) },
   },
+  // public/index.html 是 awpreview 提供的预览页
+  publicDir: 'src/runtime/public',
   build: {
     outDir: 'dist-runtime',
     emptyOutDir: true,
