@@ -13,7 +13,8 @@
     "test:e2e": "playwright test",
     "typecheck": "vue-tsc --noEmit",
     "lint": "eslint . && prettier --check .",
-    "check": "pnpm typecheck && pnpm lint && pnpm test"
+    "check": "pnpm typecheck && pnpm lint && pnpm test",
+    "eval:ai": "vitest run --config vitest.eval.config.ts"
   },
   "dependencies": {
     "@codemirror/lang-javascript": "^6.2.5",

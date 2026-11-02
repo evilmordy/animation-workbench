@@ -35,6 +35,11 @@
       ]
     },
     "opener:allow-reveal-item-in-dir",
+    "allow-secret-set",
+    "allow-secret-status",
+    "allow-secret-remove",
+    "allow-llm-chat",
+    "allow-llm-cancel",
     "allow-selftest-report"
   ]
 }

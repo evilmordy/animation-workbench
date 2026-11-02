@@ -7,6 +7,7 @@ import type { Scene } from '../../shared/schema';
 import { sceneDuration } from '../../shared/timing';
 import { useAiStore } from '../../stores/ai';
 import { useEditorStore } from '../../stores/editor';
+import { useGenerationStore } from '../../stores/generation';
 import { usePreviewStore } from '../../stores/preview';
 import { useProjectStore } from '../../stores/project';
 import { useSceneActions } from './useSceneActions';
@@ -16,6 +17,7 @@ const project = useProjectStore();
 const preview = usePreviewStore();
 const editor = useEditorStore();
 const ai = useAiStore();
+const gen = useGenerationStore();
 const actions = useSceneActions();
 
 const scroller = ref<HTMLElement | null>(null);
@@ -179,7 +181,11 @@ const ticks = computed(() => {
             v-for="(s, i) in list"
             :key="s.id"
             class="card"
-            :class="{ selected: s.id === editor.sceneId, locked: s.locked }"
+            :class="{
+              selected: s.id === editor.sceneId,
+              locked: s.locked,
+              changed: gen.pending?.result.changed.includes(s.id),
+            }"
             :style="{ width: `${widthOf(s, i)}px` }"
             tabindex="0"
             role="button"
@@ -197,6 +203,7 @@ const ticks = computed(() => {
             </div>
             <div class="badges">
               <NTag v-if="badges(s, i).busy" size="tiny" type="info">生成中</NTag>
+              <NTag v-if="gen.pending?.result.changed.includes(s.id)" size="tiny" type="info">待确认</NTag>
               <NTag v-if="badges(s, i).errors" size="tiny" type="error">{{ badges(s, i).errors }} 错误</NTag>
               <NTag v-if="badges(s, i).warnings" size="tiny" type="warning"
                 >{{ badges(s, i).warnings }} 警告</NTag
@@ -303,6 +310,9 @@ header {
 .card.selected {
   border-color: #63e2b7;
   background: #263a33;
+}
+.card.changed {
+  box-shadow: inset 0 0 0 2px #70c0e8;
 }
 .card.locked {
   background-image: repeating-linear-gradient(45deg, transparent 0 8px, rgba(255, 255, 255, 0.03) 8px 16px);

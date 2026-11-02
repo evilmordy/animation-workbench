@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { NDrawer, NDrawerContent } from 'naive-ui';
 import { useEditorStore } from '../../stores/editor';
+import ManualDialog from '../ai/ManualDialog.vue';
 import JsonEditor from '../expert/JsonEditor.vue';
 import InspectorPanel from '../inspector/InspectorPanel.vue';
 import PreviewPane from '../preview/PreviewPane.vue';
@@ -34,6 +35,7 @@ useShortcuts();
         <JsonEditor />
       </NDrawerContent>
     </NDrawer>
+    <ManualDialog />
   </div>
 </template>
 

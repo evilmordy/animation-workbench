@@ -5,6 +5,7 @@ import { platform } from '../../platform';
 import { PreviewMessage } from '../../shared/protocol';
 import { useProjectStore } from '../../stores/project';
 import { usePreviewStore } from '../../stores/preview';
+import { useGenerationStore } from '../../stores/generation';
 import { formatTime } from '../../shared/format';
 
 const LOAD_DEBOUNCE_MS = 300;
@@ -12,6 +13,11 @@ const STALL_MS = 3000;
 
 const project = useProjectStore();
 const preview = usePreviewStore();
+const gen = useGenerationStore();
+/** 有待确认的 AI 修改时，可以切换预览修改后的版本 */
+const shown = computed(() =>
+  gen.pending && gen.previewProposed ? gen.pending.result.storyboard : project.storyboard,
+);
 const frame = ref<HTMLIFrameElement | null>(null);
 const frameKey = ref(0);
 let lastBeat = 0;
@@ -21,10 +27,10 @@ let watchdog: ReturnType<typeof setInterval> | null = null;
 const post = (m: unknown) => frame.value?.contentWindow?.postMessage(m, '*');
 
 function sendLoad() {
-  if (!project.storyboard || !preview.ready) return;
+  if (!shown.value || !preview.ready) return;
   // 构建中的错误会在 loaded 之前到达，所以在发送前清空
   preview.errors = [];
-  post({ type: 'load', storyboard: JSON.parse(JSON.stringify(project.storyboard)), startAt: preview.time });
+  post({ type: 'load', storyboard: JSON.parse(JSON.stringify(shown.value)), startAt: preview.time });
 }
 
 function onMessage(e: MessageEvent) {
@@ -83,13 +89,10 @@ onBeforeUnmount(() => {
   if (loadTimer) clearTimeout(loadTimer);
 });
 
-watch(
-  () => project.storyboard,
-  () => {
-    if (loadTimer) clearTimeout(loadTimer);
-    loadTimer = setTimeout(sendLoad, LOAD_DEBOUNCE_MS);
-  },
-);
+watch(shown, () => {
+  if (loadTimer) clearTimeout(loadTimer);
+  loadTimer = setTimeout(sendLoad, LOAD_DEBOUNCE_MS);
+});
 
 const rates = [0.5, 1, 1.5, 2].map((r) => ({ label: `${r}×`, value: r }));
 const timeText = computed(() => `${formatTime(preview.time)} / ${formatTime(preview.duration)}`);

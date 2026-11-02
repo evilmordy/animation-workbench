@@ -1,15 +1,45 @@
 <script setup lang="ts">
-import { NForm, NFormItem, NInput, NInputNumber, NRadioButton, NRadioGroup, NSwitch } from 'naive-ui';
-import { computed } from 'vue';
+import {
+  NButton,
+  NForm,
+  NFormItem,
+  NInput,
+  NInputNumber,
+  NRadioButton,
+  NRadioGroup,
+  NSwitch,
+} from 'naive-ui';
+import { computed, ref } from 'vue';
 import { formatTime } from '../../shared/format';
 import { sceneDuration } from '../../shared/timing';
 import { useEditorStore } from '../../stores/editor';
+import { useGenerationStore } from '../../stores/generation';
+import { usePreviewStore } from '../../stores/preview';
 import { useSceneEdit } from './useSceneEdit';
 
 const editor = useEditorStore();
-const { patch } = useSceneEdit();
+const { patch, issuesAt } = useSceneEdit();
+const gen = useGenerationStore();
+const preview = usePreviewStore();
+const extra = ref('');
 const scene = computed(() => editor.scene!);
 const duration = computed(() => sceneDuration(scene.value, editor.sceneIndex));
+
+/** 校验错误 + 运行时错误；"AI 修复"把它们作为修改指令发给模型 */
+const problems = computed(() => [
+  ...issuesAt(`scenes[${editor.sceneIndex}]`)
+    .filter((i) => i.level === 'error')
+    .map((i) => `${i.path.replace(/^scenes\[\d+\]\.?/, '')}：${i.message}`),
+  ...preview.errors
+    .filter((e) => e.sceneId === scene.value.id)
+    .map((e) => `运行时（元素 ${e.elementId ?? '?'}）：${e.message}`),
+]);
+const fix = () =>
+  gen.edit(
+    `修复这个场景的以下问题，尽量保持原有内容和意图：\n${problems.value.join('\n')}`,
+    { kind: 'scene', sceneId: scene.value.id },
+    'AI 修复',
+  );
 </script>
 
 <template>
@@ -61,5 +91,45 @@ const duration = computed(() => sceneDuration(scene.value, editor.sceneIndex));
         @update:value="(v: boolean) => patch('locked', (s) => ({ ...s, locked: v || undefined }))"
       />
     </NFormItem>
+    <NFormItem label="AI 重新生成本场景">
+      <div class="regen">
+        <NInput v-model:value="extra" size="small" placeholder="附加要求（可选），如：用三个箭头表示受力" />
+        <NButton
+          size="small"
+          :loading="gen.editBusy"
+          :disabled="gen.editBusy || !!gen.pending"
+          data-testid="regen-scene"
+          @click="gen.regenerateScene(scene.id, extra)"
+        >
+          重新生成
+        </NButton>
+      </div>
+    </NFormItem>
+    <NFormItem v-if="problems.length" label="这个场景有问题">
+      <div class="regen">
+        <span class="err">{{ problems.length }} 个错误</span>
+        <NButton
+          size="small"
+          type="warning"
+          :disabled="gen.editBusy || !!gen.pending"
+          data-testid="ai-fix"
+          @click="fix"
+          >AI 修复</NButton
+        >
+      </div>
+    </NFormItem>
   </NForm>
 </template>
+
+<style scoped>
+.regen {
+  display: flex;
+  gap: 6px;
+  width: 100%;
+  align-items: center;
+}
+.err {
+  color: #ff8a80;
+  font-size: 12px;
+}
+</style>

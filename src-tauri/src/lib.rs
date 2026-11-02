@@ -1,4 +1,6 @@
+mod llm;
 mod preview_protocol;
+mod secrets;
 
 /// 仅 debug 构建：AWB_SELFTEST=1 时前端自动跑一遍真实环境自检，并通过它打印结果后退出
 #[cfg(debug_assertions)]
@@ -17,6 +19,8 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_opener::init())
+        .manage(secrets::SecretState::default())
+        .manage(llm::LlmState::default())
         .register_asynchronous_uri_scheme_protocol(preview_protocol::SCHEME, |_ctx, req, responder| {
             responder.respond(preview_protocol::respond(req.uri().path()));
         });
@@ -28,7 +32,23 @@ pub fn run() {
                 let _ = webview.eval("window.__AWB_SELFTEST__ = true; window.dispatchEvent(new Event('awb-selftest'));");
             }
         })
-        .invoke_handler(tauri::generate_handler![selftest_report]);
+        .invoke_handler(tauri::generate_handler![
+            secrets::secret_set,
+            secrets::secret_status,
+            secrets::secret_remove,
+            llm::llm_chat,
+            llm::llm_cancel,
+            selftest_report
+        ]);
+
+    #[cfg(not(debug_assertions))]
+    let builder = builder.invoke_handler(tauri::generate_handler![
+        secrets::secret_set,
+        secrets::secret_status,
+        secrets::secret_remove,
+        llm::llm_chat,
+        llm::llm_cancel
+    ]);
 
     builder.run(tauri::generate_context!()).expect("error while running tauri application");
 }
