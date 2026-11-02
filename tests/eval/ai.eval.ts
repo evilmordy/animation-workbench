@@ -38,7 +38,7 @@ function transport(providerId: string, model: string): Transport {
         temperature: 0.3,
         ...(p.jsonMode ? { response_format: { type: 'json_object' } } : {}),
       }),
-      signal: AbortSignal.timeout(300_000),
+      signal: AbortSignal.timeout(600_000),
     });
     if (!res.ok)
       throw { code: res.status === 429 ? 'rate_limit' : 'server', message: (await res.text()).slice(0, 200) };
