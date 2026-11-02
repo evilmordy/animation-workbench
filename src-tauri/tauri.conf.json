@@ -10,7 +10,16 @@
     "frontendDist": "../dist"
   },
   "app": {
-    "windows": [{ "label": "main", "title": "Animation Workbench", "width": 1440, "height": 900, "minWidth": 1024, "minHeight": 640 }],
+    "windows": [
+      {
+        "label": "main",
+        "title": "Animation Workbench",
+        "width": 1440,
+        "height": 900,
+        "minWidth": 1024,
+        "minHeight": 640
+      }
+    ],
     "security": {
       "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; frame-src awpreview: http://awpreview.localhost; connect-src ipc: http://ipc.localhost",
       "devCsp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; frame-src awpreview: http://awpreview.localhost; connect-src ipc: http://ipc.localhost ws://localhost:1420"
@@ -19,6 +28,17 @@
   "bundle": {
     "active": true,
     "targets": "all",
-    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"]
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  },
+  "plugins": {
+    "fs": {
+      "requireLiteralLeadingDot": false
+    }
   }
 }

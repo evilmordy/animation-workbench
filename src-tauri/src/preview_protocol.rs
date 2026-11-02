@@ -42,6 +42,8 @@ pub fn respond(path: &str) -> Response<Vec<u8>> {
             .header(header::CONTENT_TYPE, mime(name))
             .header("Content-Security-Policy", PREVIEW_CSP)
             .header("X-Content-Type-Options", "nosniff")
+            // sandbox iframe 的源是 null，加载 ES 模块脚本需要 CORS；内容是公开的静态文件
+            .header("Access-Control-Allow-Origin", "*")
             .body(body),
         None => Response::builder().status(StatusCode::NOT_FOUND).body(Vec::new()),
     }

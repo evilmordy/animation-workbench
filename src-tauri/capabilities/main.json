@@ -2,7 +2,9 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "main",
   "description": "只授予 main 窗口，按最小权限逐项列出（PLAN §0、SEC-04）。项目目录由对话框授权后动态加入 fs 作用域。",
-  "windows": ["main"],
+  "windows": [
+    "main"
+  ],
   "permissions": [
     "core:path:default",
     "core:event:default",
@@ -24,7 +26,15 @@
     "dialog:allow-ask",
     "dialog:allow-message",
     "store:default",
-    { "identifier": "opener:allow-open-path", "allow": [{ "path": "**/*.html" }] },
-    "opener:allow-reveal-item-in-dir"
+    {
+      "identifier": "opener:allow-open-path",
+      "allow": [
+        {
+          "path": "**/*.html"
+        }
+      ]
+    },
+    "opener:allow-reveal-item-in-dir",
+    "allow-selftest-report"
   ]
 }

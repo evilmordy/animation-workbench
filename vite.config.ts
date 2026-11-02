@@ -21,6 +21,8 @@ function devPreview(): Plugin {
         }
         res.setHeader('Content-Type', type);
         res.setHeader('Content-Security-Policy', csp);
+        // sandbox iframe 的源是 null，加载模块脚本需要 CORS
+        res.setHeader('Access-Control-Allow-Origin', '*');
         res.end(readFileSync(`dist-runtime${path}`));
       });
     },

@@ -41,5 +41,11 @@ jobs:
         shell: bash
         run: "! grep -rnE 'innerHTML|outerHTML|insertAdjacentHTML' src --include='*.ts' --include='*.vue'"
       - run: pnpm audit --prod --audit-level high
+      - run: pnpm build:runtime
       - run: cargo test --manifest-path src-tauri/Cargo.toml
+      - name: Playwright（运行时与 e2e）
+        if: runner.os == 'Linux'
+        run: |
+          pnpm exec playwright install --with-deps chromium
+          pnpm test:e2e
       - run: pnpm tauri build --no-bundle

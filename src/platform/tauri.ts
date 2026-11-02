@@ -67,4 +67,5 @@ export const tauriPlatform: Platform = {
     return invoke('llm_chat', { req, onEvent: ch });
   },
   llmCancel: (requestId) => invoke('llm_cancel', { requestId }),
+  selftestReport: (report) => invoke('selftest_report', { report }),
 };

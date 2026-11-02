@@ -90,4 +90,6 @@ export interface Platform {
   secretRemove(providerId: string): Promise<void>;
   llmChat(req: ChatReq, onEvent: (e: LlmEvent) => void): Promise<ChatResult>;
   llmCancel(requestId: string): Promise<void>;
+  /** 仅 debug 构建的真实环境自检：打印结果并退出应用 */
+  selftestReport(report: string): Promise<void>;
 }

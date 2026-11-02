@@ -72,6 +72,23 @@ export class BuildError extends Error {
   }
 }
 
+/** 公式渲染（MathJax）是重建中最慢的部分，按 latex+字号缓存已渲染的原件，每次用副本 */
+const texCache = new Map<string, Promise<MathTex>>();
+const TEX_CACHE_MAX = 500;
+
+function renderTex(latex: string, fontSize: number): Promise<MathTex> {
+  const key = `${fontSize}|${latex}`;
+  let hit = texCache.get(key);
+  if (!hit) {
+    if (texCache.size >= TEX_CACHE_MAX) texCache.delete(texCache.keys().next().value!);
+    // manim-web 文档称 fontSize 是倍数，实测与 Text 一样是点数（默认 48）
+    const tex = new MathTex({ latex, fontSize });
+    hit = tex.waitForRender().then(() => tex);
+    texCache.set(key, hit);
+  }
+  return hit;
+}
+
 export interface BuildCtx {
   palette: Palette;
   /** 当前可引用的元素（继承来的 + 已构建的） */
@@ -115,9 +132,7 @@ export async function buildElement(e: Element, ctx: BuildCtx): Promise<Mobject> 
       m = new Text({ text: p.text, fontSize: p.fontSize, color, fontFamily: 'sans-serif' });
       break;
     case 'MathTex': {
-      // manim-web 文档称 fontSize 是倍数，实测与 Text 一样是点数（默认 48）
-      const tex = new MathTex({ latex: p.latex, fontSize: p.fontSize });
-      await tex.waitForRender();
+      const tex = (await renderTex(p.latex, p.fontSize)).copy() as MathTex;
       tex.setColor(color);
       m = tex;
       break;

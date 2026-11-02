@@ -1,18 +1,39 @@
 <script setup lang="ts">
-import { NConfigProvider, NGlobalStyle, darkTheme, zhCN, dateZhCN } from 'naive-ui';
+import {
+  NConfigProvider,
+  NDialogProvider,
+  NGlobalStyle,
+  NMessageProvider,
+  darkTheme,
+  dateZhCN,
+  zhCN,
+  type GlobalThemeOverrides,
+} from 'naive-ui';
+import AppRoot from './features/shell/AppRoot.vue';
+
+// 提高次要文字对比度（UX-08：≥ 4.5:1）
+const overrides: GlobalThemeOverrides = {
+  common: { textColor3: 'rgba(255, 255, 255, 0.62)', placeholderColor: 'rgba(255, 255, 255, 0.5)' },
+};
 </script>
 
 <template>
-  <NConfigProvider :theme="darkTheme" :locale="zhCN" :date-locale="dateZhCN">
+  <NConfigProvider :theme="darkTheme" :theme-overrides="overrides" :locale="zhCN" :date-locale="dateZhCN">
     <NGlobalStyle />
-    <main class="app">Animation Workbench</main>
+    <NMessageProvider>
+      <NDialogProvider>
+        <AppRoot />
+      </NDialogProvider>
+    </NMessageProvider>
   </NConfigProvider>
 </template>
 
-<style scoped>
-.app {
-  height: 100vh;
-  display: grid;
-  place-items: center;
+<style>
+html,
+body,
+#app {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
 }
 </style>

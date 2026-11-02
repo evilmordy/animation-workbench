@@ -166,6 +166,9 @@ export const mockPlatform: Platform = {
   async llmCancel(requestId) {
     inflight.get(requestId)?.();
   },
+  async selftestReport(report) {
+    console.info('[selftest]', report);
+  },
 };
 
 /** 仅测试用：清空内存文件系统 */
