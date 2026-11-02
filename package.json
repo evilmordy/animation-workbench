@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "pnpm build:runtime && vite",
     "build": "pnpm build:runtime && vue-tsc --noEmit && vite build",
     "build:runtime": "vite build --config vite.runtime.config.ts",
     "preview": "vite preview",
@@ -12,7 +12,8 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "typecheck": "vue-tsc --noEmit",
-    "lint": "eslint . && prettier --check ."
+    "lint": "eslint . && prettier --check .",
+    "check": "pnpm typecheck && pnpm lint && pnpm test"
   },
   "dependencies": {
     "@codemirror/lang-javascript": "^6.2.5",

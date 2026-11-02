@@ -1,7 +1,30 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "main",
-  "description": "只授予 main 窗口；权限按任务逐项添加（PLAN §0、SEC-04）",
+  "description": "只授予 main 窗口，按最小权限逐项列出（PLAN §0、SEC-04）。项目目录由对话框授权后动态加入 fs 作用域。",
   "windows": ["main"],
-  "permissions": []
+  "permissions": [
+    "core:path:default",
+    "core:event:default",
+    "core:resources:default",
+    "core:window:allow-set-title",
+    "fs:allow-read-text-file",
+    "fs:allow-write-text-file",
+    "fs:allow-read-file",
+    "fs:allow-write-file",
+    "fs:allow-exists",
+    "fs:allow-stat",
+    "fs:allow-mkdir",
+    "fs:allow-read-dir",
+    "fs:allow-rename",
+    "fs:allow-remove",
+    "fs:scope-appdata-recursive",
+    "dialog:allow-open",
+    "dialog:allow-save",
+    "dialog:allow-ask",
+    "dialog:allow-message",
+    "store:default",
+    { "identifier": "opener:allow-open-path", "allow": [{ "path": "**/*.html" }] },
+    "opener:allow-reveal-item-in-dir"
+  ]
 }
