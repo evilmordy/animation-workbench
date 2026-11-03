@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import fixture from '../../tests/fixtures/pythagoras.json';
-import type { ChatMessage } from '../platform/types';
+import type { LlmMessage } from '../platform/types';
 import type { Storyboard } from '../shared/schema';
 import { AiError, runTask, type LogEntry, type Transport } from './client';
 import { outlineMessages } from './prompts';
@@ -12,7 +12,7 @@ const params = newProjectFile('x').generation;
 
 /** 依次返回预设回答，并记录每次收到的消息 */
 function scripted(...answers: string[]) {
-  const calls: ChatMessage[][] = [];
+  const calls: LlmMessage[][] = [];
   const t: Transport = async (messages, { onDelta }) => {
     calls.push(messages);
     const text = answers.shift() ?? '';

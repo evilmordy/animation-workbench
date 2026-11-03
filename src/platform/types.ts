@@ -5,11 +5,59 @@ export interface ChatMessage {
   content: string;
 }
 
+/** OpenAI 兼容的 content part。image_url 可以是 data:image/png;base64 URL。 */
+export type ContentPart =
+  { type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string; detail?: string } };
+
+export interface ToolCall {
+  id: string;
+  type: 'function';
+  function: { name: string; arguments: string };
+}
+
+/** OpenAI 兼容的 function 工具定义。 */
+export interface ToolDef {
+  type: 'function';
+  function: {
+    name: string;
+    description?: string;
+    parameters?: Record<string, unknown>;
+  };
+}
+
+export type ToolChoice = 'none' | 'auto' | 'required' | { type: 'function'; function: { name: string } };
+
+export interface PartsMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: ContentPart[];
+}
+
+export interface AssistantToolMessage {
+  role: 'assistant';
+  content: string | null;
+  tool_calls: ToolCall[];
+}
+
+export interface ToolResultMessage {
+  role: 'tool';
+  tool_call_id: string;
+  content: string;
+}
+
+/** 传给模型的消息。纯文本的 ChatMessage 是其中一种，旧调用只产生那种。 */
+export type LlmMessage = ChatMessage | PartsMessage | AssistantToolMessage | ToolResultMessage;
+
+export function messageText(content: string | ContentPart[] | null | undefined): string {
+  if (typeof content === 'string') return content;
+  if (!Array.isArray(content)) return '';
+  return content.flatMap((part) => (part.type === 'text' ? [part.text] : [])).join('');
+}
+
 export interface ChatReq {
   request_id: string;
   provider_id: string;
   model: string;
-  messages: ChatMessage[];
+  messages: LlmMessage[];
   temperature?: number;
   max_tokens?: number;
   /**
@@ -17,6 +65,9 @@ export interface ChatReq {
    * 不传时 Rust 视为 false，不会强制 JSON。旧调用方仍然显式传入，默认行为不变。
    */
   json_mode?: boolean;
+  /** 缺省或空数组时不要传。Rust 会省略，上游请求体与旧版一致。 */
+  tools?: ToolDef[];
+  tool_choice?: ToolChoice;
 }
 
 export type LlmEvent =
@@ -28,6 +79,8 @@ export interface ChatResult {
   text: string;
   usage: [number, number] | null;
   finish_reason: string | null;
+  /** 没有工具调用时 Rust 不序列化这个字段。 */
+  tool_calls?: ToolCall[];
 }
 
 export type LlmErrorCode =

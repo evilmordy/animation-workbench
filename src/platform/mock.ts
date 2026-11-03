@@ -1,4 +1,4 @@
-import type { ChatReq, ChatResult, LlmError, LlmEvent, Platform, SecretStatus } from './types';
+import type { ChatReq, ChatResult, LlmError, LlmEvent, Platform, SecretStatus, ToolCall } from './types';
 
 /** 浏览器开发/测试用的平台实现：内存文件系统（浏览器里持久化到 localStorage）+ 可替换的假 LLM */
 
@@ -43,7 +43,17 @@ function write(path: string, data: Entry) {
   persist();
 }
 
-export type MockLlm = (req: ChatReq, emit: (text: string) => Promise<void>) => Promise<string>;
+export interface MockLlmResult {
+  text: string;
+  toolCalls?: ToolCall[];
+  finishReason?: string | null;
+}
+
+/** 返回字符串时和以前一样：finish_reason 为 stop，没有 tool_calls。 */
+export type MockLlm = (
+  req: ChatReq,
+  emit: (text: string) => Promise<void>,
+) => Promise<string | MockLlmResult>;
 
 let mockLlm: MockLlm = async () => {
   throw { code: 'no_key', message: '浏览器模式没有配置假 LLM' } satisfies LlmError;
@@ -152,14 +162,24 @@ export const mockPlatform: Platform = {
       onEvent({ type: 'Delta', text });
     };
     try {
-      const text = await mockLlm(req, emit);
+      const raw = await mockLlm(req, emit);
+      const text = typeof raw === 'string' ? raw : raw.text;
+      const toolCalls = typeof raw === 'string' ? undefined : raw.toolCalls;
+      const finish =
+        typeof raw === 'string'
+          ? 'stop'
+          : raw.finishReason !== undefined
+            ? raw.finishReason
+            : toolCalls?.length
+              ? 'tool_calls'
+              : 'stop';
       const usage: [number, number] = [
         Math.ceil(JSON.stringify(req.messages).length / 4),
         Math.ceil(text.length / 4),
       ];
       onEvent({ type: 'Usage', prompt: usage[0], completion: usage[1] });
-      onEvent({ type: 'Done', finish_reason: 'stop' });
-      return { text, usage, finish_reason: 'stop' };
+      onEvent({ type: 'Done', finish_reason: finish });
+      return { text, usage, finish_reason: finish, ...(toolCalls?.length ? { tool_calls: toolCalls } : {}) };
     } finally {
       inflight.delete(req.request_id);
     }
