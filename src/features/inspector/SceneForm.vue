@@ -15,15 +15,18 @@ import { sceneDuration } from '../../shared/timing';
 import { useEditorStore } from '../../stores/editor';
 import { useGenerationStore } from '../../stores/generation';
 import { usePreviewStore } from '../../stores/preview';
+import { useSettingsStore } from '../../stores/settings';
 import { useSceneEdit } from './useSceneEdit';
 
 const editor = useEditorStore();
+const settings = useSettingsStore();
 const { patch, issuesAt } = useSceneEdit();
 const gen = useGenerationStore();
 const preview = usePreviewStore();
 const extra = ref('');
 const scene = computed(() => editor.scene!);
 const duration = computed(() => sceneDuration(scene.value, editor.sceneIndex));
+const codeScenes = computed(() => settings.runtime.codeScenes);
 
 /** 校验错误 + 运行时错误；"AI 修复"把它们作为修改指令发给模型 */
 const problems = computed(() => [
@@ -86,6 +89,28 @@ const fix = () =>
         :step="0.5"
         :input-props="{ 'aria-label': '末尾停留（秒）' }"
         @update:value="(v: number | null) => patch('hold', (s) => ({ ...s, hold: v ?? 0 }))"
+      />
+    </NFormItem>
+    <NFormItem v-if="codeScenes" label="场景类型">
+      <div data-testid="scene-kind">
+        <NRadioGroup
+          :value="scene.kind"
+          @update:value="(v: 'dsl' | 'code') => patch('kind', (s) => ({ ...s, kind: v }))"
+        >
+          <NRadioButton value="dsl">分镜（元素和步骤）</NRadioButton>
+          <NRadioButton value="code">代码</NRadioButton>
+        </NRadioGroup>
+      </div>
+    </NFormItem>
+    <NFormItem v-if="codeScenes && scene.kind === 'code'" label="场景代码">
+      <NInput
+        data-testid="scene-code"
+        type="textarea"
+        :autosize="{ minRows: 8, maxRows: 18 }"
+        :value="scene.code ?? ''"
+        :input-props="{ 'aria-label': '场景代码' }"
+        placeholder="async (scene, M, ctx) 的函数体。用 FadeIn / Create 引入对象，换场先 FadeOut ctx.present()。"
+        @update:value="(v: string) => patch('code', (s) => ({ ...s, code: v }))"
       />
     </NFormItem>
     <NFormItem label="锁定（AI 批量修改时跳过）">

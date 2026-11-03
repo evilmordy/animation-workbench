@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import circleFixture from '../../tests/fixtures/code-circle.json';
 import { parseStoryboard, type Scene, type Storyboard } from '../shared/schema';
 import { validate } from '../shared/validate';
-import { runtimeFlags } from './codeScene';
+import { applyHostCodeSceneFlag, runtimeFlags } from './codeScene';
 import { interpret } from './interpret';
 
 const defaultCodeScenes = runtimeFlags.codeScenes;
@@ -69,6 +69,22 @@ beforeEach(() => {
 describe('interpretCode', () => {
   it('runtime.codeScenes 默认 false', () => {
     expect(defaultCodeScenes).toBe(false);
+  });
+
+  it('只有预览 query 或导出 data 属性才把 flag 打开', () => {
+    const doc = (attr: string | null) =>
+      ({
+        getElementById: () => (attr == null ? null : { getAttribute: () => attr }),
+      }) as unknown as Document;
+    applyHostCodeSceneFlag(doc(null), '');
+    expect(runtimeFlags.codeScenes).toBe(false);
+    applyHostCodeSceneFlag(doc(null), '?codeScenes=1');
+    expect(runtimeFlags.codeScenes).toBe(true);
+    runtimeFlags.codeScenes = false;
+    applyHostCodeSceneFlag(doc('1'), '');
+    expect(runtimeFlags.codeScenes).toBe(true);
+    applyHostCodeSceneFlag(doc(null), '');
+    expect(runtimeFlags.codeScenes).toBe(true);
   });
 
   it('手写夹具是合法 v1 分镜', () => {

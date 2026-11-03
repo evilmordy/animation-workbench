@@ -1,4 +1,4 @@
-import type { Player } from 'manim-web';
+import type { Mobject, Player } from 'manim-web';
 import * as Manim from 'manim-web';
 import type { Palette } from '../shared/palette';
 import type { Scene } from '../shared/schema';
@@ -8,11 +8,30 @@ type RecordingScene = Parameters<Parameters<Player['sequence']>[0]>[0];
 /**
  * 产品开关 `runtime.codeScenes`。
  * 默认 false：kind:code 仍按 v1 跳过（报错 + wait），预览 / 导出 / 专家 JSON 的可感知行为不变。
- * 本 PR 不接 UI。测试夹具把 `runtimeFlags.codeScenes` 设为 true 后再执行 scene.code。
+ * 宿主设置和带 `?codeScenes=1` / `data-code-scenes="1"` 的页面可以在构建前把它打开。
+ * 测试夹具也可以直接改这个对象。
  */
 export const runtimeFlags = {
   codeScenes: false,
 };
+
+/**
+ * 预览地址 `?codeScenes=1` 或导出页 `data-code-scenes="1"` 时打开开关。
+ * 不会把它关回去，所以测试里预先设好的 true 仍然有效。
+ */
+export function applyHostCodeSceneFlag(doc: Document | undefined = globalThis.document, href?: string): void {
+  if (runtimeFlags.codeScenes) return;
+  const search = href ?? (typeof location === 'undefined' ? '' : location.search);
+  const fromQuery = new URLSearchParams(search).get('codeScenes') === '1';
+  const fromExport = doc?.getElementById('awb-storyboard')?.getAttribute('data-code-scenes') === '1';
+  if (fromQuery || fromExport) runtimeFlags.codeScenes = true;
+}
+
+/** 录制代理背后的真实场景。TypeScript 的 private 在运行时仍是普通字段。 */
+function liveMobjects(rec: RecordingScene): Mobject[] {
+  const real = (rec as unknown as { _realScene?: { mobjects?: Iterable<Mobject> } })._realScene;
+  return real?.mobjects ? [...real.mobjects] : [];
+}
 
 /** 传给场景代码的第三个参数。theme 是已经解析好的调色板。 */
 export interface CodeSceneContext {
@@ -21,6 +40,11 @@ export interface CodeSceneContext {
   title: string;
   enter: Scene['enter'];
   hold: number;
+  /**
+   * 此刻仍在场景图里的对象。enter:fresh 的场应先把它们 FadeOut。
+   * 不要 scene.add：对象会进场景但不进时间线，seek 之后全片都看得见。
+   */
+  present: () => Mobject[];
 }
 
 type CodeFn = (scene: RecordingScene, M: typeof Manim, ctx: CodeSceneContext) => Promise<unknown>;
@@ -72,6 +96,7 @@ export async function interpretCode(
     title: scene.title,
     enter: scene.enter,
     hold: scene.hold,
+    present: () => liveMobjects(rec),
   };
   try {
     await compileCode(source)(rec, Manim, ctx);

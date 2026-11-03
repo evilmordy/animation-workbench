@@ -15,6 +15,8 @@ test('M4：导出单文件 HTML，file:// 打开能播放且网络请求为 0', 
   const html = await page.evaluate((p) => (window as any).__awbMock.platform.readText(p), path);
   expect(html.length).toBeGreaterThan(1_000_000);
   expect(html).toContain("connect-src 'none'");
+  // 运行时源码里会提到这个属性名；纯 dsl 导出不会把它写成 data-code-scenes="1"
+  expect(html).not.toContain('data-code-scenes="1"');
   const file = join(tmpdir(), 'awb-export-test.html');
   writeFileSync(file, html);
 

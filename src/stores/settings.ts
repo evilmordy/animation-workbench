@@ -25,13 +25,25 @@ const DEFAULTS: AiSettings = {
   jsonMode: {},
 };
 
+/** 产品行为开关。全部默认关闭，关着的时候界面和导出走 v1。 */
+export interface RuntimeSettings {
+  codeScenes: boolean;
+}
+
+const RUNTIME_DEFAULTS: RuntimeSettings = {
+  codeScenes: false,
+};
+
 export const useSettingsStore = defineStore('settings', () => {
   const ai = ref<AiSettings>({ ...DEFAULTS });
+  const runtime = ref<RuntimeSettings>({ ...RUNTIME_DEFAULTS });
   const loaded = ref(false);
 
   async function load() {
     const saved = await platform.storeGet<Partial<AiSettings>>('ai');
+    const savedRuntime = await platform.storeGet<Partial<RuntimeSettings>>('runtime');
     ai.value = { ...DEFAULTS, ...saved };
+    runtime.value = { ...RUNTIME_DEFAULTS, ...savedRuntime };
     loaded.value = true;
   }
 
@@ -43,8 +55,16 @@ export const useSettingsStore = defineStore('settings', () => {
     { deep: true },
   );
 
+  watch(
+    runtime,
+    (v) => {
+      if (loaded.value) void platform.storeSet('runtime', v);
+    },
+    { deep: true },
+  );
+
   const model = () => ai.value.models[ai.value.providerId] || providerById(ai.value.providerId).defaultModel;
   const jsonMode = () => ai.value.jsonMode[ai.value.providerId] ?? providerById(ai.value.providerId).jsonMode;
 
-  return { ai, loaded, load, model, jsonMode };
+  return { ai, runtime, loaded, load, model, jsonMode };
 });
