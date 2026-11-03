@@ -1,4 +1,4 @@
-import { platform } from '../platform';
+import { platform, type ChatReq } from '../platform';
 import { useAiStore } from '../stores/ai';
 import { useManualStore } from '../stores/manual';
 import { useProjectStore } from '../stores/project';
@@ -12,21 +12,20 @@ export function aiSession() {
   const manual = useManualStore();
   const project = useProjectStore();
 
-  const api: Transport = async (messages, { requestId, onDelta }) => {
+  const api: Transport = async (messages, { requestId, onDelta, jsonMode }) => {
     let full = '';
-    const r = await platform.llmChat(
-      {
-        request_id: requestId,
-        provider_id: settings.ai.providerId,
-        model: settings.model(),
-        messages,
-        temperature: settings.ai.temperature,
-        json_mode: settings.jsonMode(),
-      },
-      (e) => {
-        if (e.type === 'Delta') onDelta((full += e.text));
-      },
-    );
+    const req: ChatReq = {
+      request_id: requestId,
+      provider_id: settings.ai.providerId,
+      model: settings.model(),
+      messages,
+      temperature: settings.ai.temperature,
+    };
+    // null 表示这次不传 json_mode（agent 路径）。缺省仍用设置里的 JSON 模式。
+    if (jsonMode !== null) req.json_mode = jsonMode ?? settings.jsonMode();
+    const r = await platform.llmChat(req, (e) => {
+      if (e.type === 'Delta') onDelta((full += e.text));
+    });
     if (r.usage) ai.addUsage(r.usage[0], r.usage[1]);
     return { text: r.text, usage: r.usage };
   };

@@ -9,7 +9,16 @@ export const MAX_REPAIRS = 2;
 /** 一次模型调用：返回完整文本；流式文本通过 onDelta 回传 */
 export type Transport = (
   messages: ChatMessage[],
-  opts: { requestId: string; onDelta: (full: string) => void; title: string },
+  opts: {
+    requestId: string;
+    onDelta: (full: string) => void;
+    title: string;
+    /**
+     * 缺省：沿用调用方自己的默认（会话里是设置中的 JSON 模式）。
+     * null：这次请求不带 json_mode，避免强制 json_object。只有 agent 路径传入。
+     */
+    jsonMode?: boolean | null;
+  },
 ) => Promise<{ text: string; usage?: [number, number] | null }>;
 
 export class AiError extends Error {

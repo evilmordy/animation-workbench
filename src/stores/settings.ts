@@ -25,6 +25,9 @@ const DEFAULTS: AiSettings = {
   jsonMode: {},
 };
 
+/** 生成引擎。legacy 走原来的大纲管线；agentic 还要同时打开 runtime.codeScenes 才生效。 */
+export type GenerationEngine = 'legacy' | 'agentic';
+
 /** 产品行为开关。全部默认关闭，关着的时候界面和导出走 v1。 */
 export interface RuntimeSettings {
   codeScenes: boolean;
@@ -37,13 +40,16 @@ const RUNTIME_DEFAULTS: RuntimeSettings = {
 export const useSettingsStore = defineStore('settings', () => {
   const ai = ref<AiSettings>({ ...DEFAULTS });
   const runtime = ref<RuntimeSettings>({ ...RUNTIME_DEFAULTS });
+  const engine = ref<GenerationEngine>('legacy');
   const loaded = ref(false);
 
   async function load() {
     const saved = await platform.storeGet<Partial<AiSettings>>('ai');
     const savedRuntime = await platform.storeGet<Partial<RuntimeSettings>>('runtime');
+    const savedEngine = await platform.storeGet<unknown>('generationEngine');
     ai.value = { ...DEFAULTS, ...saved };
     runtime.value = { ...RUNTIME_DEFAULTS, ...savedRuntime };
+    engine.value = savedEngine === 'agentic' ? 'agentic' : 'legacy';
     loaded.value = true;
   }
 
@@ -63,8 +69,16 @@ export const useSettingsStore = defineStore('settings', () => {
     { deep: true },
   );
 
+  watch(
+    engine,
+    (v) => {
+      if (loaded.value) void platform.storeSet('generationEngine', v);
+    },
+    { flush: 'sync' },
+  );
+
   const model = () => ai.value.models[ai.value.providerId] || providerById(ai.value.providerId).defaultModel;
   const jsonMode = () => ai.value.jsonMode[ai.value.providerId] ?? providerById(ai.value.providerId).jsonMode;
 
-  return { ai, runtime, loaded, load, model, jsonMode };
+  return { ai, runtime, engine, loaded, load, model, jsonMode };
 });
