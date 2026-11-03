@@ -11,6 +11,8 @@ import { taskOf } from './prompts';
 
 const sb = fixture as Storyboard;
 const NEEDS_REPAIR = '【测试：需要修复】';
+/** e2e：模型一直吐字，直到取消把这次请求标成 cancelled。 */
+const WAIT_CANCEL = '【测试：agent 等待取消】';
 /** 纯文本消息原样留下。图像 part 只取 text，假 LLM 不看图。 */
 function asText(messages: LlmMessage[]): ChatMessage[] {
   return messages.map((m) => ({
@@ -116,6 +118,10 @@ function answer(messages: LlmMessage[]): string {
 }
 
 export const mockLlm: MockLlm = async (req, emit) => {
+  const blob = req.messages.map((m) => messageText(m.content)).join('\n');
+  if (blob.includes(WAIT_CANCEL)) {
+    for (;;) await emit('…');
+  }
   const text = answer(req.messages);
   for (let i = 0; i < text.length; i += 40) await emit(text.slice(i, i + 40));
   return text;

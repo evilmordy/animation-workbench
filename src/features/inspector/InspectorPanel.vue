@@ -1,26 +1,21 @@
 <script setup lang="ts">
 import { NEmpty, NScrollbar } from 'naive-ui';
 import { computed, watch } from 'vue';
-import { useEditorStore, type InspectorTab } from '../../stores/editor';
+import { useEditorStore } from '../../stores/editor';
 import { useSettingsStore } from '../../stores/settings';
 import TabBar from '../shell/TabBar.vue';
 import ElementsForm from './ElementsForm.vue';
 import GlobalForm from './GlobalForm.vue';
 import SceneForm from './SceneForm.vue';
 import StepsForm from './StepsForm.vue';
+import { visibleInspectorTabs } from './tabs';
 
 const editor = useEditorStore();
 const settings = useSettingsStore();
-const allTabs: { key: InspectorTab; label: string }[] = [
-  { key: 'scene', label: '场景' },
-  { key: 'elements', label: '元素' },
-  { key: 'steps', label: '步骤' },
-  { key: 'global', label: '全局' },
-];
 /** flag 关时 codeScene 恒为 false，标签栏与原来相同。 */
 const codeScene = computed(() => settings.runtime.codeScenes && editor.scene?.kind === 'code');
 const tabs = computed(() =>
-  codeScene.value ? allTabs.filter((t) => t.key !== 'elements' && t.key !== 'steps') : allTabs,
+  visibleInspectorTabs({ codeScenes: settings.runtime.codeScenes, kind: editor.scene?.kind }),
 );
 watch(codeScene, (on) => {
   if (on && (editor.inspectorTab === 'elements' || editor.inspectorTab === 'steps'))

@@ -3,6 +3,7 @@ import { newId } from '../../shared/id';
 import type { Storyboard } from '../../shared/schema';
 import type { Transport } from '../client';
 import { acceptStoryboard, applyAgentScenes, parseRubric, type PlannedScene } from './apply';
+import { describeAgentStop, type AgentLogEvent } from './log';
 import { isAnimPath, parseAgentFiles, sceneIdFromName } from './parse';
 import { openingMessages, planRequest, scenesRequest } from './prompts';
 
@@ -41,6 +42,7 @@ export interface RunAgentOpts {
   budget?: Partial<AgentBudget>;
   signal?: AbortSignal;
   onPhase?: (phase: 'plan' | 'scenes') => void;
+  onLog?: (event: AgentLogEvent) => void;
   onCancelRequest?: (requestId: string) => void;
 }
 
@@ -82,14 +84,30 @@ export async function runAgent(opts: RunAgentOpts): Promise<AgentResult> {
   const skippedLocked = new Set<string>();
   let turns = 0;
 
-  const finish = (status: AgentResult['status'], error?: string): AgentResult => ({
-    status,
-    turns,
-    usage,
-    sceneIds,
-    skippedLocked: [...skippedLocked],
-    ...(error ? { error } : {}),
-  });
+  const finish = (status: AgentResult['status'], error?: string): AgentResult => {
+    const result: AgentResult = {
+      status,
+      turns,
+      usage,
+      sceneIds,
+      skippedLocked: [...skippedLocked],
+      ...(error ? { error } : {}),
+    };
+    opts.onLog?.({
+      type: 'status',
+      status,
+      message: describeAgentStop(status, {
+        turns,
+        maxTurns,
+        tokens: usage[0] + usage[1],
+        ...(maxTokens !== undefined ? { maxTokens } : {}),
+        ...(error ? { error } : {}),
+        scenes: sceneIds.length,
+        skipped: skippedLocked.size,
+      }),
+    });
+    return result;
+  };
 
   if (!opts.intent.trim()) return finish('error', '需求是空的');
   const initial = opts.host.getStoryboard();
@@ -116,6 +134,7 @@ export async function runAgent(opts: RunAgentOpts): Promise<AgentResult> {
     const onAbort = () => opts.onCancelRequest?.(requestId);
     opts.signal?.addEventListener('abort', onAbort);
     opts.onPhase?.(phase);
+    opts.onLog?.({ type: 'phase', phase, turn: turns + 1 });
     let text = '';
     try {
       const res = await opts.transport(messages, {
@@ -139,6 +158,13 @@ export async function runAgent(opts: RunAgentOpts): Promise<AgentResult> {
       opts.signal?.removeEventListener('abort', onAbort);
     }
     turns += 1;
+    opts.onLog?.({
+      type: 'usage',
+      turns,
+      usage: [usage[0], usage[1]],
+      maxTurns,
+      ...(maxTokens !== undefined ? { maxTokens } : {}),
+    });
     if (opts.signal?.aborted) return finish('cancelled');
     messages.push({ role: 'assistant', content: text });
 
@@ -183,6 +209,10 @@ export async function runAgent(opts: RunAgentOpts): Promise<AgentResult> {
       }
       // 计划阶段即使模型提前丢了场景代码，也不写入 scenes[]。
       if (opts.signal?.aborted) return 'cancelled';
+      opts.onLog?.({
+        type: 'note',
+        message: sharedFile ? '已写入 plan.md、rubric.json、shared.js' : '已写入 plan.md、rubric.json',
+      });
       messages.push({
         role: 'user',
         content: scenesRequest({
@@ -230,6 +260,9 @@ export async function runAgent(opts: RunAgentOpts): Promise<AgentResult> {
         if (opts.signal?.aborted) return 'cancelled';
         opts.host.updateStoryboard(accepted);
         for (const id of applied.written) if (!sceneIds.includes(id)) sceneIds.push(id);
+        if (applied.written.length) {
+          opts.onLog?.({ type: 'note', message: `已写入场景 ${applied.written.join('、')}` });
+        }
       }
     }
     if (opts.signal?.aborted) return 'cancelled';

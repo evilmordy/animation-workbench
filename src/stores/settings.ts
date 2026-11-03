@@ -1,5 +1,10 @@
 import { defineStore } from 'pinia';
 import { ref, watch } from 'vue';
+import {
+  DEFAULT_AGENT_BUDGET_SETTINGS,
+  normalizeAgentBudget,
+  type AgentBudgetSettings,
+} from '../ai/agent/log';
 import { providerById } from '../ai/providers';
 import { platform } from '../platform';
 
@@ -47,17 +52,25 @@ const RUNTIME_DEFAULTS: RuntimeSettings = {
 export const useSettingsStore = defineStore('settings', () => {
   const ai = ref<AiSettings>({ ...DEFAULTS });
   const runtime = ref<RuntimeSettings>({ ...RUNTIME_DEFAULTS });
+  /** 默认 legacy。改默认引擎要单独 PR，并且要用户同意。这个 PR 不改。 */
   const engine = ref<GenerationEngine>('legacy');
+  const agentBudget = ref<AgentBudgetSettings>({ ...DEFAULT_AGENT_BUDGET_SETTINGS });
   const loaded = ref(false);
 
   async function load() {
     const saved = await platform.storeGet<Partial<AiSettings>>('ai');
     const savedRuntime = await platform.storeGet<Partial<RuntimeSettings>>('runtime');
     const savedEngine = await platform.storeGet<unknown>('generationEngine');
+    const savedBudget = await platform.storeGet<unknown>('agentBudget');
     ai.value = { ...DEFAULTS, ...saved };
     runtime.value = { ...RUNTIME_DEFAULTS, ...savedRuntime };
     engine.value = savedEngine === 'agentic' ? 'agentic' : 'legacy';
+    agentBudget.value = normalizeAgentBudget(savedBudget);
     loaded.value = true;
+  }
+
+  function setAgentBudget(patch: Partial<AgentBudgetSettings>) {
+    agentBudget.value = normalizeAgentBudget({ ...agentBudget.value, ...patch });
   }
 
   watch(
@@ -84,8 +97,16 @@ export const useSettingsStore = defineStore('settings', () => {
     { flush: 'sync' },
   );
 
+  watch(
+    agentBudget,
+    (v) => {
+      if (loaded.value) void platform.storeSet('agentBudget', v);
+    },
+    { deep: true },
+  );
+
   const model = () => ai.value.models[ai.value.providerId] || providerById(ai.value.providerId).defaultModel;
   const jsonMode = () => ai.value.jsonMode[ai.value.providerId] ?? providerById(ai.value.providerId).jsonMode;
 
-  return { ai, runtime, engine, loaded, load, model, jsonMode };
+  return { ai, runtime, engine, agentBudget, loaded, load, setAgentBudget, model, jsonMode };
 });
