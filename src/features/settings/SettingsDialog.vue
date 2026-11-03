@@ -112,6 +112,12 @@ const codeScenesFlag = computed({
   get: () => settings.runtime.codeScenes,
   set: (v: boolean) => (settings.runtime.codeScenes = v),
 });
+const engine = computed({
+  get: () => settings.engine,
+  set: (v: 'legacy' | 'agentic') => {
+    settings.engine = v;
+  },
+});
 
 const urlChanged = computed(() => status.value?.exists && urlInput.value.trim() !== status.value.base_url);
 const host = computed(() => {
@@ -244,6 +250,15 @@ const host = computed(() => {
       <NFormItem label="代码场景">
         <NSwitch v-model:value="codeScenesFlag" aria-label="代码场景" data-testid="code-scenes-flag" />
         <span class="hint inline">关闭时检查器和导出与现在一致。打开后可以编辑并播放 kind:code。</span>
+      </NFormItem>
+      <NFormItem label="生成引擎">
+        <NRadioGroup v-model:value="engine" data-testid="generation-engine">
+          <NRadioButton value="legacy">旧大纲</NRadioButton>
+          <NRadioButton value="agentic">Agent</NRadioButton>
+        </NRadioGroup>
+        <span class="hint inline">
+          默认仍是旧大纲。Agent 还要打开代码场景才生效，关掉其中任意一个就回到旧生成。
+        </span>
       </NFormItem>
     </NForm>
   </NModal>

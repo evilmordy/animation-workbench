@@ -37,7 +37,7 @@ export const echoTool: ToolSpec = {
 };
 
 export interface ToolLoopResult {
-  status: 'done' | 'max_rounds';
+  status: 'done' | 'max_rounds' | 'cancelled';
   rounds: number;
   text: string;
   finishReason: string | null;
@@ -52,6 +52,10 @@ export const DEFAULT_TOOL_ROUNDS = 4;
  * 没有 tool_calls 时停。轮数到上限后不再请求模型。不写分镜，也不改默认 engine。
  * jsonMode 缺省为 null，避免强制 json_object。
  */
+function isCancelled(e: unknown): boolean {
+  return typeof e === 'object' && e !== null && 'code' in e && (e as { code?: unknown }).code === 'cancelled';
+}
+
 export async function runToolLoop(opts: {
   messages: LlmMessage[];
   tools: ToolSpec[];
@@ -60,6 +64,9 @@ export async function runToolLoop(opts: {
   toolChoice?: ToolChoice;
   jsonMode?: boolean | null;
   title?: string;
+  signal?: AbortSignal;
+  onCancelRequest?: (requestId: string) => void;
+  onTool?: (call: ToolLoopResult['calls'][number]) => void;
 }): Promise<ToolLoopResult> {
   const maxRounds = opts.maxRounds ?? DEFAULT_TOOL_ROUNDS;
   const messages = opts.messages.slice();
@@ -70,18 +77,40 @@ export async function runToolLoop(opts: {
   let finishReason: string | null = null;
   let rounds = 0;
 
+  const cancelled = (): ToolLoopResult => ({
+    status: 'cancelled',
+    rounds,
+    text,
+    finishReason,
+    messages,
+    calls,
+  });
+
   while (rounds < maxRounds) {
+    if (opts.signal?.aborted) return cancelled();
     rounds += 1;
-    const res = await opts.transport(messages, {
-      requestId: newId('req'),
-      title: opts.title ?? '工具',
-      onDelta: () => {},
-      jsonMode: opts.jsonMode === undefined ? null : opts.jsonMode,
-      tools: defs.length ? defs : undefined,
-      toolChoice: opts.toolChoice,
-    });
+    const requestId = newId('req');
+    const onAbort = () => opts.onCancelRequest?.(requestId);
+    opts.signal?.addEventListener('abort', onAbort);
+    let res;
+    try {
+      res = await opts.transport(messages, {
+        requestId,
+        title: opts.title ?? '工具',
+        onDelta: () => {},
+        jsonMode: opts.jsonMode === undefined ? null : opts.jsonMode,
+        tools: defs.length ? defs : undefined,
+        toolChoice: opts.toolChoice,
+      });
+    } catch (e) {
+      if (opts.signal?.aborted || isCancelled(e)) return cancelled();
+      throw e;
+    } finally {
+      opts.signal?.removeEventListener('abort', onAbort);
+    }
     text = res.text;
     finishReason = res.finishReason ?? null;
+    if (opts.signal?.aborted) return cancelled();
     const toolCalls = res.toolCalls ?? [];
     if (!toolCalls.length) {
       messages.push({ role: 'assistant', content: text });
@@ -90,13 +119,16 @@ export async function runToolLoop(opts: {
     messages.push({ role: 'assistant', content: text, tool_calls: toolCalls });
     const images: ToolImage[] = [];
     for (const call of toolCalls) {
+      if (opts.signal?.aborted) return cancelled();
       const output = await runOne(byName, call);
-      calls.push({
+      const entry = {
         id: call.id,
         name: call.function.name,
         arguments: call.function.arguments,
         result: output.text,
-      });
+      };
+      calls.push(entry);
+      opts.onTool?.(entry);
       messages.push({ role: 'tool', tool_call_id: call.id, content: output.text });
       if (output.image) images.push(output.image);
     }

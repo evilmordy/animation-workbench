@@ -9,13 +9,13 @@ import {
   NRadioGroup,
   NSelect,
   NSpace,
-  NSwitch,
   NTag,
   useDialog,
   useMessage,
 } from 'naive-ui';
 import { computed, ref, watch } from 'vue';
 import { dispatchGenerate, usesAgenticEngine } from '../../ai/agent/engine';
+import { budgetFromSettings, lineFromEvent, type AgentLogLine } from '../../ai/agent/log';
 import { runProjectAgent } from '../../ai/agent/run';
 import type { Outline } from '../../ai/prompts';
 import { checkScene } from '../../ai/validators';
@@ -29,6 +29,7 @@ import { useGenerationStore, type SceneJobState } from '../../stores/generation'
 import { useProjectStore } from '../../stores/project';
 import { useSettingsStore } from '../../stores/settings';
 import { platform } from '../../platform';
+import AgentPanel from './AgentPanel.vue';
 import ManualFixDialog from './ManualFixDialog.vue';
 
 const gen = useGenerationStore();
@@ -62,15 +63,14 @@ const scope = ref<'scene' | 'all'>('scene');
 const fixing = ref<{ sceneId: string; text: string } | null>(null);
 const agentBusy = ref(false);
 const agentNote = ref('');
+const agentLog = ref<AgentLogLine[]>([]);
+const agentTurns = ref(0);
+const agentTokens = ref(0);
 let agentAbort: AbortController | null = null;
 
 /** 只有 engine=agentic 且代码场景打开时才离开旧大纲管线。 */
 const agentic = computed(() => usesAgenticEngine(settings.engine, settings.runtime.codeScenes));
-const sourcePlaceholder = computed(() =>
-  agentic.value
-    ? '写下整片需求。这段原文会当作指令，Agent 先写 plan，再写每场代码。'
-    : '粘贴要讲解的内容：教材段落、题目、代码、文案……（也可以在"素材"页导入文件）',
-);
+const sourcePlaceholder = '粘贴要讲解的内容：教材段落、题目、代码、文案……（也可以在"素材"页导入文件）';
 
 const gp = computed(() => project.project!.generation);
 const setGen = (patch: Partial<typeof gp.value>) =>
@@ -90,34 +90,43 @@ const errText = (code?: string) =>
 
 async function runAgentEntry() {
   if (agentBusy.value) return;
+  // 需求原文整段送进 agent。不走大纲，也不按 SOURCE_BUDGET 截断。
+  const intent = gen.intent;
   agentBusy.value = true;
-  agentNote.value = '正在写 plan…';
+  agentNote.value = '';
+  agentLog.value = [];
+  agentTurns.value = 0;
+  agentTokens.value = 0;
   const ac = new AbortController();
   agentAbort = ac;
   try {
-    const result = await runProjectAgent(gen.source, {
+    const result = await runProjectAgent(intent, {
       signal: ac.signal,
-      onPhase: (phase) => {
-        agentNote.value = phase === 'plan' ? '正在写 plan…' : '正在写场景代码…';
+      budget: budgetFromSettings(settings.agentBudget),
+      onLog: (event) => {
+        if (event.type === 'usage') {
+          agentTurns.value = event.turns;
+          agentTokens.value = event.usage[0] + event.usage[1];
+        }
+        const line = lineFromEvent(event, agentLog.value.length + 1);
+        if (line) agentLog.value = [...agentLog.value, line];
+        if (event.type === 'phase') agentNote.value = line?.title ?? agentNote.value;
+        if (event.type === 'status') agentNote.value = event.message;
       },
     });
     if (ac.signal.aborted || result.status === 'cancelled') {
-      agentNote.value = '已取消';
+      if (!agentNote.value) agentNote.value = '已取消';
       return;
     }
     if (result.status === 'done') {
-      const skipped = result.skippedLocked.length ? `，跳过 ${result.skippedLocked.length} 个锁定场景` : '';
-      agentNote.value = `已写入 ${result.sceneIds.length} 个代码场景${skipped}`;
       message.success(agentNote.value);
       return;
     }
     if (result.status === 'budget') {
-      agentNote.value = '已达到轮数或用量上限';
       message.warning(agentNote.value);
       return;
     }
-    agentNote.value = result.error ?? 'Agent 失败';
-    message.error(agentNote.value);
+    message.error(agentNote.value || result.error || 'Agent 失败');
   } finally {
     agentBusy.value = false;
     if (agentAbort === ac) agentAbort = null;
@@ -128,9 +137,15 @@ function cancelAgent() {
   agentAbort?.abort();
 }
 
+watch(agentic, (on, was) => {
+  if (was && !on) cancelAgent();
+});
+
 async function makeOutline() {
-  if (!gen.source.trim()) {
-    return message.warning(agentic.value ? '先写下整片需求' : '先在上面粘贴素材，或在"素材"页导入文件');
+  if (agentic.value) {
+    if (!gen.intent.trim()) return message.warning('先写下整片需求');
+  } else if (!gen.source.trim()) {
+    return message.warning('先在上面粘贴素材，或在"素材"页导入文件');
   }
   await dispatchGenerate({
     engine: settings.engine,
@@ -227,16 +242,19 @@ function applyFix(scene: Scene) {
       </NSpace>
     </NAlert>
     <h3>从素材生成</h3>
-    <div v-if="settings.runtime.codeScenes" class="engine" data-testid="agent-engine">
-      <NSwitch
-        :value="settings.engine === 'agentic'"
-        size="small"
-        aria-label="Agent 生成"
-        data-testid="agent-engine-switch"
-        @update:value="(v: boolean) => (settings.engine = v ? 'agentic' : 'legacy')"
+    <template v-if="agentic">
+      <p class="field-label">需求</p>
+      <NInput
+        v-model:value="gen.intent"
+        type="textarea"
+        :autosize="{ minRows: 4, maxRows: 12 }"
+        placeholder="整片需求。原文会完整交给 Agent，不经过大纲，也不会被截断。"
+        :input-props="{ 'aria-label': '需求' }"
+        data-testid="agent-intent"
       />
-      <span>Agent 写代码场景</span>
-    </div>
+      <p class="muted">这段原文是指令。大纲那条路径会截断素材，并声明它不是指令；Agent 不走那里。</p>
+    </template>
+    <p v-if="agentic" class="field-label">素材</p>
     <NInput
       v-model:value="gen.source"
       type="textarea"
@@ -287,9 +305,16 @@ function applyFix(scene: Scene) {
       >
         {{ agentic ? '生成整片' : '1. 生成大纲' }}
       </NButton>
-      <NButton v-if="agentBusy" size="small" data-testid="cancel-agent" @click="cancelAgent">取消</NButton>
       <NButton v-if="gen.outlineBusy" size="small" @click="gen.cancelOutline()">取消</NButton>
     </NSpace>
+    <AgentPanel
+      v-if="agentic"
+      :busy="agentBusy"
+      :lines="agentLog"
+      :turns="agentTurns"
+      :tokens="agentTokens"
+      @cancel="cancelAgent"
+    />
     <p v-if="agentNote" class="muted" data-testid="agent-note">{{ agentNote }}</p>
 
     <ol v-if="outlineCards.length" class="outline" data-testid="outline">
@@ -459,12 +484,9 @@ h3 {
   font-size: 13px;
   margin: 0 0 8px;
 }
-.engine {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0 0 8px;
+.field-label {
   font-size: 12px;
+  margin: 0 0 4px;
 }
 .params {
   display: grid;

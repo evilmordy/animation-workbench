@@ -40,6 +40,12 @@ test('flag 打开时可以改 kind 和 code，走撤销；kind:code 隐藏元素
   await expect(page.getByRole('tab', { name: '步骤' })).toHaveCount(0);
   await expect(page.getByRole('tab', { name: '场景' })).toHaveCount(1);
   await expect(page.getByRole('tab', { name: '全局' })).toHaveCount(1);
+  await page.getByTestId('scene-card').nth(1).click();
+  await expect(page.getByRole('tab', { name: '元素' })).toHaveCount(1);
+  await expect(page.getByRole('tab', { name: '步骤' })).toHaveCount(1);
+  await page.getByTestId('scene-card').first().click();
+  await expect(page.getByRole('tab', { name: '元素' })).toHaveCount(0);
+  await expect(page.getByRole('tab', { name: '步骤' })).toHaveCount(0);
 
   const code = page.getByTestId('scene-code').locator('textarea');
   await code.fill('const dot = new M.Dot({ radius: 0.2, color: "#ffffff" });');

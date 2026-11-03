@@ -178,6 +178,29 @@ describe('runToolLoop', () => {
     expect(script.seen[1]!.messages.map((m) => m.role)).toEqual(['user', 'assistant', 'tool']);
     expect(JSON.stringify(script.seen[1]!.messages)).not.toContain('https://example.com');
   });
+
+  it('取消会停住工具环，结果原文交给日志', async () => {
+    const seen: string[] = [];
+    const script = scripted([
+      { text: '', toolCalls: [call('c1', 'echo', '{"text":"版面正常"}')] },
+      { text: '还要继续' },
+    ]);
+    const ac = new AbortController();
+    const running = runToolLoop({
+      messages: [{ role: 'user', content: '看画面' }],
+      tools: [echoTool],
+      transport: script.transport,
+      signal: ac.signal,
+      onTool: (entry) => {
+        seen.push(entry.result);
+        ac.abort();
+      },
+    });
+    const result = await running;
+    expect(result.status).toBe('cancelled');
+    expect(seen).toEqual(['版面正常']);
+    expect(script.seen).toHaveLength(1);
+  });
 });
 
 describe('图像 parts 与旧请求', () => {

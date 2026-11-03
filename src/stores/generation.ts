@@ -35,6 +35,8 @@ export const useGenerationStore = defineStore('generation', () => {
   const ai = useAiStore();
 
   const source = ref('');
+  /** 用户需求原文。只交给 agent，不进大纲，也不截断。 */
+  const intent = ref('');
   const outline = ref<Outline | null>(null);
   const outlineText = ref('');
   const outlineBusy = ref(false);
@@ -297,6 +299,7 @@ export const useGenerationStore = defineStore('generation', () => {
 
   return {
     source,
+    intent,
     outline,
     outlineText,
     outlineBusy,

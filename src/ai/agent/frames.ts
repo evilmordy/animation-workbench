@@ -408,6 +408,9 @@ export async function runVisionReview(opts: {
   transport: Transport;
   ctx: VisionContext;
   maxRounds?: number;
+  signal?: AbortSignal;
+  onCancelRequest?: (requestId: string) => void;
+  onTool?: (call: { id: string; name: string; arguments: string; result: string }) => void;
 }): Promise<VisionReview> {
   if (!agentToolsEnabled(opts.enabled)) {
     return {
@@ -422,5 +425,8 @@ export async function runVisionReview(opts: {
     transport: opts.transport,
     title: '看画面',
     maxRounds: opts.maxRounds ?? 6,
+    signal: opts.signal,
+    onCancelRequest: opts.onCancelRequest,
+    onTool: opts.onTool,
   });
 }
