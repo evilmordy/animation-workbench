@@ -3,6 +3,7 @@ import { resolveColor, resolvePalette } from '../shared/palette';
 import { HostMessage, type PreviewMessage, type SceneSpan } from '../shared/protocol';
 import { parseStoryboard, type Storyboard } from '../shared/schema';
 import { sceneDuration } from '../shared/timing';
+import { applyHostCodeSceneFlag } from './codeScene';
 import { interpret, type RuntimeError } from './interpret';
 
 export { runtimeFlags } from './codeScene';
@@ -42,6 +43,7 @@ export async function build(
   opts: BuildOptions,
   reuse?: Player,
 ): Promise<Built> {
+  applyHostCodeSceneFlag();
   const t0 = performance.now();
   const aspect = ASPECT[sb.meta.aspect];
   const background = resolveColor(sb.meta.background, resolvePalette(sb.meta));
@@ -100,7 +102,18 @@ if (stage && embedded) {
       onError: (e) => console.error(e.message),
     }).then((b) => {
       // 供自动化测试检查导出文件是否正常加载
-      Object.assign(window, { __awbExport: { scenes: b.scenes, duration: b.duration } });
+      Object.assign(window, {
+        __awbExport: {
+          scenes: b.scenes,
+          duration: b.duration,
+          seek: (t: number) => b.player.seek(t),
+          objects: () =>
+            [...b.player.scene.mobjects].map((m) => {
+              const tag = (m as { awbTag?: unknown }).awbTag;
+              return { tag: typeof tag === 'string' ? tag : '', opacity: m.opacity };
+            }),
+        },
+      });
     });
   } else console.error('分镜数据损坏', sb.issues);
 } else if (stage && window.parent !== window) {

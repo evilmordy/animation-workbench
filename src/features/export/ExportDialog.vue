@@ -16,14 +16,16 @@ import { platform } from '../../platform';
 import { describeError } from '../../shared/errors';
 import { useEditorStore } from '../../stores/editor';
 import { useProjectStore } from '../../stores/project';
+import { useSettingsStore } from '../../stores/settings';
 import { safeFileName } from '../../shared/project';
-import { buildExportHtml } from './exportHtml';
+import { buildExportHtml, exportRunsCode } from './exportHtml';
 
 const props = defineProps<{ show: boolean }>();
 const emit = defineEmits<{ 'update:show': [boolean] }>();
 
 const project = useProjectStore();
 const editor = useEditorStore();
+const settings = useSettingsStore();
 const message = useMessage();
 const slides = ref(false);
 const loop = ref(false);
@@ -41,11 +43,20 @@ watch(
 );
 
 const errors = computed(() => project.issues.filter((i) => i.level === 'error'));
+const exportOpts = computed(() => ({
+  slides: slides.value,
+  loop: loop.value,
+  codeScenes: settings.runtime.codeScenes,
+}));
+const runsCode = computed(() => !!project.storyboard && exportRunsCode(project.storyboard, exportOpts.value));
+const skipsCode = computed(
+  () => !!project.storyboard && project.storyboard.scenes.some((s) => s.kind === 'code') && !runsCode.value,
+);
 
 async function doExport() {
   busy.value = true;
   try {
-    const html = await buildExportHtml(project.storyboard!, { slides: slides.value, loop: loop.value });
+    const html = await buildExportHtml(project.storyboard!, exportOpts.value);
     const dir = await platform.join(project.dir!, 'exports');
     await platform.mkdir(dir);
     const path = await platform.join(dir, `${safeFileName(name.value, 'animation')}.html`);
@@ -76,6 +87,13 @@ function showIssues() {
   >
     <h3>单文件 HTML</h3>
     <p class="hint">一个文件包含动画和播放器，离线可用，用任何浏览器打开即可播放、拖进度、全屏。</p>
+    <p v-if="runsCode" class="hint">
+      这份导出含代码场景，页面会执行场景代码。脚本白名单仍只有运行时的哈希；unsafe-eval
+      是导出自带的（播放器本身需要），没有新增其他来源。
+    </p>
+    <p v-if="skipsCode" class="hint">
+      代码场景开关是关的，这些场景会按原来的方式跳过，不会在导出的页面里执行。
+    </p>
     <NAlert v-if="errors.length" type="error" :show-icon="false" class="gap">
       还有 {{ errors.length }} 个错误，修复后才能导出。
       <NButton text type="primary" @click="showIssues">查看第一个</NButton>

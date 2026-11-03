@@ -108,6 +108,10 @@ const logFull = computed({
   get: () => settings.ai.logFullContent,
   set: (v: boolean) => (settings.ai.logFullContent = v),
 });
+const codeScenesFlag = computed({
+  get: () => settings.runtime.codeScenes,
+  set: (v: boolean) => (settings.runtime.codeScenes = v),
+});
 
 const urlChanged = computed(() => status.value?.exists && urlInput.value.trim() !== status.value.base_url);
 const host = computed(() => {
@@ -236,6 +240,10 @@ const host = computed(() => {
       <NFormItem label="日志完整内容">
         <NSwitch v-model:value="logFull" aria-label="日志记录完整内容" />
         <span class="hint inline">关闭时 .awb/ai-log.jsonl 只记录耗时、用量等元数据</span>
+      </NFormItem>
+      <NFormItem label="代码场景">
+        <NSwitch v-model:value="codeScenesFlag" aria-label="代码场景" data-testid="code-scenes-flag" />
+        <span class="hint inline">关闭时检查器和导出与现在一致。打开后可以编辑并播放 kind:code。</span>
       </NFormItem>
     </NForm>
   </NModal>

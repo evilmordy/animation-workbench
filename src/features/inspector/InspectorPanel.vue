@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { NEmpty, NScrollbar } from 'naive-ui';
+import { computed, watch } from 'vue';
 import { useEditorStore, type InspectorTab } from '../../stores/editor';
+import { useSettingsStore } from '../../stores/settings';
 import TabBar from '../shell/TabBar.vue';
 import ElementsForm from './ElementsForm.vue';
 import GlobalForm from './GlobalForm.vue';
@@ -8,12 +10,22 @@ import SceneForm from './SceneForm.vue';
 import StepsForm from './StepsForm.vue';
 
 const editor = useEditorStore();
-const tabs: { key: InspectorTab; label: string }[] = [
+const settings = useSettingsStore();
+const allTabs: { key: InspectorTab; label: string }[] = [
   { key: 'scene', label: '场景' },
   { key: 'elements', label: '元素' },
   { key: 'steps', label: '步骤' },
   { key: 'global', label: '全局' },
 ];
+/** flag 关时 codeScene 恒为 false，标签栏与原来相同。 */
+const codeScene = computed(() => settings.runtime.codeScenes && editor.scene?.kind === 'code');
+const tabs = computed(() =>
+  codeScene.value ? allTabs.filter((t) => t.key !== 'elements' && t.key !== 'steps') : allTabs,
+);
+watch(codeScene, (on) => {
+  if (on && (editor.inspectorTab === 'elements' || editor.inspectorTab === 'steps'))
+    editor.inspectorTab = 'scene';
+});
 </script>
 
 <template>
@@ -24,8 +36,9 @@ const tabs: { key: InspectorTab; label: string }[] = [
         <GlobalForm v-if="editor.inspectorTab === 'global'" />
         <NEmpty v-else-if="!editor.scene" description="在下方时间线上选择一个场景" />
         <SceneForm v-else-if="editor.inspectorTab === 'scene'" />
-        <ElementsForm v-else-if="editor.inspectorTab === 'elements'" />
-        <StepsForm v-else />
+        <ElementsForm v-else-if="editor.inspectorTab === 'elements' && !codeScene" />
+        <StepsForm v-else-if="!codeScene" />
+        <SceneForm v-else />
       </div>
     </NScrollbar>
   </aside>

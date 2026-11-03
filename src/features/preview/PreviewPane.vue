@@ -7,6 +7,7 @@ import { PreviewMessage } from '../../shared/protocol';
 import { useProjectStore } from '../../stores/project';
 import { usePreviewStore } from '../../stores/preview';
 import { useGenerationStore } from '../../stores/generation';
+import { useSettingsStore } from '../../stores/settings';
 import { formatTime } from '../../shared/format';
 
 /** 两次重建之间至少间隔 300ms：单次编辑立即重建，连续编辑合并，最后一次一定会加载 */
@@ -16,6 +17,13 @@ const STALL_MS = 3000;
 const project = useProjectStore();
 const preview = usePreviewStore();
 const gen = useGenerationStore();
+const settings = useSettingsStore();
+/** flag 关时地址与原来完全一样，预览页不会执行 scene.code。 */
+const previewSrc = computed(() => {
+  const base = platform.previewSrc();
+  if (!settings.runtime.codeScenes) return base;
+  return `${base}${base.includes('?') ? '&' : '?'}codeScenes=1`;
+});
 /** 有待确认的 AI 修改时，可以切换预览修改后的版本 */
 const shown = computed(() =>
   gen.pending && gen.previewProposed ? gen.pending.result.storyboard : project.storyboard,
@@ -115,7 +123,7 @@ const timeText = computed(() => `${formatTime(preview.time)} / ${formatTime(prev
         ref="frame"
         title="动画预览"
         sandbox="allow-scripts"
-        :src="platform.previewSrc()"
+        :src="previewSrc"
         data-testid="preview-frame"
       />
       <div v-if="preview.stalled" class="overlay" role="alert">
