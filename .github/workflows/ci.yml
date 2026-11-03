@@ -7,6 +7,12 @@ on:
 
 jobs:
   check:
+    # rustsec/audit-check 会创建 check run。默认 GITHUB_TOKEN 是只读时，这一步在审计通过后仍失败，
+    # 后面的 Playwright 被跳过。main 上 11-02 的 ubuntu 失败就是这个，重跑也不会好。
+    permissions:
+      contents: read
+      checks: write
+      actions: write
     strategy:
       fail-fast: false
       matrix:
