@@ -1,6 +1,6 @@
 # Animation Workbench · Agent 说明
 
-agentic 重构以 `feat/agentic-codegen` 为基线。动手前读 `docs/agentic/PLAN.md` 和 `docs/agentic/SAFE-REFACTOR.md`。根目录 `PLAN.md` 是产品设计原文，不是这条分支的施工计划。
+agentic 重构以 `feat/agentic-codegen` 为基线。动手前读 `docs/agentic/PLAN.md` 和 `docs/agentic/SAFE-REFACTOR.md`。回归题和验收见 `docs/agentic/EVAL.md`。根目录 `PLAN.md` 是产品设计原文，不是这条分支的施工计划。
 
 ## 内核黑名单
 
@@ -35,6 +35,10 @@ agentic 重构以 `feat/agentic-codegen` 为基线。动手前读 `docs/agentic/
 - `pnpm check`
 - `pnpm test:e2e`，至少覆盖 `m1`、`m2`、`m4-export`
 - 勾股附录 A 的场景起止时间保持 `[0, 4.5]`、`[4.5, 10]`、`[10, 17]`
+
+## 回归题
+
+固定 5 题，细则在 `docs/agentic/EVAL.md`：祖暅原理、线性代数（矩阵变换 / 向量）、归并排序、Transform 的数学原理与实现、心理学小知识。机器初筛（换场残留像素、出界 / 字叠、字幕对比度、数值校验）必过，人再看完整视频终审。本文档阶段不写评测代码。
 
 ## S0 教训
 
