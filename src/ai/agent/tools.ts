@@ -2,10 +2,19 @@ import { newId } from '../../shared/id';
 import type { LlmMessage, ToolCall, ToolChoice, ToolDef } from '../../platform/types';
 import type { Transport } from '../client';
 
-/** 一个工具：给模型看的定义，和本地执行。S4 只接无副作用的例子，不进默认引擎。 */
+/** 工具要让视觉模型看的图。只接受 data URL，密钥不从这里走。 */
+export interface ToolImage {
+  url: string;
+  caption?: string;
+}
+
+/** 字符串是纯文本结果。带 image 时，tool 消息仍是文本，图另外追加成用户图像消息。 */
+export type ToolOutput = string | { text: string; image?: ToolImage };
+
+/** 一个工具：给模型看的定义，和本地执行。默认引擎不注册这些工具。 */
 export interface ToolSpec {
   definition: ToolDef;
-  run: (args: unknown) => string | Promise<string>;
+  run: (args: unknown) => ToolOutput | Promise<ToolOutput>;
 }
 
 export const echoTool: ToolSpec = {
@@ -79,29 +88,57 @@ export async function runToolLoop(opts: {
       return { status: 'done', rounds, text, finishReason, messages, calls };
     }
     messages.push({ role: 'assistant', content: text, tool_calls: toolCalls });
+    const images: ToolImage[] = [];
     for (const call of toolCalls) {
-      const result = await runOne(byName, call);
-      calls.push({ id: call.id, name: call.function.name, arguments: call.function.arguments, result });
-      messages.push({ role: 'tool', tool_call_id: call.id, content: result });
+      const output = await runOne(byName, call);
+      calls.push({
+        id: call.id,
+        name: call.function.name,
+        arguments: call.function.arguments,
+        result: output.text,
+      });
+      messages.push({ role: 'tool', tool_call_id: call.id, content: output.text });
+      if (output.image) images.push(output.image);
+    }
+    // 工具结果必须紧挨着 assistant 的 tool_calls。图放在全部 tool 消息之后，用 S4 的用户图像消息。
+    if (images.length) {
+      messages.push({
+        role: 'user',
+        content: images.flatMap((image) => [
+          { type: 'text' as const, text: image.caption ?? '截帧' },
+          { type: 'image_url' as const, image_url: { url: image.url } },
+        ]),
+      });
     }
   }
   return { status: 'max_rounds', rounds, text, finishReason, messages, calls };
 }
 
-async function runOne(byName: Map<string, ToolSpec>, call: ToolCall): Promise<string> {
+function normalizeOutput(value: ToolOutput): { text: string; image?: ToolImage } {
+  if (typeof value === 'string') return { text: value };
+  const text = typeof value?.text === 'string' ? value.text : '';
+  const url = value?.image?.url;
+  if (!url || !url.startsWith('data:image/png;base64,')) return { text };
+  return { text, image: { url, caption: value.image?.caption } };
+}
+
+async function runOne(
+  byName: Map<string, ToolSpec>,
+  call: ToolCall,
+): Promise<{ text: string; image?: ToolImage }> {
   const spec = byName.get(call.function.name);
-  if (!spec) return `未知工具：${call.function.name}`;
+  if (!spec) return { text: `未知工具：${call.function.name}` };
   let args: unknown = {};
   if (call.function.arguments.trim()) {
     try {
       args = JSON.parse(call.function.arguments) as unknown;
     } catch {
-      return 'arguments 不是 JSON';
+      return { text: 'arguments 不是 JSON' };
     }
   }
   try {
-    return await spec.run(args);
+    return normalizeOutput(await spec.run(args));
   } catch (e) {
-    return e instanceof Error ? e.message : String(e);
+    return { text: e instanceof Error ? e.message : String(e) };
   }
 }
