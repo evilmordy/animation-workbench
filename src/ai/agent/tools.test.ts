@@ -134,6 +134,50 @@ describe('runToolLoop', () => {
     expect(result.status).toBe('done');
     expect(result.calls.map((c) => c.result)).toEqual(['arguments 不是 JSON', '未知工具：nope']);
   });
+
+  it('带图的工具先回文本，再追加一条用户图像消息', async () => {
+    const shot: ToolSpec = {
+      definition: {
+        type: 'function',
+        function: { name: 'view_image', parameters: { type: 'object', properties: {} } },
+      },
+      run: () => ({ text: '已放入图像', image: { url: PNG, caption: '整片截帧' } }),
+    };
+    const script = scripted([{ text: '', toolCalls: [call('c1', 'view_image', '{}')] }, { text: '看到了' }]);
+    const result = await runToolLoop({
+      messages: [{ role: 'user', content: '看' }],
+      tools: [shot],
+      transport: script.transport,
+    });
+    expect(result.status).toBe('done');
+    expect(result.calls[0]?.result).toBe('已放入图像');
+    expect(script.seen[1]!.messages.map((m) => m.role)).toEqual(['user', 'assistant', 'tool', 'user']);
+    const image = script.seen[1]!.messages[3]!;
+    expect(image).toEqual({
+      role: 'user',
+      content: [
+        { type: 'text', text: '整片截帧' },
+        { type: 'image_url', image_url: { url: PNG } },
+      ],
+    });
+    expect(result.messages[2]).toEqual({ role: 'tool', tool_call_id: 'c1', content: '已放入图像' });
+  });
+
+  it('不是 png data URL 的图不会塞进对话', async () => {
+    const shot: ToolSpec = {
+      definition: { type: 'function', function: { name: 'view_image', parameters: { type: 'object' } } },
+      run: () => ({ text: '拒绝外链', image: { url: 'https://example.com/a.png' } }),
+    };
+    const script = scripted([{ text: '', toolCalls: [call('c1', 'view_image', '{}')] }, { text: '停' }]);
+    const result = await runToolLoop({
+      messages: [{ role: 'user', content: '看' }],
+      tools: [shot],
+      transport: script.transport,
+    });
+    expect(result.calls[0]?.result).toBe('拒绝外链');
+    expect(script.seen[1]!.messages.map((m) => m.role)).toEqual(['user', 'assistant', 'tool']);
+    expect(JSON.stringify(script.seen[1]!.messages)).not.toContain('https://example.com');
+  });
 });
 
 describe('图像 parts 与旧请求', () => {

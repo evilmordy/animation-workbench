@@ -1,0 +1,308 @@
+/** 截帧像素与版面启发式。只看像素和 bbox，不看 opacity。 */
+
+export interface Rgb {
+  r: number;
+  g: number;
+  b: number;
+}
+
+export interface Raster {
+  width: number;
+  height: number;
+  /** RGBA，行优先，长度必须是 width * height * 4。 */
+  rgba: Uint8Array;
+}
+
+export interface LayoutBox {
+  id: string;
+  role: 'text' | 'other';
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  text?: string;
+}
+
+export interface LayoutReport {
+  outOfBounds: string[];
+  overlaps: string[];
+  summary: string;
+}
+
+export interface ResidualReport {
+  suspect: boolean;
+  leftoverPixels: number;
+  leftoverRatio: number;
+  summary: string;
+}
+
+const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+
+export function bytesToBase64(bytes: Uint8Array): string {
+  let out = '';
+  for (let i = 0; i < bytes.length; i += 3) {
+    const a = bytes[i] ?? 0;
+    const b = i + 1 < bytes.length ? (bytes[i + 1] ?? 0) : 0;
+    const c = i + 2 < bytes.length ? (bytes[i + 2] ?? 0) : 0;
+    const triple = (a << 16) | (b << 8) | c;
+    out += B64[(triple >> 18) & 63];
+    out += B64[(triple >> 12) & 63];
+    out += i + 1 < bytes.length ? B64[(triple >> 6) & 63] : '=';
+    out += i + 2 < bytes.length ? B64[triple & 63] : '=';
+  }
+  return out;
+}
+
+export function pngDataUrl(png: Uint8Array): string {
+  return `data:image/png;base64,${bytesToBase64(png)}`;
+}
+
+export function solidRaster(width: number, height: number, fill: Rgb): Raster {
+  const rgba = new Uint8Array(width * height * 4);
+  for (let i = 0; i < width * height; i++) {
+    rgba[i * 4] = fill.r;
+    rgba[i * 4 + 1] = fill.g;
+    rgba[i * 4 + 2] = fill.b;
+    rgba[i * 4 + 3] = 255;
+  }
+  return { width, height, rgba };
+}
+
+function crc32(buf: Uint8Array): number {
+  let c = 0xffffffff;
+  for (let i = 0; i < buf.length; i++) {
+    c ^= buf[i] ?? 0;
+    for (let k = 0; k < 8; k++) c = (c >>> 1) ^ (0xedb88320 & -(c & 1));
+  }
+  return (c ^ 0xffffffff) >>> 0;
+}
+
+function concat(parts: Uint8Array[]): Uint8Array {
+  const n = parts.reduce((sum, part) => sum + part.length, 0);
+  const out = new Uint8Array(n);
+  let offset = 0;
+  for (const part of parts) {
+    out.set(part, offset);
+    offset += part.length;
+  }
+  return out;
+}
+
+function pngChunk(type: string, data: Uint8Array): Uint8Array {
+  const body = new Uint8Array(4 + data.length);
+  for (let i = 0; i < 4; i++) body[i] = type.charCodeAt(i);
+  body.set(data, 4);
+  const crc = crc32(body);
+  const out = new Uint8Array(8 + body.length);
+  const view = new DataView(out.buffer);
+  view.setUint32(0, data.length);
+  out.set(body, 4);
+  view.setUint32(4 + body.length, crc);
+  return out;
+}
+
+function adler32(data: Uint8Array): number {
+  let a = 1;
+  let b = 0;
+  for (let i = 0; i < data.length; i++) {
+    a = (a + (data[i] ?? 0)) % 65521;
+    b = (b + a) % 65521;
+  }
+  return ((b << 16) | a) >>> 0;
+}
+
+/** 无压缩的 zlib（stored blocks），避免在浏览器里依赖 Node zlib。 */
+function zlibStore(data: Uint8Array): Uint8Array {
+  const blocks: Uint8Array[] = [];
+  const size = 65535;
+  const steps = Math.max(1, Math.ceil(data.length / size));
+  for (let step = 0; step < steps; step++) {
+    const start = step * size;
+    const slice = data.subarray(start, Math.min(data.length, start + size));
+    const last = step === steps - 1;
+    const block = new Uint8Array(5 + slice.length);
+    block[0] = last ? 1 : 0;
+    block[1] = slice.length & 0xff;
+    block[2] = (slice.length >> 8) & 0xff;
+    const nlen = ~slice.length & 0xffff;
+    block[3] = nlen & 0xff;
+    block[4] = (nlen >> 8) & 0xff;
+    block.set(slice, 5);
+    blocks.push(block);
+  }
+  const deflated = concat(blocks);
+  const out = new Uint8Array(2 + deflated.length + 4);
+  out[0] = 0x78;
+  out[1] = 0x01;
+  out.set(deflated, 2);
+  const sum = adler32(data);
+  out[out.length - 4] = (sum >>> 24) & 0xff;
+  out[out.length - 3] = (sum >>> 16) & 0xff;
+  out[out.length - 2] = (sum >>> 8) & 0xff;
+  out[out.length - 1] = sum & 0xff;
+  return out;
+}
+
+/** 把 RGBA 写成 PNG。大图走 Playwright 自己的截图字节，这里给假截帧和单测用。 */
+export function encodePng(raster: Raster): Uint8Array {
+  const { width, height, rgba } = raster;
+  if (width < 1 || height < 1 || width > 4096 || height > 4096) throw new Error('截帧尺寸超出范围');
+  if (rgba.length !== width * height * 4) throw new Error('截帧像素长度不对');
+  const stride = width * 4;
+  const raw = new Uint8Array((stride + 1) * height);
+  for (let y = 0; y < height; y++) {
+    const dest = y * (stride + 1);
+    raw[dest] = 0;
+    raw.set(rgba.subarray(y * stride, (y + 1) * stride), dest + 1);
+  }
+  const ihdr = new Uint8Array(13);
+  const view = new DataView(ihdr.buffer);
+  view.setUint32(0, width);
+  view.setUint32(4, height);
+  ihdr[8] = 8;
+  ihdr[9] = 6;
+  const signature = Uint8Array.from([137, 80, 78, 71, 13, 10, 26, 10]);
+  return concat([
+    signature,
+    pngChunk('IHDR', ihdr),
+    pngChunk('IDAT', zlibStore(raw)),
+    pngChunk('IEND', new Uint8Array()),
+  ]);
+}
+
+function near(a: Rgb, b: Rgb, tolerance: number): boolean {
+  return (
+    Math.abs(a.r - b.r) <= tolerance && Math.abs(a.g - b.g) <= tolerance && Math.abs(a.b - b.b) <= tolerance
+  );
+}
+
+function pixel(raster: Raster, index: number): Rgb {
+  const i = index * 4;
+  return { r: raster.rgba[i] ?? 0, g: raster.rgba[i + 1] ?? 0, b: raster.rgba[i + 2] ?? 0 };
+}
+
+export function sampleBackground(raster: Raster): Rgb {
+  if (!raster.width || !raster.height) return { r: 0, g: 0, b: 0 };
+  const corners = [0, raster.width - 1, (raster.height - 1) * raster.width, raster.width * raster.height - 1];
+  const colors = corners.map((index) => pixel(raster, index));
+  const first = colors[0] ?? { r: 0, g: 0, b: 0 };
+  if (colors.every((color) => near(color, first, 8))) return first;
+  return { r: 0, g: 0, b: 0 };
+}
+
+/** 画框最外一圈里，和背景不像的像素占比。没有 DOM 框时用来怀疑出界。 */
+export function edgeContentRatio(
+  raster: Raster,
+  background = sampleBackground(raster),
+  tolerance = 18,
+): number {
+  const { width, height } = raster;
+  if (!width || !height) return 0;
+  let border = 0;
+  let hit = 0;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (x !== 0 && y !== 0 && x !== width - 1 && y !== height - 1) continue;
+      border += 1;
+      if (!near(pixel(raster, y * width + x), background, tolerance)) hit += 1;
+    }
+  }
+  return border ? hit / border : 0;
+}
+
+function boxLabel(box: LayoutBox): string {
+  const text = box.text?.trim();
+  return text ? `${box.id}「${text}」` : box.id;
+}
+
+function overlapArea(a: LayoutBox, b: LayoutBox): number {
+  const left = Math.max(a.x, b.x);
+  const top = Math.max(a.y, b.y);
+  const right = Math.min(a.x + a.width, b.x + b.width);
+  const bottom = Math.min(a.y + a.height, b.y + b.height);
+  const w = right - left;
+  const h = bottom - top;
+  if (w <= 0 || h <= 0) return 0;
+  return w * h;
+}
+
+export function checkLayout(input: {
+  width: number;
+  height: number;
+  boxes: LayoutBox[];
+  raster?: Raster;
+}): LayoutReport {
+  const eps = 0.5;
+  const outOfBounds: string[] = [];
+  const overlaps: string[] = [];
+  for (const box of input.boxes) {
+    const edges = [
+      box.x < -eps ? '左' : '',
+      box.y < -eps ? '上' : '',
+      box.x + box.width > input.width + eps ? '右' : '',
+      box.y + box.height > input.height + eps ? '下' : '',
+    ].filter(Boolean);
+    if (edges.length) outOfBounds.push(`出界 ${boxLabel(box)}：超出${edges.join('、')}边`);
+  }
+  for (let i = 0; i < input.boxes.length; i++) {
+    for (let j = i + 1; j < input.boxes.length; j++) {
+      const a = input.boxes[i];
+      const b = input.boxes[j];
+      if (!a || !b || (a.role !== 'text' && b.role !== 'text')) continue;
+      const area = overlapArea(a, b);
+      const minArea = Math.min(
+        Math.max(0, a.width) * Math.max(0, a.height),
+        Math.max(0, b.width) * Math.max(0, b.height),
+      );
+      if (minArea <= 0) continue;
+      const ratio = area / minArea;
+      if (ratio >= 0.15)
+        overlaps.push(`字叠 ${boxLabel(a)} 与 ${boxLabel(b)}：重叠 ${Math.round(ratio * 100)}%`);
+    }
+  }
+  const lines = [...outOfBounds, ...overlaps];
+  if (!input.boxes.length) lines.push('没有 DOM 框，出界和字叠只靠边缘像素。');
+  if (input.raster) {
+    const ratio = edgeContentRatio(input.raster);
+    if (ratio > 0.08) lines.push(`像素启发式：画框边缘有 ${Math.round(ratio * 100)}% 非背景像素，可能出界`);
+  }
+  const summary = lines.length ? lines.join('\n') : '没有发现出界或字叠。';
+  return { outOfBounds, overlaps, summary };
+}
+
+/**
+ * 整片 seek 帧相对单场渲染帧多出来的像素。
+ * 上一场对象若还留在画面上，会算进 leftover，不看对象的 opacity。
+ */
+export function compareResidual(
+  sequence: Raster,
+  isolated: Raster,
+  opts?: { tolerance?: number; minPixels?: number; note?: string },
+): ResidualReport {
+  if (sequence.width !== isolated.width || sequence.height !== isolated.height) {
+    return {
+      suspect: false,
+      leftoverPixels: 0,
+      leftoverRatio: 0,
+      summary: '两帧尺寸不同，无法比对像素。请重新截帧。',
+    };
+  }
+  const tolerance = opts?.tolerance ?? 18;
+  const minPixels = opts?.minPixels ?? 24;
+  const background = sampleBackground(isolated);
+  let leftover = 0;
+  const count = sequence.width * sequence.height;
+  for (let i = 0; i < count; i++) {
+    const seq = pixel(sequence, i);
+    const iso = pixel(isolated, i);
+    if (!near(seq, background, tolerance) && !near(seq, iso, tolerance)) leftover += 1;
+  }
+  const ratio = count ? leftover / count : 0;
+  const suspect = leftover >= minPixels;
+  const percent = (ratio * 100).toFixed(2);
+  const head = suspect
+    ? `换场残留：整片帧比单场帧多出 ${leftover} 个不同像素（占画面 ${percent}%）。这是像素差，不是 opacity。上一场对象可能还留在画面上。`
+    : `没有明显换场残留：整片帧与单场帧相差 ${leftover} 像素（占 ${percent}%），低于 ${minPixels} 像素。`;
+  const summary = opts?.note ? `${head}\n${opts.note}` : head;
+  return { suspect, leftoverPixels: leftover, leftoverRatio: ratio, summary };
+}
