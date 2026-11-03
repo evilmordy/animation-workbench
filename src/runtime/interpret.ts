@@ -4,6 +4,7 @@ import { ANIMS } from '../shared/registry';
 import type { Scene, Storyboard } from '../shared/schema';
 import { FRESH_FADE } from '../shared/timing';
 import { BuildError, buildAnim, buildElement, type BuildCtx } from './builders';
+import { interpretCode } from './codeScene';
 
 type RecordingScene = Parameters<Parameters<Player['sequence']>[0]>[0];
 
@@ -25,6 +26,11 @@ export async function interpret(sb: Storyboard, rec: RecordingScene, onError: (e
 
   for (const [si, scene] of sb.scenes.entries()) {
     if (si > 0) await rec.nextSlide();
+    // kind:code 旁路。flag 默认关时 interpretCode 仍按 v1 跳过；下面的 dsl 路径保持原样。
+    if (scene.kind === 'code') {
+      await interpretCode(scene, rec, palette, onError);
+      continue;
+    }
     if (scene.kind !== 'dsl') {
       onError({ sceneId: scene.id, message: '代码场景暂不支持，已跳过' });
       await rec.wait(Math.max(0.1, scene.hold));

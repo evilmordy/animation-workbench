@@ -5,6 +5,8 @@ import { parseStoryboard, type Storyboard } from '../shared/schema';
 import { sceneDuration } from '../shared/timing';
 import { interpret, type RuntimeError } from './interpret';
 
+export { runtimeFlags } from './codeScene';
+
 // 禁用 manim-web 内置的 CDN 回退：离线失败要暴露成错误，而不是悄悄联网
 setKatexStylesheetUrl(null);
 setMathJaxScriptUrl(null);
