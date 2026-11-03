@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "title": "代码场景圆",
+    "mode": "2d",
+    "aspect": "16:9",
+    "background": "#000000",
+    "stylePreset": "3b1b"
+  },
+  "scenes": [
+    {
+      "id": "s_code",
+      "title": "画出一个圆",
+      "description": "",
+      "kind": "code",
+      "enter": "fresh",
+      "hold": 0.5,
+      "elements": [],
+      "steps": [],
+      "code": "const circle = new M.Circle({ radius: 1.2, color: ctx.theme.primary });\nawait scene.play(new M.Create(circle, { duration: 1 }));"
+    }
+  ]
+}
