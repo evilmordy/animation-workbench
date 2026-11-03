@@ -12,7 +12,11 @@ export interface ChatReq {
   messages: ChatMessage[];
   temperature?: number;
   max_tokens?: number;
-  json_mode: boolean;
+  /**
+   * 为 true 时上游带 response_format: json_object。
+   * 不传时 Rust 视为 false，不会强制 JSON。旧调用方仍然显式传入，默认行为不变。
+   */
+  json_mode?: boolean;
 }
 
 export type LlmEvent =

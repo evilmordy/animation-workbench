@@ -9,11 +9,14 @@ import {
   NRadioGroup,
   NSelect,
   NSpace,
+  NSwitch,
   NTag,
   useDialog,
   useMessage,
 } from 'naive-ui';
 import { computed, ref, watch } from 'vue';
+import { dispatchGenerate, usesAgenticEngine } from '../../ai/agent/engine';
+import { runProjectAgent } from '../../ai/agent/run';
 import type { Outline } from '../../ai/prompts';
 import { checkScene } from '../../ai/validators';
 import { describeError, LLM_ERRORS } from '../../shared/errors';
@@ -57,6 +60,17 @@ watch(
 const instruction = ref('');
 const scope = ref<'scene' | 'all'>('scene');
 const fixing = ref<{ sceneId: string; text: string } | null>(null);
+const agentBusy = ref(false);
+const agentNote = ref('');
+let agentAbort: AbortController | null = null;
+
+/** 只有 engine=agentic 且代码场景打开时才离开旧大纲管线。 */
+const agentic = computed(() => usesAgenticEngine(settings.engine, settings.runtime.codeScenes));
+const sourcePlaceholder = computed(() =>
+  agentic.value
+    ? '写下整片需求。这段原文会当作指令，Agent 先写 plan，再写每场代码。'
+    : '粘贴要讲解的内容：教材段落、题目、代码、文案……（也可以在"素材"页导入文件）',
+);
 
 const gp = computed(() => project.project!.generation);
 const setGen = (patch: Partial<typeof gp.value>) =>
@@ -74,15 +88,64 @@ const outlineCards = computed<Outline['scenes']>(() => gen.outline?.scenes ?? ge
 const errText = (code?: string) =>
   code ? (LLM_ERRORS[code]?.what ?? (code === 'validation' ? '输出格式多次不合格' : code)) : '';
 
-async function makeOutline() {
-  if (!gen.source.trim()) return message.warning('先在上面粘贴素材，或在"素材"页导入文件');
+async function runAgentEntry() {
+  if (agentBusy.value) return;
+  agentBusy.value = true;
+  agentNote.value = '正在写 plan…';
+  const ac = new AbortController();
+  agentAbort = ac;
   try {
-    await gen.generateOutline();
-  } catch (e) {
-    const d = describeError((e as { llm?: unknown }).llm ?? e);
-    if ((e as { llm?: { code?: string } }).llm?.code !== 'cancelled')
-      message.error(`${d.what}。${d.next}`, { duration: 8000 });
+    const result = await runProjectAgent(gen.source, {
+      signal: ac.signal,
+      onPhase: (phase) => {
+        agentNote.value = phase === 'plan' ? '正在写 plan…' : '正在写场景代码…';
+      },
+    });
+    if (ac.signal.aborted || result.status === 'cancelled') {
+      agentNote.value = '已取消';
+      return;
+    }
+    if (result.status === 'done') {
+      const skipped = result.skippedLocked.length ? `，跳过 ${result.skippedLocked.length} 个锁定场景` : '';
+      agentNote.value = `已写入 ${result.sceneIds.length} 个代码场景${skipped}`;
+      message.success(agentNote.value);
+      return;
+    }
+    if (result.status === 'budget') {
+      agentNote.value = '已达到轮数或用量上限';
+      message.warning(agentNote.value);
+      return;
+    }
+    agentNote.value = result.error ?? 'Agent 失败';
+    message.error(agentNote.value);
+  } finally {
+    agentBusy.value = false;
+    if (agentAbort === ac) agentAbort = null;
   }
+}
+
+function cancelAgent() {
+  agentAbort?.abort();
+}
+
+async function makeOutline() {
+  if (!gen.source.trim()) {
+    return message.warning(agentic.value ? '先写下整片需求' : '先在上面粘贴素材，或在"素材"页导入文件');
+  }
+  await dispatchGenerate({
+    engine: settings.engine,
+    codeScenes: settings.runtime.codeScenes,
+    legacy: async () => {
+      try {
+        await gen.generateOutline();
+      } catch (e) {
+        const d = describeError((e as { llm?: unknown }).llm ?? e);
+        if ((e as { llm?: { code?: string } }).llm?.code !== 'cancelled')
+          message.error(`${d.what}。${d.next}`, { duration: 8000 });
+      }
+    },
+    agent: () => runAgentEntry(),
+  });
 }
 
 function editOutline(i: number, patch: Partial<Outline['scenes'][number]>) {
@@ -164,11 +227,21 @@ function applyFix(scene: Scene) {
       </NSpace>
     </NAlert>
     <h3>从素材生成</h3>
+    <div v-if="settings.runtime.codeScenes" class="engine" data-testid="agent-engine">
+      <NSwitch
+        :value="settings.engine === 'agentic'"
+        size="small"
+        aria-label="Agent 生成"
+        data-testid="agent-engine-switch"
+        @update:value="(v: boolean) => (settings.engine = v ? 'agentic' : 'legacy')"
+      />
+      <span>Agent 写代码场景</span>
+    </div>
     <NInput
       v-model:value="gen.source"
       type="textarea"
       :autosize="{ minRows: 3, maxRows: 8 }"
-      placeholder='粘贴要讲解的内容：教材段落、题目、代码、文案……（也可以在"素材"页导入文件）'
+      :placeholder="sourcePlaceholder"
       :input-props="{ 'aria-label': '素材' }"
       data-testid="source-text"
     />
@@ -207,15 +280,17 @@ function applyFix(scene: Scene) {
       <NButton
         type="primary"
         size="small"
-        :loading="gen.outlineBusy"
-        :disabled="gen.outlineBusy || gen.running"
+        :loading="gen.outlineBusy || agentBusy"
+        :disabled="gen.outlineBusy || gen.running || agentBusy"
         data-testid="gen-outline"
         @click="makeOutline"
       >
-        1. 生成大纲
+        {{ agentic ? '生成整片' : '1. 生成大纲' }}
       </NButton>
+      <NButton v-if="agentBusy" size="small" data-testid="cancel-agent" @click="cancelAgent">取消</NButton>
       <NButton v-if="gen.outlineBusy" size="small" @click="gen.cancelOutline()">取消</NButton>
     </NSpace>
+    <p v-if="agentNote" class="muted" data-testid="agent-note">{{ agentNote }}</p>
 
     <ol v-if="outlineCards.length" class="outline" data-testid="outline">
       <li v-for="(s, i) in outlineCards" :key="i">
@@ -383,6 +458,13 @@ function applyFix(scene: Scene) {
 h3 {
   font-size: 13px;
   margin: 0 0 8px;
+}
+.engine {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  font-size: 12px;
 }
 .params {
   display: grid;

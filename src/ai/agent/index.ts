@@ -1,0 +1,8 @@
+export { acceptStoryboard, applyAgentScenes, parseRubric, withShared } from './apply';
+export type { PlannedScene } from './apply';
+export { dispatchGenerate, usesAgenticEngine } from './engine';
+export { DEFAULT_AGENT_BUDGET, runAgent } from './loop';
+export type { AgentBudget, AgentHost, AgentResult, RunAgentOpts } from './loop';
+export { isAnimPath, parseAgentFiles, sceneIdFromName } from './parse';
+export { agentSystemPrompt, openingMessages, planRequest, scenesRequest } from './prompts';
+export { projectAgentHost, runProjectAgent } from './run';
