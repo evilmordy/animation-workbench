@@ -2,7 +2,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { platform } from '../../platform';
 import { mockPlatform as p, resetMockFs, setMockLlm } from '../../platform/mock';
-import type { ChatMessage, ChatReq } from '../../platform/types';
+import type { ChatReq, LlmMessage } from '../../platform/types';
 import { emptyStoryboard, newProjectFile } from '../../shared/project';
 import { parseStoryboard, type Scene, type Storyboard } from '../../shared/schema';
 import { runtimeFlags } from '../../runtime/codeScene';
@@ -100,11 +100,11 @@ function memoryHost(initial: Storyboard) {
 }
 
 function scripted(answers: string[]) {
-  const calls: { messages: ChatMessage[]; jsonMode: boolean | null | undefined }[] = [];
+  const calls: { messages: LlmMessage[]; jsonMode: boolean | null | undefined }[] = [];
   const log: string[] = [];
   const transport: Transport = async (messages, opts) => {
     log.push('llm');
-    calls.push({ messages: messages.map((m) => ({ ...m })), jsonMode: opts.jsonMode });
+    calls.push({ messages: messages.slice(), jsonMode: opts.jsonMode });
     const text = answers.shift();
     if (text === undefined) throw new Error('mock 回答用完了');
     return { text, usage: [10, 10] as [number, number] };

@@ -1,6 +1,6 @@
 import fixture from '../../tests/fixtures/pythagoras.json';
 import type { MockLlm } from '../platform/mock';
-import type { ChatMessage } from '../platform/types';
+import { messageText, type ChatMessage, type LlmMessage } from '../platform/types';
 import type { Scene, Storyboard } from '../shared/schema';
 import { taskOf } from './prompts';
 
@@ -11,7 +11,13 @@ import { taskOf } from './prompts';
 
 const sb = fixture as Storyboard;
 const NEEDS_REPAIR = '【测试：需要修复】';
-const last = (m: ChatMessage[]) => m[m.length - 1]!.content;
+/** 纯文本消息原样留下。图像 part 只取 text，假 LLM 不看图。 */
+function asText(messages: LlmMessage[]): ChatMessage[] {
+  return messages.map((m) => ({
+    role: m.role === 'assistant' || m.role === 'system' || m.role === 'user' ? m.role : 'user',
+    content: messageText(m.content),
+  }));
+}
 
 /** 自给自足的场景：标题文字 + 一个图形 + 强调 */
 function standaloneScene(id: string, title: string, k: number): Scene {
@@ -35,9 +41,10 @@ function standaloneScene(id: string, title: string, k: number): Scene {
   };
 }
 
-function answer(messages: ChatMessage[]): string {
-  const task = taskOf(messages);
-  const user = messages[1]?.content ?? '';
+function answer(messages: LlmMessage[]): string {
+  const text = asText(messages);
+  const task = taskOf(text);
+  const user = text[1]?.content ?? '';
   const repairing = messages.length > 2;
   const wantBroken = user.includes(NEEDS_REPAIR) && !repairing;
 
@@ -105,7 +112,7 @@ function answer(messages: ChatMessage[]): string {
     });
   }
 
-  return last(messages);
+  return text.at(-1)?.content ?? '';
 }
 
 export const mockLlm: MockLlm = async (req, emit) => {

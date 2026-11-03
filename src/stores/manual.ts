@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { shallowRef } from 'vue';
-import type { ChatMessage } from '../platform/types';
+import { messageText, type LlmMessage } from '../platform/types';
 
 export interface ManualRequest {
   title: string;
@@ -9,10 +9,16 @@ export interface ManualRequest {
   reject: (e: unknown) => void;
 }
 
+const HEAD: Record<LlmMessage['role'], string> = {
+  system: '【说明】',
+  user: '【请求】',
+  assistant: '【你之前的回答】',
+  tool: '【工具结果】',
+};
+
 /** 手动模式：把提示词交给用户复制到网页版 AI，再等用户把回答粘贴回来 */
-export function formatPrompt(messages: ChatMessage[]): string {
-  const head = { system: '【说明】', user: '【请求】', assistant: '【你之前的回答】' } as const;
-  return messages.map((m) => `${head[m.role]}\n${m.content}`).join('\n\n');
+export function formatPrompt(messages: LlmMessage[]): string {
+  return messages.map((m) => `${HEAD[m.role]}\n${messageText(m.content)}`).join('\n\n');
 }
 
 export const useManualStore = defineStore('manual', () => {
@@ -23,7 +29,7 @@ export const useManualStore = defineStore('manual', () => {
     pending.value = queue.shift() ?? null;
   }
 
-  function request(title: string, messages: ChatMessage[]): Promise<string> {
+  function request(title: string, messages: LlmMessage[]): Promise<string> {
     return new Promise((resolve, reject) => {
       queue.push({ title, prompt: formatPrompt(messages), resolve, reject });
       if (!pending.value) next();

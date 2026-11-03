@@ -12,7 +12,7 @@ export function aiSession() {
   const manual = useManualStore();
   const project = useProjectStore();
 
-  const api: Transport = async (messages, { requestId, onDelta, jsonMode }) => {
+  const api: Transport = async (messages, { requestId, onDelta, jsonMode, tools, toolChoice }) => {
     let full = '';
     const req: ChatReq = {
       request_id: requestId,
@@ -23,11 +23,19 @@ export function aiSession() {
     };
     // null 表示这次不传 json_mode（agent 路径）。缺省仍用设置里的 JSON 模式。
     if (jsonMode !== null) req.json_mode = jsonMode ?? settings.jsonMode();
+    // 空数组和缺省都不写进请求，旧调用的字段集合不变。
+    if (tools?.length) req.tools = tools;
+    if (toolChoice !== undefined) req.tool_choice = toolChoice;
     const r = await platform.llmChat(req, (e) => {
       if (e.type === 'Delta') onDelta((full += e.text));
     });
     if (r.usage) ai.addUsage(r.usage[0], r.usage[1]);
-    return { text: r.text, usage: r.usage };
+    return {
+      text: r.text,
+      usage: r.usage,
+      finishReason: r.finish_reason,
+      ...(r.tool_calls?.length ? { toolCalls: r.tool_calls } : {}),
+    };
   };
 
   const byHand: Transport = async (messages, { onDelta, title }) => {

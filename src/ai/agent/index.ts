@@ -6,3 +6,5 @@ export type { AgentBudget, AgentHost, AgentResult, RunAgentOpts } from './loop';
 export { isAnimPath, parseAgentFiles, sceneIdFromName } from './parse';
 export { agentSystemPrompt, openingMessages, planRequest, scenesRequest } from './prompts';
 export { projectAgentHost, runProjectAgent } from './run';
+export { DEFAULT_TOOL_ROUNDS, echoTool, runToolLoop } from './tools';
+export type { ToolLoopResult, ToolSpec } from './tools';

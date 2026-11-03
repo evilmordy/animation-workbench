@@ -1,5 +1,13 @@
 import { newId } from '../shared/id';
-import { isLlmError, type ChatMessage, type LlmError } from '../platform/types';
+import {
+  isLlmError,
+  type ChatMessage,
+  type LlmError,
+  type LlmMessage,
+  type ToolCall,
+  type ToolChoice,
+  type ToolDef,
+} from '../platform/types';
 import { extractJson } from './extract';
 import { repairMessages, type Task } from './prompts';
 import type { Checked } from './validators';
@@ -8,7 +16,7 @@ export const MAX_REPAIRS = 2;
 
 /** 一次模型调用：返回完整文本；流式文本通过 onDelta 回传 */
 export type Transport = (
-  messages: ChatMessage[],
+  messages: LlmMessage[],
   opts: {
     requestId: string;
     onDelta: (full: string) => void;
@@ -18,8 +26,16 @@ export type Transport = (
      * null：这次请求不带 json_mode，避免强制 json_object。只有 agent 路径传入。
      */
     jsonMode?: boolean | null;
+    /** 缺省或空数组：这次请求不带 tools。 */
+    tools?: ToolDef[];
+    toolChoice?: ToolChoice;
   },
-) => Promise<{ text: string; usage?: [number, number] | null }>;
+) => Promise<{
+  text: string;
+  usage?: [number, number] | null;
+  finishReason?: string | null;
+  toolCalls?: ToolCall[];
+}>;
 
 export class AiError extends Error {
   constructor(
