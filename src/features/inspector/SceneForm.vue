@@ -109,7 +109,7 @@ const fix = () =>
         :autosize="{ minRows: 8, maxRows: 18 }"
         :value="scene.code ?? ''"
         :input-props="{ 'aria-label': '场景代码' }"
-        placeholder="async (scene, M, ctx) 的函数体。用 FadeIn / Create 引入对象，换场先 FadeOut ctx.present()。"
+        placeholder="函数体。GSAP 场是 (root, gsap, tl, ctx)，动画写在 tl 上。manim-web 场是 (scene, M, ctx)。"
         @update:value="(v: string) => patch('code', (s) => ({ ...s, code: v }))"
       />
     </NFormItem>

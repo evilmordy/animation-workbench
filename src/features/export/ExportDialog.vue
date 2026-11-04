@@ -18,7 +18,9 @@ import { useEditorStore } from '../../stores/editor';
 import { useProjectStore } from '../../stores/project';
 import { useSettingsStore } from '../../stores/settings';
 import { safeFileName } from '../../shared/project';
+import { playbackRenderer, readRendererFile } from '../../ai/agent/renderer';
 import { buildExportHtml, exportRunsCode } from './exportHtml';
+import { buildGsapExportHtml } from './exportGsapHtml';
 
 const props = defineProps<{ show: boolean }>();
 const emit = defineEmits<{ 'update:show': [boolean] }>();
@@ -56,7 +58,12 @@ const skipsCode = computed(
 async function doExport() {
   busy.value = true;
   try {
-    const html = await buildExportHtml(project.storyboard!, exportOpts.value);
+    const sb = project.storyboard!;
+    const sidecar = project.dir ? await readRendererFile(project.dir) : null;
+    const gsap = settings.runtime.codeScenes && playbackRenderer(sidecar, sb.scenes) === 'gsap';
+    const html = gsap
+      ? await buildGsapExportHtml(sb, exportOpts.value)
+      : await buildExportHtml(sb, exportOpts.value);
     const dir = await platform.join(project.dir!, 'exports');
     await platform.mkdir(dir);
     const path = await platform.join(dir, `${safeFileName(name.value, 'animation')}.html`);
