@@ -115,7 +115,7 @@ export function parseAt(value: unknown): FrameAt {
     const n = Number(value);
     if (Number.isFinite(n) && n >= 0 && n <= 600) return n;
   }
-  return 'start';
+  return 'end';
 }
 
 function parseIds(value: unknown): string[] | undefined {
@@ -162,7 +162,7 @@ export function planCapture(
       };
     }
   }
-  const at = args.at ?? 'start';
+  const at = args.at ?? 'end';
   const isolated = args.isolated !== false;
   return {
     ok: true,
@@ -200,13 +200,13 @@ export function visionTools(ctx: VisionContext): ToolSpec[] {
         function: {
           name: 'render_frames',
           description:
-            '对当前分镜截帧，写入项目 .awb/anim/frames/。优先 kind:code。默认截到该场开头，并另渲染单场，方便比对上一场残留。失败时降级成文字，不阻塞改代码。',
+            '对当前分镜截帧，写入项目 .awb/anim/frames/。优先 kind:code。默认截到该场收束。单场预览若只报了停留段，改用时间线总长，不改播放协议。失败时降级成文字，不阻塞改代码。',
           parameters: {
             type: 'object',
             properties: {
               sceneIds: { type: 'array', items: { type: 'string' }, description: '缺省时只截 kind:code' },
               at: {
-                description: 'start、mid、end，或相对场起点的秒。默认 start。',
+                description: 'start、mid、end，或相对场起点的秒。默认 end。',
               },
               isolated: { type: 'boolean', description: '是否同时渲染单场。默认 true。' },
             },
@@ -239,7 +239,8 @@ export function visionTools(ctx: VisionContext): ToolSpec[] {
         type: 'function',
         function: {
           name: 'check_layout',
-          description: '检查截帧的出界和字叠，返回文字摘要。有 DOM 框用框，没有框时看边缘像素。',
+          description:
+            '检查截帧的出界和字叠。只比较两个文字框，容器和它里面的文字不算字叠。没有 DOM 框时看边缘像素。',
           parameters: {
             type: 'object',
             properties: { frame: { type: 'string', description: '缺省时检查最近一张整片帧' } },
@@ -402,11 +403,39 @@ export type VisionReview = { status: 'disabled'; rounds: 0; text: string } | Too
  * 只有 runtime.agentTools 打开才进入 runToolLoop。
  * 关着时不调用模型。runAgent 的一次性写 code 不经过这里。
  */
+export function writeSceneTool(revise: (sceneId: string, code: string) => Promise<string>): ToolSpec {
+  return {
+    definition: {
+      type: 'function',
+      function: {
+        name: 'write_scene',
+        description: '重写一个场景的函数体并写入分镜。改完用 render_frames 再看。锁定的场不能改。',
+        parameters: {
+          type: 'object',
+          properties: {
+            sceneId: { type: 'string' },
+            code: { type: 'string', description: '函数体，不要包 async function' },
+          },
+          required: ['sceneId', 'code'],
+        },
+      },
+    },
+    async run(args) {
+      const raw = objectArgs(args);
+      const sceneId = stringArg(raw.sceneId) ?? '';
+      const code = typeof raw.code === 'string' ? raw.code : '';
+      if (!sceneId || !code.trim()) return '需要 sceneId 和 code';
+      return revise(sceneId, code);
+    },
+  };
+}
+
 export async function runVisionReview(opts: {
   enabled: boolean;
   messages: LlmMessage[];
   transport: Transport;
   ctx: VisionContext;
+  revise?: (sceneId: string, code: string) => Promise<string>;
   maxRounds?: number;
   signal?: AbortSignal;
   onCancelRequest?: (requestId: string) => void;
@@ -421,7 +450,7 @@ export async function runVisionReview(opts: {
   }
   return runToolLoop({
     messages: opts.messages,
-    tools: visionTools(opts.ctx),
+    tools: opts.revise ? [...visionTools(opts.ctx), writeSceneTool(opts.revise)] : visionTools(opts.ctx),
     transport: opts.transport,
     title: '看画面',
     maxRounds: opts.maxRounds ?? 6,

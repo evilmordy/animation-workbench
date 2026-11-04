@@ -215,6 +215,18 @@ function boxLabel(box: LayoutBox): string {
   return text ? `${box.id}「${text}」` : box.id;
 }
 
+function boxInside(inner: LayoutBox, outer: LayoutBox): boolean {
+  const innerArea = Math.max(0, inner.width) * Math.max(0, inner.height);
+  const outerArea = Math.max(0, outer.width) * Math.max(0, outer.height);
+  if (innerArea <= 0 || outerArea <= innerArea) return false;
+  return (
+    inner.x >= outer.x - 0.5 &&
+    inner.y >= outer.y - 0.5 &&
+    inner.x + inner.width <= outer.x + outer.width + 0.5 &&
+    inner.y + inner.height <= outer.y + outer.height + 0.5
+  );
+}
+
 function overlapArea(a: LayoutBox, b: LayoutBox): number {
   const left = Math.max(a.x, b.x);
   const top = Math.max(a.y, b.y);
@@ -248,7 +260,8 @@ export function checkLayout(input: {
     for (let j = i + 1; j < input.boxes.length; j++) {
       const a = input.boxes[i];
       const b = input.boxes[j];
-      if (!a || !b || (a.role !== 'text' && b.role !== 'text')) continue;
+      if (!a || !b || a.role !== 'text' || b.role !== 'text') continue;
+      if (boxInside(a, b) || boxInside(b, a)) continue;
       const area = overlapArea(a, b);
       const minArea = Math.min(
         Math.max(0, a.width) * Math.max(0, a.height),
@@ -277,7 +290,7 @@ export function checkLayout(input: {
 export function compareResidual(
   sequence: Raster,
   isolated: Raster,
-  opts?: { tolerance?: number; minPixels?: number; note?: string },
+  opts?: { tolerance?: number; ratio?: number; note?: string },
 ): ResidualReport {
   if (sequence.width !== isolated.width || sequence.height !== isolated.height) {
     return {
@@ -288,7 +301,7 @@ export function compareResidual(
     };
   }
   const tolerance = opts?.tolerance ?? 18;
-  const minPixels = opts?.minPixels ?? 24;
+  const ratioLimit = opts?.ratio ?? 0.005;
   const background = sampleBackground(isolated);
   let leftover = 0;
   const count = sequence.width * sequence.height;
@@ -298,11 +311,12 @@ export function compareResidual(
     if (!near(seq, background, tolerance) && !near(seq, iso, tolerance)) leftover += 1;
   }
   const ratio = count ? leftover / count : 0;
-  const suspect = leftover >= minPixels;
+  const suspect = ratio > ratioLimit;
   const percent = (ratio * 100).toFixed(2);
+  const limit = (ratioLimit * 100).toFixed(1);
   const head = suspect
     ? `换场残留：整片帧比单场帧多出 ${leftover} 个不同像素（占画面 ${percent}%）。这是像素差，不是 opacity。上一场对象可能还留在画面上。`
-    : `没有明显换场残留：整片帧与单场帧相差 ${leftover} 像素（占 ${percent}%），低于 ${minPixels} 像素。`;
+    : `没有明显换场残留：整片帧与单场帧相差 ${leftover} 像素（占 ${percent}%），没有超过画面的 ${limit}%。`;
   const summary = opts?.note ? `${head}\n${opts.note}` : head;
   return { suspect, leftoverPixels: leftover, leftoverRatio: ratio, summary };
 }

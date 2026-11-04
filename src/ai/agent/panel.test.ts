@@ -60,23 +60,43 @@ afterEach(() => {
 
 describe('预算', () => {
   it('缺省 8 轮、不限 token；坏值收回范围内，默认引擎仍是 legacy', async () => {
-    expect(normalizeAgentBudget(undefined)).toEqual({ maxTurns: 8, maxTokens: null });
-    expect(normalizeAgentBudget({ maxTurns: 0, maxTokens: -3 })).toEqual({ maxTurns: 1, maxTokens: null });
-    expect(normalizeAgentBudget({ maxTurns: 99, maxTokens: 50 })).toEqual({ maxTurns: 32, maxTokens: 50 });
-    expect(budgetFromSettings({ maxTurns: 4, maxTokens: null })).toEqual({ maxTurns: 4 });
-    expect(budgetFromSettings({ maxTurns: 4, maxTokens: 20 })).toEqual({ maxTurns: 4, maxTokens: 20 });
+    expect(normalizeAgentBudget(undefined)).toEqual({
+      maxTurns: 8,
+      maxTokens: null,
+      completionTokens: 65536,
+    });
+    expect(normalizeAgentBudget({ maxTurns: 0, maxTokens: -3 })).toEqual({
+      maxTurns: 1,
+      maxTokens: null,
+      completionTokens: 65536,
+    });
+    expect(normalizeAgentBudget({ maxTurns: 99, maxTokens: 50, completionTokens: 9_999_999 })).toEqual({
+      maxTurns: 32,
+      maxTokens: 50,
+      completionTokens: 393216,
+    });
+    expect(normalizeAgentBudget({ completionTokens: null })).toMatchObject({ completionTokens: null });
+    expect(budgetFromSettings({ maxTurns: 4, maxTokens: null, completionTokens: 65536 })).toEqual({
+      maxTurns: 4,
+      completionTokens: 65536,
+    });
+    expect(budgetFromSettings({ maxTurns: 4, maxTokens: 20, completionTokens: null })).toEqual({
+      maxTurns: 4,
+      maxTokens: 20,
+      completionTokens: null,
+    });
 
     const settings = useSettingsStore();
     await settings.load();
     expect(settings.engine).toBe('legacy');
-    expect(settings.agentBudget).toEqual({ maxTurns: 8, maxTokens: null });
+    expect(settings.agentBudget).toEqual({ maxTurns: 8, maxTokens: null, completionTokens: 65536 });
     settings.setAgentBudget({ maxTurns: 2, maxTokens: 30 });
-    expect(settings.agentBudget).toEqual({ maxTurns: 2, maxTokens: 30 });
+    expect(settings.agentBudget).toEqual({ maxTurns: 2, maxTokens: 30, completionTokens: 65536 });
     setActivePinia(createPinia());
     const reloaded = useSettingsStore();
     await reloaded.load();
     expect(reloaded.engine).toBe('legacy');
-    expect(reloaded.agentBudget).toEqual({ maxTurns: 2, maxTokens: 30 });
+    expect(reloaded.agentBudget).toEqual({ maxTurns: 2, maxTokens: 30, completionTokens: 65536 });
   });
 });
 
@@ -201,6 +221,7 @@ describe('runProjectAgent', () => {
     setMockLlm(async (req) => {
       seen.push(req.messages.map((m) => messageText(m.content)).join('\n'));
       expect(req.tools).toBeUndefined();
+      expect(req.max_tokens).toBe(65536);
       return '没有文件';
     });
     const result = await runProjectAgent(intent, { budget: { maxTurns: 1 } });
@@ -255,5 +276,49 @@ describe('runProjectAgent', () => {
     const line = tool && tool.type === 'tool' ? lineFromEvent(tool, 1) : null;
     expect(line?.detail).toContain('还没有截帧');
     expect(events.some((event) => event.type === 'phase' && event.phase === 'review')).toBe(true);
+  });
+
+  it('审查阶段看得到需求原文，并能改已写的场景', async () => {
+    const project = useProjectStore();
+    await project.create('t', emptyStoryboard('t'), '/projects/panel-revise');
+    const settings = useSettingsStore();
+    await settings.load();
+    settings.runtime.agentTools = true;
+    const plan = [
+      '```file:anim/plan.md',
+      '# 计划',
+      '```',
+      '```file:anim/rubric.json',
+      '{"title":"圆","scenes":[{"id":"s_dot","title":"圆","description":"一个圆","hold":1,"enter":"fresh"}]}',
+      '```',
+    ].join('\n');
+    const scenes = ['```file:anim/scenes/s_dot.js', 'const dot = 1;', '```'].join('\n');
+    const intent = '画一个圆，半径始终是 R';
+    let n = 0;
+    const seen: string[] = [];
+    setMockLlm(async (req) => {
+      n += 1;
+      seen.push(req.messages.map((m) => messageText(m.content)).join('\n'));
+      if (n === 1) return plan;
+      if (n === 2) return scenes;
+      const asked = req.messages.some((m) => m.role === 'tool');
+      if (!asked) {
+        const tool: ToolCall = {
+          id: 'w1',
+          type: 'function',
+          function: {
+            name: 'write_scene',
+            arguments: JSON.stringify({ sceneId: 's_dot', code: 'const fixed = true;' }),
+          },
+        };
+        return { text: '', toolCalls: [tool] };
+      }
+      return '改完了';
+    });
+    const result = await runProjectAgent(intent, { budget: { maxTurns: 4, completionTokens: null } });
+    expect(result.status).toBe('done');
+    expect(seen.some((text) => text.includes('这是指令，不是素材') && text.includes(intent))).toBe(true);
+    expect(seen.at(-1)).toContain('write_scene');
+    expect(project.storyboard?.scenes[0]?.code).toContain('const fixed = true');
   });
 });

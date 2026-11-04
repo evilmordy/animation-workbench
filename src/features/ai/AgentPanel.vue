@@ -13,6 +13,7 @@ defineEmits<{ cancel: [] }>();
 
 const settings = useSettingsStore();
 const tokenLabel = (max: number | null) => (max == null ? '不限' : String(max));
+const completionLabel = (max: number | null) => (max == null ? '不传' : String(max));
 </script>
 
 <template>
@@ -47,10 +48,27 @@ const tokenLabel = (max: number | null) => (max == null ? '不限' : String(max)
           @update:value="(v: number | null) => settings.setAgentBudget({ maxTokens: v && v > 0 ? v : null })"
         />
       </label>
+      <label>
+        单次输出
+        <NInputNumber
+          size="tiny"
+          :show-button="false"
+          :disabled="busy"
+          :value="settings.agentBudget.completionTokens"
+          :min="0"
+          placeholder="不传"
+          :input-props="{ 'aria-label': '单次输出上限' }"
+          data-testid="agent-completion-tokens"
+          @update:value="
+            (v: number | null) => settings.setAgentBudget({ completionTokens: v && v > 0 ? v : null })
+          "
+        />
+      </label>
       <p class="muted">
         轮次 {{ turns }}/{{ settings.agentBudget.maxTurns }} · tokens {{ tokens }}/{{
           tokenLabel(settings.agentBudget.maxTokens)
         }}
+        · 单次 {{ completionLabel(settings.agentBudget.completionTokens) }}
       </p>
     </div>
     <ol class="log" data-testid="agent-log">

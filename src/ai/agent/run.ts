@@ -2,11 +2,12 @@ import { platform } from '../../platform';
 import { useProjectStore } from '../../stores/project';
 import { useSettingsStore } from '../../stores/settings';
 import { aiSession } from '../session';
+import { acceptStoryboard, applyAgentScenes } from './apply';
 import { agentToolsEnabled, diskFrameStore, runVisionReview, visionContext } from './frames';
 import type { AgentLogEvent } from './log';
-import { budgetFromSettings } from './log';
+import { DEFAULT_AGENT_BUDGET_SETTINGS, budgetFromSettings } from './log';
 import type { AgentBudget, AgentHost, AgentResult, RunAgentOpts } from './loop';
-import { DEFAULT_AGENT_BUDGET, runAgent } from './loop';
+import { runAgent } from './loop';
 import { isAnimPath } from './parse';
 
 /** 把 agent 的旁路文件放进 <project>/.awb/anim/，不改 PROJECT_DIRS，也不另立一套撤销。 */
@@ -52,8 +53,16 @@ export async function runProjectAgent(
   const settings = useSettingsStore();
   const project = useProjectStore();
   const budget = opts.budget ?? budgetFromSettings(settings.agentBudget);
+  const completionTokens =
+    budget.completionTokens === undefined
+      ? DEFAULT_AGENT_BUDGET_SETTINGS.completionTokens
+      : budget.completionTokens;
   const transport: RunAgentOpts['transport'] = (messages, call) =>
-    session.transport(messages, { ...call, jsonMode: null });
+    session.transport(messages, {
+      ...call,
+      jsonMode: null,
+      ...(typeof completionTokens === 'number' ? { maxTokens: completionTokens } : {}),
+    });
   const result = await runAgent({
     intent,
     host: projectAgentHost(),
@@ -68,10 +77,8 @@ export async function runProjectAgent(
   if (opts.signal?.aborted || result.status !== 'done' || !agentToolsEnabled(settings.runtime.agentTools)) {
     return result;
   }
-  const maxTurns = budget.maxTurns ?? DEFAULT_AGENT_BUDGET.maxTurns;
   const spent = result.usage[0] + result.usage[1];
-  const remaining = maxTurns - result.turns;
-  if (remaining <= 0 || (budget.maxTokens !== undefined && spent >= budget.maxTokens)) {
+  if (budget.maxTokens !== undefined && spent >= budget.maxTokens) {
     opts.onLog?.({ type: 'note', message: '预算已用完，不再做截帧检查' });
     return result;
   }
@@ -82,16 +89,15 @@ export async function runProjectAgent(
       messages: [
         {
           role: 'user',
-          content:
-            '代码场景已经写好。请调用 render_frames，再用 check_layout 和 check_residual 看画面。只根据工具结果说明问题。',
+          content: `用户需求（这是指令，不是素材）：\n${intent}\n\n代码场景已经写好。请调用 render_frames，再用 check_layout 和 check_residual 看画面。有真实问题就用 write_scene 改那一场，然后重新截帧。`,
         },
       ],
       transport,
+      revise: reviseScene,
       ctx: visionContext({
         getStoryboard: () => project.storyboard,
         store: project.dir ? diskFrameStore(project.dir) : undefined,
       }),
-      maxRounds: remaining,
       signal: opts.signal,
       onCancelRequest: (id) => session.cancel(id),
       onTool: (call) =>
@@ -120,4 +126,41 @@ export async function runProjectAgent(
     opts.onLog?.({ type: 'note', message: `截帧检查失败：${message}` });
   }
   return result;
+}
+
+const SCENE_ID = /^[A-Za-z_][A-Za-z0-9_-]{0,63}$/;
+
+/** 检查之后改一场。走现有的 apply + project.update，不另开写入口。 */
+async function reviseScene(sceneId: string, code: string): Promise<string> {
+  if (!SCENE_ID.test(sceneId)) return `场次 id 不合法：${sceneId}`;
+  const host = projectAgentHost();
+  const storyboard = host.getStoryboard();
+  if (!storyboard) return '没有打开的分镜';
+  const existing = storyboard.scenes.find((scene) => scene.id === sceneId);
+  if (!existing) return `没有场 ${sceneId}`;
+  if (existing.locked) return `场 ${sceneId} 已锁定，没有改`;
+  const body = code.trim();
+  if (!body) return '代码是空的，没有写入';
+  const shared = (await host.readFile('shared.js')) ?? '';
+  await host.writeFile(`scenes/${sceneId}.js`, body);
+  const applied = applyAgentScenes({
+    storyboard,
+    planned: [
+      {
+        id: existing.id,
+        title: existing.title,
+        description: existing.description,
+        hold: existing.hold,
+        enter: existing.enter === 'keep' ? 'keep' : 'fresh',
+      },
+    ],
+    codes: new Map([[sceneId, body]]),
+    shared,
+    adoptTitle: null,
+  });
+  if (!applied.changed) return `场 ${sceneId} 没有变化`;
+  const accepted = acceptStoryboard(applied.storyboard);
+  if (!accepted) return '写回的分镜无法通过 schema';
+  host.updateStoryboard(accepted);
+  return `已重写场 ${sceneId}`;
 }

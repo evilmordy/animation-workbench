@@ -29,6 +29,8 @@ export type Transport = (
     /** 缺省或空数组：这次请求不带 tools。 */
     tools?: ToolDef[];
     toolChoice?: ToolChoice;
+    /** 单次补全上限。不传则请求体里没有 max_tokens。 */
+    maxTokens?: number;
   },
 ) => Promise<{
   text: string;

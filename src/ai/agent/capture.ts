@@ -48,6 +48,21 @@ export interface HarnessPage {
   close(): Promise<void>;
 }
 
+/**
+ * 单场预览没有 nextSlide 时，build() 报出的 span 往往只盖住 schema 里的停留段。
+ * 时间线总长才是这场的真实结尾。多场仍用报出来的 span，不改预览协议。
+ */
+export function sceneWindow(
+  run: { scenes: { id: string; start: number; end: number }[]; duration: number },
+  sceneId: string,
+): { start: number; end: number } {
+  const span = run.scenes.find((item) => item.id === sceneId);
+  if (!span) throw new Error(`预览没有场 ${sceneId}`);
+  const reported = Math.max(0, span.end - span.start);
+  if (run.scenes.length === 1 && run.duration > reported + 0.05) return { start: 0, end: run.duration };
+  return { start: span.start, end: span.end };
+}
+
 export function resolveTime(span: { start: number; end: number }, at: FrameAt): number {
   const spanLen = Math.max(0, span.end - span.start);
   let offset = 0;
@@ -88,9 +103,7 @@ export async function captureWithHarness(
     }
     const frames: CapturedFrame[] = [];
     for (const shot of request.shots) {
-      const span = full.scenes.find((item) => item.id === shot.sceneId);
-      if (!span) throw new Error(`预览没有场 ${shot.sceneId}`);
-      const t = resolveTime(span, shot.at);
+      const t = resolveTime(sceneWindow(full, shot.sceneId), shot.at);
       await page.seek(t);
       await page.wait(200);
       const sequence = await page.grab();
@@ -105,9 +118,7 @@ export async function captureWithHarness(
       });
       if (!shot.isolated) continue;
       const isolatedRun = await page.run(isolateScene(request.storyboard, shot.sceneId), true);
-      const isolatedSpan = isolatedRun.scenes[0];
-      if (!isolatedSpan) throw new Error(`单场预览没有 ${shot.sceneId}`);
-      const isolatedT = resolveTime(isolatedSpan, shot.at);
+      const isolatedT = resolveTime(sceneWindow(isolatedRun, shot.sceneId), shot.at);
       await page.seek(isolatedT);
       await page.wait(200);
       const isolated = await page.grab();
