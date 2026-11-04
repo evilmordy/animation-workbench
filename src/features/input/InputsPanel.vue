@@ -45,6 +45,7 @@ const draft = ref<{
   };
 } | null>(null);
 const busy = ref(false);
+let savingDraft = false;
 
 const inputsDir = () => platform.join(project.dir!, 'inputs');
 
@@ -105,27 +106,33 @@ async function rereadPdf() {
 
 /** 素材副本和提取的文本都存进项目的 inputs/ */
 async function saveDraft() {
-  const d = draft.value!;
-  const id = newId('in');
-  const dir = await inputsDir();
-  await platform.mkdir(dir);
-  const file = `${id}-${safeFileName(d.name)}`;
-  if (d.bytes) await platform.writeBinary(await platform.join(dir, file), d.bytes);
-  else await platform.writeTextAtomic(await platform.join(dir, file), d.text);
-  const textFile = `${id}.txt`;
-  await platform.writeTextAtomic(await platform.join(dir, textFile), d.text);
-  const ref: InputRef = {
-    id,
-    name: d.name,
-    file,
-    textFile,
-    chars: d.text.length,
-    addedAt: new Date().toISOString(),
-  };
-  project.updateProject({ inputs: [...inputs.value, ref] });
-  texts.value = new Map(texts.value).set(id, d.text);
-  selected.value = new Set([...selected.value, id]);
-  draft.value = null;
+  if (savingDraft || !draft.value?.text.trim()) return;
+  savingDraft = true;
+  const d = draft.value;
+  try {
+    const id = newId('in');
+    const dir = await inputsDir();
+    await platform.mkdir(dir);
+    const file = `${id}-${safeFileName(d.name)}`;
+    if (d.bytes) await platform.writeBinary(await platform.join(dir, file), d.bytes);
+    else await platform.writeTextAtomic(await platform.join(dir, file), d.text);
+    const textFile = `${id}.txt`;
+    await platform.writeTextAtomic(await platform.join(dir, textFile), d.text);
+    const ref: InputRef = {
+      id,
+      name: d.name,
+      file,
+      textFile,
+      chars: d.text.length,
+      addedAt: new Date().toISOString(),
+    };
+    project.updateProject({ inputs: [...inputs.value, ref] });
+    texts.value = new Map(texts.value).set(id, d.text);
+    selected.value = new Set([...selected.value, id]);
+    draft.value = null;
+  } finally {
+    savingDraft = false;
+  }
 }
 
 async function remove(r: InputRef) {
