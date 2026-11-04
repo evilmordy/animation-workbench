@@ -8,7 +8,7 @@ import { emptyStoryboard } from '../../shared/project';
 import { parseStoryboard, type Scene, type Storyboard } from '../../shared/schema';
 import { runtimeFlags } from '../../runtime/codeScene';
 import type { Transport } from '../client';
-import { captureWithHarness, isolateScene, type HarnessPage } from './capture';
+import { captureWithHarness, isolateScene, sceneWindow, type HarnessPage } from './capture';
 import { dispatchGenerate } from './engine';
 import {
   diskFrameStore,
@@ -194,6 +194,24 @@ describe('截帧路径与像素', () => {
     expect(crowded.summary).toContain('出界');
     expect(crowded.summary).toContain('超出左边');
     expect(crowded.summary).toContain('字叠');
+    const nested = checkLayout({
+      width: 32,
+      height: 32,
+      boxes: [
+        { id: 'card', role: 'other', x: 1, y: 1, width: 20, height: 12 },
+        { id: 'label', role: 'text', x: 2, y: 2, width: 10, height: 4, text: '标题' },
+      ],
+    });
+    expect(nested.overlaps).toEqual([]);
+    const wrapped = checkLayout({
+      width: 40,
+      height: 20,
+      boxes: [
+        { id: 'block', role: 'text', x: 0, y: 0, width: 30, height: 10, text: '整段' },
+        { id: 'word', role: 'text', x: 2, y: 2, width: 8, height: 4, text: '词' },
+      ],
+    });
+    expect(wrapped.overlaps).toEqual([]);
 
     const edge = solidRaster(8, 8, { r: 0, g: 0, b: 0 });
     paint(edge, 0, 0, 8, 1, { r: 255, g: 255, b: 255 });
@@ -215,6 +233,9 @@ describe('截帧路径与像素', () => {
     expect(leaked.leftoverPixels).toBe(36);
     expect(leaked.summary).toContain('像素差');
     expect(leaked.summary).toContain('不是 opacity');
+    const speck = solidRaster(32, 32, { r: 0, g: 0, b: 0 });
+    paint(speck, 1, 1, 2, 2, { r: 220, g: 20, b: 20 });
+    expect(compareResidual(speck, isolated).suspect).toBe(false);
     expect(compareResidual(sequence, solidRaster(16, 16, { r: 0, g: 0, b: 0 })).summary).toContain(
       '尺寸不同',
     );
@@ -253,6 +274,34 @@ describe('Playwright 预览页协议', () => {
     expect(batch.frames.map((frame) => frame.source)).toEqual(['sequence', 'isolated']);
     expect(batch.frames[0]!.consoleErrors).toEqual(['pageerror: boom']);
     expect(isolateScene(sb, 's_code').scenes).toHaveLength(1);
+
+    const settled = fakeHarness();
+    settled.page.run = async (sb) => ({
+      errors: [],
+      scenes: [{ id: sb.scenes[0]!.id, start: 0, end: 1 }],
+      duration: 4.5,
+    });
+    await captureWithHarness(
+      { storyboard: sb, shots: [{ sceneId: 's_code', at: 'end', isolated: false }] },
+      async () => settled.page,
+    );
+    expect(settled.log.some((line) => line.startsWith('seek:4.49'))).toBe(true);
+    expect(sceneWindow({ scenes: [{ id: 's_code', start: 0, end: 1 }], duration: 4.5 }, 's_code')).toEqual({
+      start: 0,
+      end: 4.5,
+    });
+    expect(
+      sceneWindow(
+        {
+          scenes: [
+            { id: 'a', start: 0, end: 2 },
+            { id: 'b', start: 2, end: 5 },
+          ],
+          duration: 5,
+        },
+        'b',
+      ),
+    ).toEqual({ start: 2, end: 5 });
 
     const broken = fakeHarness();
     broken.page.run = async () => {
@@ -320,7 +369,7 @@ describe('闭环工具', () => {
     const ctx = visionContext({ getStoryboard: () => sb, capture, store });
     const script = scripted([
       { text: '', toolCalls: [call('c1', 'render_frames', '{}')] },
-      { text: '', toolCalls: [call('c2', 'view_image', '{"frame":"frames/s_code-sequence-start.png"}')] },
+      { text: '', toolCalls: [call('c2', 'view_image', '{"frame":"frames/s_code-sequence-end.png"}')] },
       { text: '', toolCalls: [call('c3', 'check_layout', '{}')] },
       { text: '', toolCalls: [call('c4', 'check_residual', '{"sceneId":"s_code"}')] },
       { text: '', toolCalls: [call('c5', 'console_errors', '{}')] },
@@ -343,11 +392,11 @@ describe('闭环工具', () => {
       'check_residual',
       'console_errors',
     ]);
-    expect(requests).toEqual([{ sceneIds: ['s_code'], at: 'start', isolated: true }]);
-    expect(result.calls[0]?.result).toContain('frames/s_code-sequence-start.png');
-    expect(result.calls[0]?.result).toContain('frames/s_code-isolated-start.png');
+    expect(requests).toEqual([{ sceneIds: ['s_code'], at: 'end', isolated: true }]);
+    expect(result.calls[0]?.result).toContain('frames/s_code-sequence-end.png');
+    expect(result.calls[0]?.result).toContain('frames/s_code-isolated-end.png');
     expect(result.calls[0]?.result).toContain(VISION_KEY_NOTE);
-    expect(result.calls[1]?.result).toContain('已把 frames/s_code-sequence-start.png');
+    expect(result.calls[1]?.result).toContain('已把 frames/s_code-sequence-end.png');
     expect(result.calls[1]?.result).not.toMatch(/sk-|api[_-]?key\s*[:=]/i);
     expect(result.calls[2]?.result).toContain('出界');
     expect(result.calls[2]?.result).toContain('字叠');
@@ -355,7 +404,7 @@ describe('闭环工具', () => {
     expect(result.calls[3]?.result).toContain('不是 opacity');
     expect(result.calls[3]?.result).toContain('enter 是 keep');
     expect(result.calls[4]?.result).toContain('scene.add 不在时间线上');
-    expect(store.files.get('frames/s_code-sequence-start.png')?.[0]).toBe(137);
+    expect(store.files.get('frames/s_code-sequence-end.png')?.[0]).toBe(137);
     expect(script.seen[0]?.jsonMode).toBeNull();
     expect(script.seen[0]?.tools?.map((tool) => tool.function.name)).toEqual([
       'render_frames',
@@ -400,7 +449,7 @@ describe('闭环工具', () => {
 
     const named = planCapture(board([dslScene, codeScene]), { sceneIds: ['s_old'], isolated: false });
     expect(named.ok).toBe(true);
-    if (named.ok) expect(named.request.shots).toEqual([{ sceneId: 's_old', at: 'start', isolated: false }]);
+    if (named.ok) expect(named.request.shots).toEqual([{ sceneId: 's_old', at: 'end', isolated: false }]);
   });
 
   it('帧文件写在 .awb/anim/frames，拒绝旁路以外的路径', async () => {

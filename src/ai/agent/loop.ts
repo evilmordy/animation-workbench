@@ -4,14 +4,16 @@ import type { Storyboard } from '../../shared/schema';
 import type { Transport } from '../client';
 import { acceptStoryboard, applyAgentScenes, parseRubric, type PlannedScene } from './apply';
 import { describeAgentStop, type AgentLogEvent } from './log';
-import { isAnimPath, parseAgentFiles, sceneIdFromName } from './parse';
-import { openingMessages, planRequest, scenesRequest } from './prompts';
+import { isAnimPath, parseAgentFiles, sceneIdFromName, unclosedFence } from './parse';
+import { fenceRetry, openingMessages, planRequest, scenesRequest } from './prompts';
 
 export interface AgentBudget {
   /** 最多调用模型几次。计划占一轮，场景接着写。 */
   maxTurns: number;
   /** 累计 prompt + completion。不传则只受 maxTurns 限制。 */
   maxTokens?: number;
+  /** 单次补全上限。null 表示不传 max_tokens。产品入口由 run.ts 放进请求。 */
+  completionTokens?: number | null;
 }
 
 export const DEFAULT_AGENT_BUDGET: AgentBudget = { maxTurns: 8 };
@@ -136,6 +138,7 @@ export async function runAgent(opts: RunAgentOpts): Promise<AgentResult> {
     opts.onPhase?.(phase);
     opts.onLog?.({ type: 'phase', phase, turn: turns + 1 });
     let text = '';
+    let finishReason: string | null = null;
     try {
       const res = await opts.transport(messages, {
         requestId,
@@ -144,6 +147,7 @@ export async function runAgent(opts: RunAgentOpts): Promise<AgentResult> {
         jsonMode: null,
       });
       text = res.text;
+      finishReason = res.finishReason ?? null;
       if (res.usage) {
         usage[0] += res.usage[0];
         usage[1] += res.usage[1];
@@ -166,12 +170,24 @@ export async function runAgent(opts: RunAgentOpts): Promise<AgentResult> {
       ...(maxTokens !== undefined ? { maxTokens } : {}),
     });
     if (opts.signal?.aborted) return finish('cancelled');
+    if (!text.trim()) {
+      const reason = finishReason ?? '无';
+      opts.onLog?.({ type: 'note', message: `模型返回空正文（finish_reason=${reason}），已停止` });
+      return finish('error', `模型返回空正文（finish_reason=${reason}）`);
+    }
+    if (finishReason === 'length') {
+      opts.onLog?.({
+        type: 'note',
+        message: '输出被长度上限截断（finish_reason=length）。只收下已闭合的代码块，不会原样重发。',
+      });
+    }
     messages.push({ role: 'assistant', content: text });
 
     try {
-      const wrote = await absorb(text);
+      const wrote = await absorb(text, finishReason);
       if (wrote === 'cancelled') return finish('cancelled');
       if (wrote === 'stop') return finish('error', '没有打开的分镜');
+      if (wrote === 'stalled') return finish('error', '输出不完整，继续请求会和上一轮一样，已停止');
       if (wrote === 'to-scenes') phase = 'scenes';
     } catch (e) {
       if (opts.signal?.aborted || isCancelled(e)) return finish('cancelled');
@@ -179,20 +195,52 @@ export async function runAgent(opts: RunAgentOpts): Promise<AgentResult> {
     }
   }
 
+  /** 和上一轮用户消息相同时不再发送。截断后原样重发会把轮次烧完。 */
+  function pushUser(content: string): 'continue' | 'stalled' {
+    let prev = '';
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const message = messages[i];
+      if (message?.role === 'user') {
+        prev = message.content;
+        break;
+      }
+    }
+    if (prev === content) {
+      opts.onLog?.({ type: 'note', message: '下一轮请求和上一轮相同，已停止' });
+      return 'stalled';
+    }
+    messages.push({ role: 'user', content });
+    return 'continue';
+  }
+
   /** 消化一轮输出。cancelled：这一轮里被取消，调用方不要再请求模型。to-scenes：计划已落盘。 */
-  async function absorb(text: string): Promise<'continue' | 'cancelled' | 'stop' | 'to-scenes'> {
+  async function absorb(
+    text: string,
+    finishReason: string | null,
+  ): Promise<'continue' | 'cancelled' | 'stop' | 'to-scenes' | 'stalled'> {
     const files = parseAgentFiles(text);
+    const open = unclosedFence(text);
+    const retryOpen = (): 'continue' | 'stalled' => {
+      opts.onLog?.({
+        type: 'note',
+        message: open?.name
+          ? `代码块未闭合（${open.name}），没有当完整文件，已要求重发`
+          : '代码块未闭合，认不出路径，已要求重发',
+      });
+      return pushUser(fenceRetry(opts.intent, open ?? { name: null, content: text }));
+    };
     if (phase === 'plan') {
       const planFile = files.find((f) => f.name === 'plan.md');
       const rubricFile = files.find((f) => f.name === 'rubric.json');
       const sharedFile = files.find((f) => f.name === 'shared.js');
       const parsed = rubricFile ? parseRubric(rubricFile.content) : null;
       if (!planFile?.content.trim() || !rubricFile || !parsed) {
-        messages.push({
-          role: 'user',
-          content: `${planRequest(opts.intent)}\n\n上一轮需要同时给出 anim/plan.md 和带 scenes 的 anim/rubric.json。请只补这些文件，还不要写场景代码。`,
-        });
-        return 'continue';
+        if (open) return retryOpen();
+        const why =
+          finishReason === 'length' ? '上一轮输出被长度上限截断。' : '上一轮没有同时给出这两个文件。';
+        return pushUser(
+          `${planRequest(opts.intent)}\n\n${why}请只补 anim/plan.md 和带 scenes 的 anim/rubric.json，还不要写场景代码。`,
+        );
       }
       plan = planFile.content;
       rubricText = rubricFile.content;
@@ -213,9 +261,8 @@ export async function runAgent(opts: RunAgentOpts): Promise<AgentResult> {
         type: 'note',
         message: sharedFile ? '已写入 plan.md、rubric.json、shared.js' : '已写入 plan.md、rubric.json',
       });
-      messages.push({
-        role: 'user',
-        content: scenesRequest({
+      const asked = pushUser(
+        scenesRequest({
           intent: opts.intent,
           plan,
           rubric: rubricText,
@@ -224,8 +271,8 @@ export async function runAgent(opts: RunAgentOpts): Promise<AgentResult> {
           authored,
           lockedIds: lockedIds(opts.host.getStoryboard()),
         }),
-      });
-      return 'to-scenes';
+      );
+      return asked === 'stalled' ? 'stalled' : 'to-scenes';
     }
 
     const sharedFile = files.find((f) => f.name === 'shared.js');
@@ -267,9 +314,9 @@ export async function runAgent(opts: RunAgentOpts): Promise<AgentResult> {
     }
     if (opts.signal?.aborted) return 'cancelled';
     if (allSatisfied(planned, authored, opts.host.getStoryboard())) return 'continue';
-    messages.push({
-      role: 'user',
-      content: scenesRequest({
+    if (open) return retryOpen();
+    return pushUser(
+      scenesRequest({
         intent: opts.intent,
         plan,
         rubric: rubricText,
@@ -278,7 +325,6 @@ export async function runAgent(opts: RunAgentOpts): Promise<AgentResult> {
         authored,
         lockedIds: lockedIds(opts.host.getStoryboard()),
       }),
-    });
-    return 'continue';
+    );
   }
 }

@@ -4,13 +4,22 @@ export interface AgentBudgetSettings {
   maxTurns: number;
   /** null 表示不设 token 上限。 */
   maxTokens: number | null;
+  /**
+   * 单次补全的 max_tokens。null 表示请求里不传。
+   * DeepSeek 思考和正文共用这个上限；不传时非思考模式只有 8K。
+   */
+  completionTokens: number | null;
 }
 
 /** 与 loop 里的 DEFAULT_AGENT_BUDGET.maxTurns 一致。不在这里改引擎默认值。 */
 export const DEFAULT_AGENT_BUDGET_SETTINGS: AgentBudgetSettings = {
   maxTurns: 8,
   maxTokens: null,
+  completionTokens: 65_536,
 };
+
+/** DeepSeek 文档里的输出上限是 384K。再大会被拒绝。 */
+const MAX_COMPLETION_TOKENS = 393_216;
 
 export type AgentStopStatus = 'done' | 'cancelled' | 'budget' | 'error';
 
@@ -32,6 +41,7 @@ export function normalizeAgentBudget(value: unknown): AgentBudgetSettings {
   const raw = value && typeof value === 'object' ? (value as Partial<AgentBudgetSettings>) : {};
   const turns = Number(raw.maxTurns);
   const tokens = raw.maxTokens == null ? null : Number(raw.maxTokens);
+  const completion = raw.completionTokens;
   return {
     maxTurns: Number.isFinite(turns)
       ? Math.min(32, Math.max(1, Math.round(turns)))
@@ -40,14 +50,28 @@ export function normalizeAgentBudget(value: unknown): AgentBudgetSettings {
       tokens == null || !Number.isFinite(tokens) || tokens <= 0
         ? null
         : Math.min(2_000_000, Math.round(tokens)),
+    completionTokens:
+      completion === undefined
+        ? DEFAULT_AGENT_BUDGET_SETTINGS.completionTokens
+        : completion == null || !Number.isFinite(Number(completion)) || Number(completion) <= 0
+          ? null
+          : Math.min(MAX_COMPLETION_TOKENS, Math.round(Number(completion))),
   };
 }
 
-export function budgetFromSettings(value: AgentBudgetSettings): { maxTurns: number; maxTokens?: number } {
+export function budgetFromSettings(value: AgentBudgetSettings): {
+  maxTurns: number;
+  maxTokens?: number;
+  completionTokens: number | null;
+} {
   const normalized = normalizeAgentBudget(value);
   return normalized.maxTokens == null
-    ? { maxTurns: normalized.maxTurns }
-    : { maxTurns: normalized.maxTurns, maxTokens: normalized.maxTokens };
+    ? { maxTurns: normalized.maxTurns, completionTokens: normalized.completionTokens }
+    : {
+        maxTurns: normalized.maxTurns,
+        maxTokens: normalized.maxTokens,
+        completionTokens: normalized.completionTokens,
+      };
 }
 
 const TOOL_TITLES: Record<string, string> = {
@@ -56,6 +80,7 @@ const TOOL_TITLES: Record<string, string> = {
   check_layout: '版面 check_layout',
   check_residual: '换场残留 check_residual',
   console_errors: '控制台 console_errors',
+  write_scene: '改场景 write_scene',
 };
 
 /** 工具结果按原文展示。data URL 换成占位，避免把整张图铺进日志。 */

@@ -2,7 +2,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { platform } from '../../platform';
 import { mockPlatform as p, resetMockFs, setMockLlm } from '../../platform/mock';
-import type { ChatReq, LlmMessage } from '../../platform/types';
+import { messageText, type ChatReq, type LlmMessage } from '../../platform/types';
 import { emptyStoryboard, newProjectFile } from '../../shared/project';
 import { parseStoryboard, type Scene, type Storyboard } from '../../shared/schema';
 import { runtimeFlags } from '../../runtime/codeScene';
@@ -17,7 +17,7 @@ import { useSettingsStore } from '../../stores/settings';
 import { parseRubric } from './apply';
 import { dispatchGenerate, usesAgenticEngine } from './engine';
 import { runAgent, type AgentHost } from './loop';
-import { parseAgentFiles } from './parse';
+import { parseAgentFiles, unclosedFence } from './parse';
 import { agentSystemPrompt, planRequest } from './prompts';
 import { projectAgentHost } from './run';
 
@@ -152,6 +152,10 @@ describe('解析', () => {
       { name: 'shared.js', content: 'const R = 1.2;' },
     ]);
     expect(parseAgentFiles('{"title":"t","scenes":[]}')[0]?.name).toBe('rubric.json');
+    const cut = '```file:anim/scenes/s_ask.js\nconst cut = 1;\n';
+    expect(parseAgentFiles(cut)).toEqual([]);
+    expect(unclosedFence(cut)).toEqual({ name: 'scenes/s_ask.js', content: 'const cut = 1;' });
+    expect(unclosedFence('```\n不是文件\n')).toEqual({ name: null, content: '不是文件' });
     expect(parseRubric('{"title":"t","scenes":[{"id":"s_a","title":"A","hold":4,"enter":"keep"}]}')).toEqual({
       title: 't',
       scenes: [{ id: 's_a', title: 'A', description: '', hold: 4, enter: 'keep' }],
@@ -234,7 +238,10 @@ describe('agent loop', () => {
     expect(third).toContain(INTENT);
     expect(third).toContain(PLAN_MARK);
     expect(third).toContain(MARKER_ASK);
-    expect(script.calls[1]!.messages.map((m) => m.content).join('\n')).not.toContain(MARKER_ASK);
+    const second = script.calls[1]!.messages.map((m) => messageText(m.content)).join('\n');
+    expect(second).not.toContain(MARKER_ASK);
+    expect(second).toContain('只写 s_ask');
+    expect(third).toContain('只写 s_slice');
   });
 
   it('不覆盖 locked，也不删掉计划外的场景', async () => {
@@ -383,6 +390,80 @@ describe('agent loop', () => {
     project.undo();
     expect(project.storyboard).toEqual(before);
     expect(await platform.exists('/projects/agent/.awb/anim/plan.md')).toBe(true);
+  });
+
+  it('空正文直接停止，截断且没有新文件时不把同一请求打满', async () => {
+    const notes: string[] = [];
+    const onLog = (event: { type: string; message?: string }) => {
+      if (event.type === 'note' && event.message) notes.push(event.message);
+    };
+    const empty = memoryHost(board([]));
+    let emptyCalls = 0;
+    const emptyRun = await runAgent({
+      intent: INTENT,
+      host: empty.host,
+      budget: { maxTurns: 8 },
+      onLog,
+      transport: async () => {
+        emptyCalls += 1;
+        return { text: '  ', finishReason: 'length', usage: [1, 1] };
+      },
+    });
+    expect(emptyRun.status).toBe('error');
+    expect(emptyRun.error).toContain('空正文');
+    expect(emptyCalls).toBe(1);
+    expect(notes.some((line) => line.includes('finish_reason=length'))).toBe(true);
+
+    notes.length = 0;
+    const seen: string[] = [];
+    const stalled = await runAgent({
+      intent: INTENT,
+      host: memoryHost(board([])).host,
+      budget: { maxTurns: 8 },
+      onLog,
+      transport: async (messages) => {
+        seen.push(
+          messages
+            .filter((m) => m.role === 'user')
+            .map((m) => messageText(m.content))
+            .at(-1) ?? '',
+        );
+        return { text: '还在想', finishReason: 'length', usage: [1, 1] };
+      },
+    });
+    expect(stalled.status).toBe('error');
+    expect(stalled.error).toContain('已停止');
+    expect(seen.length).toBe(2);
+    expect(seen[0]).not.toBe(seen[1]);
+    expect(seen.every((text) => text.includes(INTENT))).toBe(true);
+    expect(notes.some((line) => line.includes('finish_reason=length'))).toBe(true);
+  });
+
+  it('未闭合的代码块会交回模型，闭合后才写入', async () => {
+    const notes: string[] = [];
+    const script = scripted([
+      planPack,
+      '```file:anim/scenes/s_ask.js\nconst cut = 1;\n',
+      `\`\`\`file:anim/scenes/s_ask.js\nconst cut = 1;\nconst done = true;\n\`\`\`\n\`\`\`file:anim/scenes/s_slice.js\nconst disk = 1;\n\`\`\``,
+    ]);
+    const mem = memoryHost(board([]));
+    const result = await runAgent({
+      intent: INTENT,
+      transport: script.transport,
+      host: mem.host,
+      onLog: (event) => {
+        if (event.type === 'note') notes.push(event.message);
+      },
+    });
+    expect(result.status).toBe('done');
+    expect(script.calls).toHaveLength(3);
+    const repair = script.calls[2]!.messages.map((m) => messageText(m.content)).join('\n');
+    expect(repair).toContain(INTENT);
+    expect(repair).toContain('没有闭合');
+    expect(repair).toContain('const cut = 1');
+    expect(repair).not.toBe(script.calls[1]!.messages.map((m) => messageText(m.content)).join('\n'));
+    expect(mem.sb!.scenes.find((s) => s.id === 's_ask')!.code).toContain('const done = true');
+    expect(notes.some((line) => line.includes('未闭合'))).toBe(true);
   });
 });
 

@@ -43,16 +43,23 @@ function takeNamed(info: string, body: string): { name: string; content: string 
   return { name, content: body.slice(first.length + 1).replace(/\n$/, '') };
 }
 
+function closedFences(normalized: string): { files: Map<string, string>; end: number } {
+  const files = new Map<string, string>();
+  const fence = /```([^\n`]*)\n([\s\S]*?)```/g;
+  let end = 0;
+  for (let match = fence.exec(normalized); match; match = fence.exec(normalized)) {
+    end = fence.lastIndex;
+    const file = takeNamed(match[1] ?? '', match[2] ?? '');
+    if (file && isAnimPath(file.name)) files.set(file.name, file.content);
+  }
+  return { files, end };
+}
+
 /** 从一轮模型输出里抽出文件。后面的同名块覆盖前面的。没有代码块时，整段 JSON 当作 rubric。 */
 export function parseAgentFiles(text: string): AgentFile[] {
-  const found = new Map<string, string>();
   const normalized = text.replace(/\r\n/g, '\n');
-  const fence = /```([^\n`]*)\n([\s\S]*?)```/g;
-  for (let match = fence.exec(normalized); match; match = fence.exec(normalized)) {
-    const file = takeNamed(match[1] ?? '', match[2] ?? '');
-    if (file && isAnimPath(file.name)) found.set(file.name, file.content);
-  }
-  if (found.size) return [...found].map(([name, content]) => ({ name, content }));
+  const { files } = closedFences(normalized);
+  if (files.size) return [...files].map(([name, content]) => ({ name, content }));
 
   const trimmed = normalized.trim();
   if (trimmed.startsWith('{')) {
@@ -64,4 +71,19 @@ export function parseAgentFiles(text: string): AgentFile[] {
     }
   }
   return [];
+}
+
+/**
+ * 最后一个没有闭合的代码块。能认出路径就带上名字，认不出则 name 为 null。
+ * 闭合的文件仍由 parseAgentFiles 负责，这里不把半截内容当成完整文件。
+ */
+export function unclosedFence(text: string): { name: string | null; content: string } | null {
+  const normalized = text.replace(/\r\n/g, '\n');
+  const { end } = closedFences(normalized);
+  const tail = /```([^\n`]*)\n([\s\S]*)$/.exec(normalized.slice(end));
+  const body = tail?.[2] ?? '';
+  if (!tail || !body.trim()) return null;
+  const file = takeNamed(tail[1] ?? '', body);
+  if (file && isAnimPath(file.name)) return { name: file.name, content: file.content };
+  return { name: null, content: body.replace(/\n$/, '') };
 }

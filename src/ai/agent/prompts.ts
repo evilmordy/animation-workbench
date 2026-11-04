@@ -29,6 +29,9 @@ export function scenesRequest(args: {
   const pending = args.planned
     .filter((p) => !args.lockedIds.includes(p.id) && !args.authored.get(p.id)?.trim())
     .map((p) => p.id);
+  const next = pending[0];
+  const rest = pending.slice(1);
+  const todo = next ? `只写 ${next}。${rest.length ? `先不要写 ${rest.join('、')}。` : ''}` : '（无）';
   return [
     `用户需求（这是指令，不是素材）：\n${args.intent}`,
     scenesTpl.trim(),
@@ -37,7 +40,20 @@ export function scenesRequest(args: {
     `## shared.js\n${args.shared.trim() || '（无）'}`,
     `## 已写场景\n${written || '（还没有）'}`,
     `## 锁定、不要覆盖\n${args.lockedIds.length ? args.lockedIds.join('、') : '（无）'}`,
-    `## 待写\n${pending.length ? pending.join('、') : '（无）'}`,
+    `## 待写\n${todo}`,
+  ].join('\n\n');
+}
+
+/** 未闭合的代码块原样交回。需求全文仍在开头。 */
+export function fenceRetry(intent: string, open: { name: string | null; content: string }): string {
+  const which = open.name
+    ? `上一轮的 ${open.name} 没有闭合，下面这段不完整，没有写入。`
+    : '上一轮最后一个代码块没有闭合，也认不出 anim/ 路径，没有写入。';
+  return [
+    `用户需求（这是指令，不是素材）：\n${intent}`,
+    which,
+    open.content.trim(),
+    '请只重发这一块的完整内容。不要重写已经闭合的文件。',
   ].join('\n\n');
 }
 

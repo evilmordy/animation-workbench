@@ -12,7 +12,7 @@ export function aiSession() {
   const manual = useManualStore();
   const project = useProjectStore();
 
-  const api: Transport = async (messages, { requestId, onDelta, jsonMode, tools, toolChoice }) => {
+  const api: Transport = async (messages, { requestId, onDelta, jsonMode, tools, toolChoice, maxTokens }) => {
     let full = '';
     const req: ChatReq = {
       request_id: requestId,
@@ -21,6 +21,7 @@ export function aiSession() {
       messages,
       temperature: settings.ai.temperature,
     };
+    if (typeof maxTokens === 'number' && maxTokens > 0) req.max_tokens = maxTokens;
     // null 表示这次不传 json_mode（agent 路径）。缺省仍用设置里的 JSON 模式。
     if (jsonMode !== null) req.json_mode = jsonMode ?? settings.jsonMode();
     // 空数组和缺省都不写进请求，旧调用的字段集合不变。
