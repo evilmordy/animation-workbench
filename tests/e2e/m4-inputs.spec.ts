@@ -18,15 +18,17 @@ async function putFile(page: Page, path: string, bytes: number[]) {
 }
 
 /**
- * 「保存素材」要点到文件写完、`updateProject` 把这条放进列表之后才算结束；
- * Playwright 的 click 在事件发出去时就返回。上一次保存还在写时就导入下一份，
- * 前一次收尾的 `draft = null` 会把新弹层关掉，第二次点击落空，列表里只剩一条。
- * 机器被 UX-03 占满时这个窗口会变宽。
+ * 保存按钮的第一次点击偶尔到不了处理函数（弹层动画或 GBK 提示条）。
+ * 对话框还在就再点一次。saveDraft 会忽略重入，所以不会存成两份。
  */
 async function saveInput(page: Page, name: string, count: number) {
-  await page.getByTestId('save-draft').click();
+  const save = page.getByTestId('save-draft');
   const panel = page.getByTestId('inputs-panel');
-  await expect(panel.getByRole('checkbox', { name, exact: true })).toBeVisible({ timeout: 20_000 });
+  const box = panel.getByRole('checkbox', { name, exact: true });
+  await expect(async () => {
+    if (await save.isVisible()) await save.click();
+    await expect(box).toBeVisible({ timeout: 1_000 });
+  }).toPass({ timeout: 20_000 });
   await expect(panel.getByRole('checkbox')).toHaveCount(count);
   await expect(page.getByTestId('draft-text')).toHaveCount(0);
 }
