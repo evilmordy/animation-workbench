@@ -164,17 +164,25 @@ describe('解析', () => {
 });
 
 describe('agent 提示词', () => {
-  it('写明代码契约和 S0，不搬 DSL 上限', () => {
+  it('默认是 GSAP 契约；manim 只在选中时出现', () => {
     const sys = agentSystemPrompt();
-    expect(sys).toContain('async (scene, M, ctx)');
-    expect(sys).toContain('scene.add');
-    expect(sys).toContain('ctx.present()');
+    expect(sys).toContain('async (root, gsap, tl, ctx)');
+    expect(sys).toContain('1920');
     expect(sys).toContain('浅色字');
     expect(sys).toContain('anim/shared.js');
+    expect(sys).toContain('seek');
     expect(sys).not.toContain('只是素材');
     expect(sys).not.toContain('不超过 120');
     expect(sys).not.toContain('maxElements');
+    expect(sys).not.toContain('scene.add');
     expect(planRequest(INTENT)).toContain(INTENT);
+    expect(planRequest(INTENT)).toContain('1920×1080');
+
+    const manim = agentSystemPrompt('manim');
+    expect(manim).toContain('async (scene, M, ctx)');
+    expect(manim).toContain('scene.add');
+    expect(manim).not.toContain('async (root, gsap, tl, ctx)');
+    expect(planRequest(INTENT, 'manim')).not.toContain('1920×1080');
   });
 });
 

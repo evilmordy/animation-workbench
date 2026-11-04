@@ -10,14 +10,19 @@ import {
   NRadioGroup,
   NSelect,
 } from 'naive-ui';
-import { computed } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
+import { readRendererFile, writeRendererFile, type CodeRenderer } from '../../ai/agent/renderer';
 import { PRESETS, resolvePalette, type PaletteToken } from '../../shared/palette';
+import { useSettingsStore } from '../../stores/settings';
 import { COMPLEXITIES, CONTENT_TYPES, type GenerationParams } from '../../shared/project';
 import { PALETTE_TOKENS } from '../../shared/registry';
 import type { Storyboard } from '../../shared/schema';
 import { useProjectStore } from '../../stores/project';
 
 const project = useProjectStore();
+const settings = useSettingsStore();
+const codeScenes = computed(() => settings.runtime.codeScenes);
+const storyboardRenderer = ref<CodeRenderer>('manim');
 const meta = computed(() => project.storyboard!.meta);
 const gen = computed(() => project.project!.generation);
 const palette = computed(() => resolvePalette(meta.value));
@@ -40,6 +45,26 @@ function setPreset(p: Storyboard['meta']['stylePreset']) {
     meta: { ...rest, stylePreset: p, background: PRESETS[p].background },
   });
 }
+
+async function loadStoryboardRenderer() {
+  storyboardRenderer.value = project.dir ? ((await readRendererFile(project.dir)) ?? 'manim') : 'manim';
+}
+
+async function setStoryboardRenderer(v: CodeRenderer) {
+  storyboardRenderer.value = v;
+  if (!project.dir) return;
+  await writeRendererFile(project.dir, v);
+}
+
+onMounted(() => {
+  void loadStoryboardRenderer();
+});
+watch(
+  () => project.dir,
+  () => {
+    void loadStoryboardRenderer();
+  },
+);
 
 const setToken = (t: PaletteToken, v: string) =>
   setMeta(`pal:${t}`, {
@@ -110,6 +135,18 @@ const TOKEN_LABEL = {
       </div>
     </NFormItem>
 
+    <NFormItem v-if="codeScenes" label="分镜渲染">
+      <NRadioGroup
+        :value="storyboardRenderer"
+        data-testid="storyboard-renderer"
+        @update:value="(v: CodeRenderer) => setStoryboardRenderer(v)"
+      >
+        <NRadioButton value="gsap">GSAP</NRadioButton>
+        <NRadioButton value="manim">manim-web</NRadioButton>
+      </NRadioGroup>
+      <span class="hint"> 整片都是代码场时才用 GSAP 播放。没选过、或还夹着分镜场时，仍用 manim-web。 </span>
+    </NFormItem>
+
     <NDivider title-placement="left">AI 生成参数</NDivider>
     <NFormItem label="目标时长（秒）">
       <NInputNumber
@@ -152,5 +189,11 @@ const TOKEN_LABEL = {
 }
 .palette span {
   min-width: 48px;
+}
+.hint {
+  display: block;
+  margin-top: 6px;
+  color: #888;
+  font-size: 12px;
 }
 </style>

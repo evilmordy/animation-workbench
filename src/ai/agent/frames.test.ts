@@ -216,7 +216,7 @@ describe('截帧路径与像素', () => {
     const edge = solidRaster(8, 8, { r: 0, g: 0, b: 0 });
     paint(edge, 0, 0, 8, 1, { r: 255, g: 255, b: 255 });
     const edged = checkLayout({ width: 8, height: 8, boxes: [], raster: edge });
-    expect(edged.summary).toContain('没有 DOM 框');
+    expect(edged.summary).toContain('布局检查不可用');
     expect(edged.summary).toContain('像素启发式');
   });
 

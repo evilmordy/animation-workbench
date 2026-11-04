@@ -23,6 +23,8 @@ export interface CapturedFrame {
   png: Uint8Array;
   raster: Raster;
   boxes: LayoutBox[];
+  /** DOM 框超过上限，文字框已经优先留下。 */
+  boxesTruncated?: boolean;
   consoleErrors: string[];
 }
 
@@ -44,7 +46,7 @@ export interface HarnessPage {
   run(storyboard: Storyboard, enableCodeScenes: boolean): Promise<HarnessRun>;
   seek(t: number): Promise<void>;
   wait(ms: number): Promise<void>;
-  grab(): Promise<{ png: Uint8Array; raster: Raster; boxes: LayoutBox[] }>;
+  grab(): Promise<{ png: Uint8Array; raster: Raster; boxes: LayoutBox[]; boxesTruncated?: boolean }>;
   close(): Promise<void>;
 }
 
@@ -114,6 +116,7 @@ export async function captureWithHarness(
         png: sequence.png,
         raster: sequence.raster,
         boxes: sequence.boxes,
+        ...(sequence.boxesTruncated ? { boxesTruncated: true } : {}),
         consoleErrors: [...errors],
       });
       if (!shot.isolated) continue;
@@ -134,6 +137,7 @@ export async function captureWithHarness(
         png: isolated.png,
         raster: isolated.raster,
         boxes: isolated.boxes,
+        ...(isolated.boxesTruncated ? { boxesTruncated: true } : {}),
         consoleErrors: isolatedErrors,
       });
       await page.run(request.storyboard, true);

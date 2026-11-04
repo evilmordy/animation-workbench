@@ -59,9 +59,9 @@ afterEach(() => {
 });
 
 describe('预算', () => {
-  it('缺省 8 轮、不限 token；坏值收回范围内，默认引擎仍是 legacy', async () => {
+  it('缺省 24 轮、不限 token；坏值收回范围内，默认引擎仍是 legacy', async () => {
     expect(normalizeAgentBudget(undefined)).toEqual({
-      maxTurns: 8,
+      maxTurns: 24,
       maxTokens: null,
       completionTokens: 65536,
     });
@@ -89,7 +89,9 @@ describe('预算', () => {
     const settings = useSettingsStore();
     await settings.load();
     expect(settings.engine).toBe('legacy');
-    expect(settings.agentBudget).toEqual({ maxTurns: 8, maxTokens: null, completionTokens: 65536 });
+    expect(settings.agentBudget).toEqual({ maxTurns: 24, maxTokens: null, completionTokens: 65536 });
+    expect(settings.runtime.codeRenderer).toBe('gsap');
+    expect(settings.engine).toBe('legacy');
     settings.setAgentBudget({ maxTurns: 2, maxTokens: 30 });
     expect(settings.agentBudget).toEqual({ maxTurns: 2, maxTokens: 30, completionTokens: 65536 });
     setActivePinia(createPinia());

@@ -26,10 +26,15 @@ function pdfCmaps(): Plugin {
   };
 }
 
-/** 浏览器开发模式下模拟 Tauri 的 awpreview 协议：同样只提供两个文件、同样的 CSP */
+/** 浏览器开发模式下模拟 Tauri 的 awpreview 协议：白名单文件，同样的 CSP */
 function devPreview(): Plugin {
   const csp = `default-src 'none'; script-src ${DEV_ORIGIN} 'unsafe-eval'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; worker-src blob:; connect-src 'none'; base-uri 'none'; form-action 'none'`;
-  const files: Record<string, string> = { '/index.html': 'text/html', '/runtime.js': 'text/javascript' };
+  const files: Record<string, string> = {
+    '/index.html': 'text/html',
+    '/runtime.js': 'text/javascript',
+    '/gsap.html': 'text/html',
+    '/gsap-runtime.js': 'text/javascript',
+  };
   return {
     name: 'awb-dev-preview',
     configureServer(server) {

@@ -6,6 +6,7 @@ import { acceptStoryboard, applyAgentScenes, parseRubric, type PlannedScene } fr
 import { describeAgentStop, type AgentLogEvent } from './log';
 import { isAnimPath, parseAgentFiles, sceneIdFromName, unclosedFence } from './parse';
 import { fenceRetry, openingMessages, planRequest, scenesRequest } from './prompts';
+import type { CodeRenderer } from './renderer';
 
 export interface AgentBudget {
   /** 最多调用模型几次。计划占一轮，场景接着写。 */
@@ -16,7 +17,11 @@ export interface AgentBudget {
   completionTokens?: number | null;
 }
 
-export const DEFAULT_AGENT_BUDGET: AgentBudget = { maxTurns: 8 };
+/**
+ * 计划占 1 轮，之后一轮一场。8 轮写不完一场以上的片子。
+ * 直接把默认加到 24，不再按场景数另算一笔。面板上限仍是 32。
+ */
+export const DEFAULT_AGENT_BUDGET: AgentBudget = { maxTurns: 24 };
 
 /** 旁路文件写在项目的 .awb/anim/ 下，名字是 plan.md、rubric.json、shared.js、scenes/<id>.js。 */
 export interface AgentHost {
@@ -42,6 +47,8 @@ export interface RunAgentOpts {
   transport: Transport;
   host: AgentHost;
   budget?: Partial<AgentBudget>;
+  /** 这一片用哪套代码契约。缺省 GSAP。 */
+  renderer?: CodeRenderer;
   signal?: AbortSignal;
   onPhase?: (phase: 'plan' | 'scenes') => void;
   onLog?: (event: AgentLogEvent) => void;
@@ -80,6 +87,7 @@ async function writeAnim(host: AgentHost, name: string, text: string) {
  */
 export async function runAgent(opts: RunAgentOpts): Promise<AgentResult> {
   const maxTurns = opts.budget?.maxTurns ?? DEFAULT_AGENT_BUDGET.maxTurns;
+  const renderer: CodeRenderer = opts.renderer === 'manim' ? 'manim' : 'gsap';
   const maxTokens = opts.budget?.maxTokens;
   const usage: [number, number] = [0, 0];
   const sceneIds: string[] = [];
@@ -123,7 +131,7 @@ export async function runAgent(opts: RunAgentOpts): Promise<AgentResult> {
   let rubricTitle = '';
   let planned: PlannedScene[] = [];
   const authored = new Map<string, string>();
-  const messages: ChatMessage[] = openingMessages(opts.intent);
+  const messages: ChatMessage[] = openingMessages(opts.intent, renderer);
   const overBudget = () => turns >= maxTurns || (maxTokens !== undefined && usage[0] + usage[1] >= maxTokens);
 
   while (true) {
@@ -239,7 +247,7 @@ export async function runAgent(opts: RunAgentOpts): Promise<AgentResult> {
         const why =
           finishReason === 'length' ? '上一轮输出被长度上限截断。' : '上一轮没有同时给出这两个文件。';
         return pushUser(
-          `${planRequest(opts.intent)}\n\n${why}请只补 anim/plan.md 和带 scenes 的 anim/rubric.json，还不要写场景代码。`,
+          `${planRequest(opts.intent, renderer)}\n\n${why}请只补 anim/plan.md 和带 scenes 的 anim/rubric.json，还不要写场景代码。`,
         );
       }
       plan = planFile.content;
@@ -270,6 +278,7 @@ export async function runAgent(opts: RunAgentOpts): Promise<AgentResult> {
           planned,
           authored,
           lockedIds: lockedIds(opts.host.getStoryboard()),
+          renderer,
         }),
       );
       return asked === 'stalled' ? 'stalled' : 'to-scenes';
@@ -324,6 +333,7 @@ export async function runAgent(opts: RunAgentOpts): Promise<AgentResult> {
         planned,
         authored,
         lockedIds: lockedIds(opts.host.getStoryboard()),
+        renderer,
       }),
     );
   }
