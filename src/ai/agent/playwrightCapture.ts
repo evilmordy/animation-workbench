@@ -6,7 +6,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { HarnessPage, HarnessRun } from './capture';
 import { LAYOUT_SCAN_LIMIT, pickLayoutBoxes, type RawLayoutElement } from './layoutBoxes';
-import type { Raster } from './pixels';
+import type { Raster } from './check/pixels';
 import type { CodeRenderer } from './renderer';
 
 /** 与 tests/runtime/serve.ts 的预览 CSP 一致。 */
@@ -158,6 +158,7 @@ export async function launchPlaywrightHarness(
                   y: rect.y - origin.y,
                   text,
                   childElementCount: el.childElementCount,
+                  awbRole: el.getAttribute('data-awb-role') || '',
                 });
               }
             }

@@ -22,6 +22,7 @@ describe('DOM 包围盒', () => {
   it('跳过图层、不可见和过小的元素', () => {
     expect(isContentBox(el())).toBe(true);
     expect(isContentBox(el({ id: 'canvas', text: '' }))).toBe(false);
+    expect(isContentBox(el({ awbRole: 'canvas', text: '' }))).toBe(false);
     expect(isContentBox(el({ layer: true }))).toBe(false);
     expect(isContentBox(el({ visibility: 'hidden' }))).toBe(false);
     expect(isContentBox(el({ display: 'none' }))).toBe(false);

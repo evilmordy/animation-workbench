@@ -4,7 +4,7 @@ import type { Storyboard } from '../../shared/schema';
 import type { Transport } from '../client';
 import type { CaptureBatch, CaptureRequest, FrameAt, FrameSource } from './capture';
 import { isFramePath } from './parse';
-import { checkLayout, compareResidual, pngDataUrl, type LayoutBox, type Raster } from './pixels';
+import { checkLayout, compareResidual, pngDataUrl, type LayoutBox, type Raster } from './check/pixels';
 import { runToolLoop, type ToolLoopResult, type ToolOutput, type ToolSpec } from './tools';
 
 export const VISION_KEY_NOTE = '看图模型的 API key 由用户在设置里另行提供，这里不读取、不保存密钥。';

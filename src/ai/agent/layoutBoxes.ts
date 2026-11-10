@@ -1,4 +1,4 @@
-import type { LayoutBox } from './pixels';
+import type { LayoutBox } from './check/pixels';
 
 /** 截帧时最多带回这么多个包围盒。文字框先留下。 */
 export const LAYOUT_BOX_LIMIT = 40;
@@ -18,10 +18,12 @@ export interface RawLayoutElement {
   y: number;
   text: string;
   childElementCount: number;
+  /** `data-awb-role`。满屏 svg/canvas 是 `canvas`。 */
+  awbRole?: string;
 }
 
 export function isContentBox(el: RawLayoutElement): boolean {
-  if (el.id === 'canvas' || el.id === 'stage' || el.layer) return false;
+  if (el.id === 'canvas' || el.id === 'stage' || el.layer || el.awbRole === 'canvas') return false;
   if (el.visibility === 'hidden' || el.display === 'none') return false;
   if (!(el.opacity >= 0.05)) return false;
   if (el.width < 2 || el.height < 2) return false;
@@ -39,6 +41,7 @@ export function toLayoutBox(el: RawLayoutElement, index: number): LayoutBox {
     width: el.width,
     height: el.height,
     ...(text ? { text } : {}),
+    ...(el.awbRole ? { awbRole: el.awbRole } : {}),
   };
 }
 
