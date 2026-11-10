@@ -5,11 +5,13 @@ import { useSettingsStore } from '../../stores/settings';
 
 defineProps<{
   busy: boolean;
+  checking: boolean;
+  checkText: string;
   lines: AgentLogLine[];
   turns: number;
   tokens: number;
 }>();
-defineEmits<{ cancel: [] }>();
+defineEmits<{ cancel: []; check: [] }>();
 
 const settings = useSettingsStore();
 const tokenLabel = (max: number | null) => (max == null ? '不限' : String(max));
@@ -71,6 +73,18 @@ const completionLabel = (max: number | null) => (max == null ? '不传' : String
         · 单次 {{ completionLabel(settings.agentBudget.completionTokens) }}
       </p>
     </div>
+    <div class="check">
+      <NButton
+        size="small"
+        data-testid="agent-check"
+        :loading="checking"
+        :disabled="busy || checking"
+        @click="$emit('check')"
+      >
+        体检
+      </NButton>
+      <pre v-if="checkText" class="result" data-testid="agent-check-result">{{ checkText }}</pre>
+    </div>
     <ol class="log" data-testid="agent-log">
       <li v-for="line in lines" :key="line.id" data-testid="agent-log-entry" :data-kind="line.kind">
         <strong>{{ line.title }}</strong>
@@ -98,6 +112,14 @@ const completionLabel = (max: number | null) => (max == null ? '不传' : String
 }
 .budget p {
   grid-column: 1 / -1;
+}
+.check {
+  margin-top: 8px;
+}
+.result {
+  white-space: pre-wrap;
+  font-size: 12px;
+  margin: 6px 0 0;
 }
 .muted {
   color: rgba(255, 255, 255, 0.65);

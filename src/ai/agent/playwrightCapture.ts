@@ -65,9 +65,7 @@ export async function launchPlaywrightHarness(
   try {
     browser = await chromium.launch({ channel: 'chromium' });
   } catch (e) {
-    throw new Error(
-      `Playwright 启动失败：${e instanceof Error ? e.message : String(e)}。应用内 webview 截帧尚未接入。`,
-    );
+    throw new Error(`Playwright 启动失败：${e instanceof Error ? e.message : String(e)}`);
   }
   try {
     const page = await browser.newPage({ viewport: { width: 960, height: 540 } });
@@ -137,6 +135,7 @@ export async function launchPlaywrightHarness(
             if (!ctx) throw new Error('无法读取截帧像素');
             ctx.drawImage(img, 0, 0);
             const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+            // 字段与 src/runtime/anime/domProbe.ts 的 collectStageElements 一致。
             const stage = document.getElementById('stage');
             const origin = stage?.getBoundingClientRect();
             const elements: RawLayoutElement[] = [];

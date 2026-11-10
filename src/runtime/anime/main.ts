@@ -1,5 +1,6 @@
 import { HostMessage, type PreviewMessage, type SceneSpan } from '../../shared/protocol';
 import { parseStoryboard } from '../../shared/schema';
+import { collectStageElements, spikeRaster } from './domProbe';
 import { playHtmlStoryboard, type HtmlShow } from './player';
 
 const RUNTIME_VERSION = '1.0.0';
@@ -143,8 +144,28 @@ function startPreview(stageEl: HTMLElement) {
       case 'setRate':
         current?.setRate(m.data.rate);
         break;
+      case 'probe':
+        void replyProbe(m.data.id, m.data.raster !== false);
+        break;
     }
   });
+
+  async function replyProbe(id: string, raster: boolean) {
+    await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+    const rect = stageEl.getBoundingClientRect();
+    const elements = collectStageElements(stageEl);
+    const shot = raster ? await spikeRaster(stageEl) : { ms: 0, dataUrl: undefined, error: undefined };
+    post({
+      type: 'probed',
+      id,
+      width: rect.width,
+      height: rect.height,
+      elements,
+      raster: shot.dataUrl ?? null,
+      rasterMs: shot.ms,
+      ...(shot.error ? { rasterError: shot.error } : {}),
+    });
+  }
 
   setInterval(() => {
     if (!current) return;

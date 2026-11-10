@@ -5,7 +5,7 @@ import type { Issue } from '../../src/ai/agent/check/index';
 import { runAgent, type AgentHost } from '../../src/ai/agent/loop';
 import { emptyStoryboard } from '../../src/shared/project';
 import type { Storyboard } from '../../src/shared/schema';
-import { EVAL_MAX_TOKENS, EVAL_MODEL, EVAL_TEMPERATURE, type Topic, type TopicId } from './topics';
+import { EVAL_MODEL, EVAL_TEMPERATURE, type Topic, type TopicId } from './topics';
 
 /** 官方 PASS。数学抽查不在这里。黑屏比缺失不算过。 */
 export function officialPass(row: {
@@ -124,7 +124,8 @@ export interface EvalRow {
   intent: string;
   model: string;
   temperature: number;
-  maxTokens: number;
+  /** null：请求体不传 max_tokens，和产品 agent 循环一致。 */
+  maxTokens: null;
   status: string;
   scenes: number;
   turns: number;
@@ -209,7 +210,7 @@ export async function evaluateTopic(opts: {
     transport: opts.transport,
     host,
     renderer: 'anime',
-    budget: { maxTurns: opts.maxTurns ?? 24, completionTokens: EVAL_MAX_TOKENS },
+    budget: { maxTurns: opts.maxTurns ?? 24 },
   });
   const elapsedMs = Date.now() - started;
   const planned = parseRubric(files.get('rubric.json') ?? '');
@@ -254,7 +255,7 @@ export async function evaluateTopic(opts: {
     intent: opts.topic.intent,
     model: EVAL_MODEL,
     temperature: EVAL_TEMPERATURE,
-    maxTokens: EVAL_MAX_TOKENS,
+    maxTokens: null,
     status: result.status,
     scenes: sb.scenes.length,
     turns: result.turns,
@@ -274,17 +275,15 @@ export async function evaluateTopic(opts: {
   };
 }
 
-/** DeepSeek 请求体。不含密钥，也不打开 json_object。 */
+/** DeepSeek 请求体。不含密钥，不传 max_tokens，也不打开 json_object。 */
 export function deepseekRequestBody(messages: { role: string; content: string }[]): {
   model: string;
   messages: { role: string; content: string }[];
   temperature: number;
-  max_tokens: number;
 } {
   return {
     model: EVAL_MODEL,
     messages,
     temperature: EVAL_TEMPERATURE,
-    max_tokens: EVAL_MAX_TOKENS,
   };
 }

@@ -26,6 +26,11 @@ export interface CapturedFrame {
   /** DOM 框超过上限，文字框已经优先留下。 */
   boxesTruncated?: boolean;
   consoleErrors: string[];
+  /** false：没有可用像素。png 是空的，raster 不能拿去比残留。 */
+  pixels?: boolean;
+  stageWidth?: number;
+  stageHeight?: number;
+  rasterError?: string;
 }
 
 export interface CaptureBatch {

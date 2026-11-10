@@ -29,4 +29,3 @@ export type Topic = (typeof TOPICS)[number];
 
 export const EVAL_MODEL = 'deepseek-chat';
 export const EVAL_TEMPERATURE = 0.3;
-export const EVAL_MAX_TOKENS = 65536;

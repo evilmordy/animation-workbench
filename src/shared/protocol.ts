@@ -7,6 +7,15 @@ export const HostMessage = z.discriminatedUnion('type', [
   z.object({ type: z.literal('pause') }),
   z.object({ type: z.literal('seek'), t: z.number() }),
   z.object({ type: z.literal('setRate'), rate: z.number().positive() }),
+  /**
+   * 应用内体检。要布局框；`raster: false` 只量 DOM，不跑 foreignObject。
+   * 原有 load/play/pause/seek/setRate 的语义不变。
+   */
+  z.object({
+    type: z.literal('probe'),
+    id: z.string().min(1).max(64),
+    raster: z.boolean().optional(),
+  }),
 ]);
 
 export const SceneSpan = z.object({ id: z.string(), start: z.number(), end: z.number() });
@@ -34,6 +43,16 @@ export const PreviewMessage = z.discriminatedUnion('type', [
   }),
   z.object({ type: z.literal('log'), level: z.string(), message: z.string() }),
   z.object({ type: z.literal('heartbeat') }),
+  z.object({
+    type: z.literal('probed'),
+    id: z.string(),
+    width: z.number(),
+    height: z.number(),
+    elements: z.array(z.unknown()),
+    raster: z.string().nullable(),
+    rasterMs: z.number(),
+    rasterError: z.string().optional(),
+  }),
 ]);
 
 export type HostMessage = z.infer<typeof HostMessage>;
