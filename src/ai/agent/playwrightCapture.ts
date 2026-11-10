@@ -6,7 +6,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { HarnessPage, HarnessRun } from './capture';
 import { LAYOUT_SCAN_LIMIT, pickLayoutBoxes, type RawLayoutElement } from './layoutBoxes';
-import type { Raster } from './pixels';
+import type { Raster } from './check/pixels';
 import type { CodeRenderer } from './renderer';
 
 /** 与 tests/runtime/serve.ts 的预览 CSP 一致。 */
@@ -140,12 +140,26 @@ export async function launchPlaywrightHarness(
             const stage = document.getElementById('stage');
             const origin = stage?.getBoundingClientRect();
             const elements: RawLayoutElement[] = [];
+            const svgClipOf = (el: Element) => {
+              const svg = (el as SVGElement).ownerSVGElement;
+              if (!svg || !origin) return undefined;
+              const overflow = getComputedStyle(svg);
+              if (overflow.overflowX === 'visible' && overflow.overflowY === 'visible') return undefined;
+              const view = svg.getBoundingClientRect();
+              return {
+                x: view.x - origin.x,
+                y: view.y - origin.y,
+                width: view.width,
+                height: view.height,
+              };
+            };
             if (stage && origin) {
               for (const el of stage.querySelectorAll('*')) {
                 if (elements.length >= scanLimit) break;
                 const cs = getComputedStyle(el);
                 const rect = el.getBoundingClientRect();
                 const text = (el.textContent ?? '').trim().slice(0, 80);
+                const svgClip = svgClipOf(el);
                 elements.push({
                   id: el.id,
                   layer: el.id === 'canvas' || el.classList.contains('awb-layer'),
@@ -158,6 +172,8 @@ export async function launchPlaywrightHarness(
                   y: rect.y - origin.y,
                   text,
                   childElementCount: el.childElementCount,
+                  awbRole: el.getAttribute('data-awb-role') || '',
+                  ...(svgClip ? { svgClip } : {}),
                 });
               }
             }

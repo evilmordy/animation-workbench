@@ -21,11 +21,27 @@ export interface LayoutBox {
   width: number;
   height: number;
   text?: string;
+  /** `data-awb-role`。`canvas` 是满屏 svg/canvas，不出界。 */
+  awbRole?: string;
+}
+
+/** 出界只算超出舞台四边这么多像素。贴边的网格线不算。 */
+export const OVERFLOW_MARGIN = 48;
+
+export interface LayoutHit {
+  kind: 'overflow' | 'overlap';
+  role: 'text' | 'other';
+  id: string;
+  otherId?: string;
+  text?: string;
+  bbox?: [number, number, number, number];
+  ratio?: number;
 }
 
 export interface LayoutReport {
   outOfBounds: string[];
   overlaps: string[];
+  hits: LayoutHit[];
   summary: string;
 }
 
@@ -190,7 +206,7 @@ export function sampleBackground(raster: Raster): Rgb {
   return { r: 0, g: 0, b: 0 };
 }
 
-/** 画框最外一圈里，和背景不像的像素占比。没有 DOM 框时用来怀疑出界。 */
+/** 画框最外一圈里，和背景不像的像素占比。满屏网格会贴边，体检不拿它算出界。 */
 export function edgeContentRatio(
   raster: Raster,
   background = sampleBackground(raster),
@@ -208,6 +224,34 @@ export function edgeContentRatio(
     }
   }
   return border ? hit / border : 0;
+}
+
+/** 色差按通道最大差。尺寸不同时无法比较。 */
+export function diffPixels(a: Raster, b: Raster, tolerance: number): { count: number; ratio: number } | null {
+  if (a.width !== b.width || a.height !== b.height || !a.width || !a.height) return null;
+  let count = 0;
+  const total = a.width * a.height;
+  for (let i = 0; i < total; i++) {
+    const left = pixel(a, i);
+    const right = pixel(b, i);
+    if (
+      Math.abs(left.r - right.r) > tolerance ||
+      Math.abs(left.g - right.g) > tolerance ||
+      Math.abs(left.b - right.b) > tolerance
+    ) {
+      count += 1;
+    }
+  }
+  return { count, ratio: count / total };
+}
+
+/** 和背景不一样的像素占比。 */
+export function contentRatio(raster: Raster, background = sampleBackground(raster), tolerance = 18): number {
+  const total = raster.width * raster.height;
+  if (!total) return 0;
+  let hit = 0;
+  for (let i = 0; i < total; i++) if (!near(pixel(raster, i), background, tolerance)) hit += 1;
+  return hit / total;
 }
 
 function boxLabel(box: LayoutBox): string {
@@ -242,26 +286,37 @@ export function checkLayout(input: {
   width: number;
   height: number;
   boxes: LayoutBox[];
+  /** 截帧仍可传入。出界不再看边缘像素，满屏网格会把四边涂满。 */
   raster?: Raster;
   truncated?: boolean;
 }): LayoutReport {
-  const eps = 0.5;
   const outOfBounds: string[] = [];
   const overlaps: string[] = [];
+  const hits: LayoutHit[] = [];
   for (const box of input.boxes) {
+    if (box.awbRole === 'canvas') continue;
     const edges = [
-      box.x < -eps ? '左' : '',
-      box.y < -eps ? '上' : '',
-      box.x + box.width > input.width + eps ? '右' : '',
-      box.y + box.height > input.height + eps ? '下' : '',
+      box.x < -OVERFLOW_MARGIN ? '左' : '',
+      box.y < -OVERFLOW_MARGIN ? '上' : '',
+      box.x + box.width > input.width + OVERFLOW_MARGIN ? '右' : '',
+      box.y + box.height > input.height + OVERFLOW_MARGIN ? '下' : '',
     ].filter(Boolean);
-    if (edges.length) outOfBounds.push(`出界 ${boxLabel(box)}：超出${edges.join('、')}边`);
+    if (!edges.length) continue;
+    outOfBounds.push(`出界 ${boxLabel(box)}：超出${edges.join('、')}边`);
+    hits.push({
+      kind: 'overflow',
+      role: box.role,
+      id: box.id,
+      ...(box.text ? { text: box.text } : {}),
+      bbox: [box.x, box.y, box.width, box.height],
+    });
   }
   for (let i = 0; i < input.boxes.length; i++) {
     for (let j = i + 1; j < input.boxes.length; j++) {
       const a = input.boxes[i];
       const b = input.boxes[j];
       if (!a || !b || a.role !== 'text' || b.role !== 'text') continue;
+      if (a.awbRole === 'canvas' || b.awbRole === 'canvas') continue;
       if (boxInside(a, b) || boxInside(b, a)) continue;
       const area = overlapArea(a, b);
       const minArea = Math.min(
@@ -270,8 +325,18 @@ export function checkLayout(input: {
       );
       if (minArea <= 0) continue;
       const ratio = area / minArea;
-      if (ratio >= 0.15)
-        overlaps.push(`字叠 ${boxLabel(a)} 与 ${boxLabel(b)}：重叠 ${Math.round(ratio * 100)}%`);
+      if (ratio < 0.15) continue;
+      overlaps.push(`字叠 ${boxLabel(a)} 与 ${boxLabel(b)}：重叠 ${Math.round(ratio * 100)}%`);
+      const label = [a.text?.trim() || a.id, b.text?.trim() || b.id].sort().join(' / ');
+      hits.push({
+        kind: 'overlap',
+        role: 'text',
+        id: a.id,
+        otherId: b.id,
+        text: label,
+        ratio,
+        bbox: [a.x, a.y, a.width, a.height],
+      });
     }
   }
   const lines = [...outOfBounds, ...overlaps];
@@ -279,12 +344,8 @@ export function checkLayout(input: {
     lines.push('布局检查不可用：这一帧没有 DOM 包围盒。canvas 场景画在画布上，出界和字叠无法按元素判断。');
   }
   if (input.truncated) lines.push('DOM 框超过 40 个，只检查了前 40 个，文字框优先。');
-  if (input.raster) {
-    const ratio = edgeContentRatio(input.raster);
-    if (ratio > 0.08) lines.push(`像素启发式：画框边缘有 ${Math.round(ratio * 100)}% 非背景像素，可能出界`);
-  }
   const summary = lines.length ? lines.join('\n') : '没有发现出界或字叠。';
-  return { outOfBounds, overlaps, summary };
+  return { outOfBounds, overlaps, hits, summary };
 }
 
 /**

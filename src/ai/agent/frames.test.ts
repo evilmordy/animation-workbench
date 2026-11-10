@@ -23,7 +23,7 @@ import {
 } from './frames';
 import { runAgent } from './loop';
 import { isAnimPath, isFramePath, parseAgentFiles } from './parse';
-import { checkLayout, compareResidual, encodePng, solidRaster, type Raster, type Rgb } from './pixels';
+import { checkLayout, compareResidual, encodePng, solidRaster, type Raster, type Rgb } from './check/pixels';
 import { launchPlaywrightHarness } from './playwrightCapture';
 import { useSettingsStore } from '../../stores/settings';
 
@@ -175,7 +175,7 @@ describe('截帧路径与像素', () => {
     expect(parseAgentFiles('```file:anim/frames/s_code-sequence-start.png\nabc\n```')).toEqual([]);
   });
 
-  it('出界、字叠和边缘像素都能写成摘要', () => {
+  it('超出 48px 才算出界，字叠写成摘要', () => {
     const clean = checkLayout({
       width: 32,
       height: 32,
@@ -183,11 +183,18 @@ describe('截帧路径与像素', () => {
     });
     expect(clean.summary).toBe('没有发现出界或字叠。');
 
+    const nearEdge = checkLayout({
+      width: 32,
+      height: 32,
+      boxes: [{ id: 'grid', role: 'other', x: -10, y: 0, width: 40, height: 2 }],
+    });
+    expect(nearEdge.outOfBounds).toEqual([]);
+
     const crowded = checkLayout({
       width: 32,
       height: 32,
       boxes: [
-        { id: 'title', role: 'text', x: -10, y: 4, width: 20, height: 8, text: '标题' },
+        { id: 'title', role: 'text', x: -60, y: 4, width: 80, height: 8, text: '标题' },
         { id: 'body', role: 'text', x: -4, y: 6, width: 20, height: 10, text: '说明' },
       ],
     });
@@ -217,7 +224,13 @@ describe('截帧路径与像素', () => {
     paint(edge, 0, 0, 8, 1, { r: 255, g: 255, b: 255 });
     const edged = checkLayout({ width: 8, height: 8, boxes: [], raster: edge });
     expect(edged.summary).toContain('布局检查不可用');
-    expect(edged.summary).toContain('像素启发式');
+    expect(edged.summary).not.toContain('像素');
+    const canvas = checkLayout({
+      width: 32,
+      height: 32,
+      boxes: [{ id: 'grid', role: 'other', awbRole: 'canvas', x: -80, y: -80, width: 200, height: 200 }],
+    });
+    expect(canvas.outOfBounds).toEqual([]);
   });
 
   it('整片比单场多出的色块算残留，像素相同则不算', () => {
@@ -329,7 +342,7 @@ describe('闭环工具', () => {
     paint(sequence, 8, 8, 6, 6, { r: 220, g: 20, b: 20 });
     const isolated = solidRaster(32, 32, { r: 0, g: 0, b: 0 });
     const boxes = [
-      { id: 'title', role: 'text' as const, x: -10, y: 4, width: 20, height: 8, text: '标题' },
+      { id: 'title', role: 'text' as const, x: -60, y: 4, width: 80, height: 8, text: '标题' },
       { id: 'body', role: 'text' as const, x: -4, y: 6, width: 20, height: 10, text: '说明' },
     ];
     const requests: { sceneIds: string[]; at: string | number; isolated: boolean }[] = [];

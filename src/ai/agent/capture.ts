@@ -1,5 +1,5 @@
 import type { Storyboard } from '../../shared/schema';
-import type { LayoutBox, Raster } from './pixels';
+import type { LayoutBox, Raster } from './check/pixels';
 
 export type FrameAt = 'start' | 'mid' | 'end' | number;
 export type FrameSource = 'sequence' | 'isolated';
