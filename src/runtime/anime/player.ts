@@ -1,6 +1,7 @@
 import { animate, createTimeline, stagger, utils, type Timeline } from 'animejs';
 import { resolveColor, resolvePalette } from '../../shared/palette';
 import type { Scene, Storyboard } from '../../shared/schema';
+import { AWB_BINDS, wrapSceneCode } from './awb';
 
 /** 舞台坐标系。预览页按容器缩放，时间线仍按这组像素写。 */
 export const STAGE_WIDTH = 1920;
@@ -56,7 +57,14 @@ function compile(code: string): SceneFn {
   const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor as new (
     ...args: string[]
   ) => SceneFn;
-  return new AsyncFunction('root', 'anime', 'tl', 'ctx', code);
+  // helper 在块外。场景里再写 const W 只会遮蔽。注入源码会包一层 tl.add，和 tw 共用 _seen。
+  return new AsyncFunction('root', 'anime', 'tl', 'ctx', wrapSceneCode(code));
+}
+
+function bindsOf(root: HTMLElement): Array<() => void> {
+  const value = (root as HTMLElement & Record<string, unknown>)[AWB_BINDS];
+  if (!Array.isArray(value)) return [];
+  return value.filter((item) => typeof item === 'function') as Array<() => void>;
 }
 
 function layer(sceneId: string): HTMLDivElement {
@@ -75,6 +83,7 @@ interface Span {
   endMs: number;
   last: boolean;
   root?: HTMLElement;
+  binds: Array<() => void>;
 }
 
 /**
@@ -139,7 +148,13 @@ export async function playHtmlStoryboard(
       });
       const dur = Math.max(100, holdMs);
       master.add({ duration: dur }, cursor);
-      spans.push({ id: scene.id, startMs: cursor, endMs: cursor + dur, last: i === list.length - 1 });
+      spans.push({
+        id: scene.id,
+        startMs: cursor,
+        endMs: cursor + dur,
+        last: i === list.length - 1,
+        binds: [],
+      });
       cursor += dur;
       continue;
     }
@@ -159,15 +174,18 @@ export async function playHtmlStoryboard(
       width: STAGE_WIDTH,
       height: STAGE_HEIGHT,
     };
+    // 场代码会换掉 tl.add。hold 和最短时长仍走原来的 add，避免被场景里的包装改掉。
+    const addTail = tl.add.bind(tl);
     try {
       await compile(source)(root, animeApi, tl, ctx);
     } catch (e) {
       errors.push({ sceneId: scene.id, message: errText(e) });
     }
-    if (holdMs > 0) tl.add({ duration: holdMs });
+    const binds = bindsOf(root);
+    if (holdMs > 0) addTail({ duration: holdMs });
     let dur = tl.duration;
     if (dur < 100) {
-      tl.add({ duration: 100 - dur });
+      addTail({ duration: 100 - dur });
       dur = tl.duration;
     }
     master.sync(tl, cursor);
@@ -177,22 +195,25 @@ export async function playHtmlStoryboard(
       endMs: cursor + dur,
       last: i === list.length - 1,
       root,
+      binds,
     });
     cursor += dur;
   }
 
-  const applyVisibility = (ms: number) => {
+  const applyFrame = (ms: number) => {
     for (const span of spans) {
       if (!span.root) continue;
       const on = ms >= span.startMs && (span.last ? ms <= span.endMs : ms < span.endMs);
       span.root.style.visibility = on ? 'visible' : 'hidden';
+      if (!on) continue;
+      for (const draw of span.binds) draw();
     }
   };
 
   master.pause();
   master.seek(0, true);
-  applyVisibility(0);
-  master.onUpdate = () => applyVisibility(master.currentTime);
+  applyFrame(0);
+  master.onUpdate = () => applyFrame(master.currentTime);
 
   const show: HtmlShow = {
     duration: cursor / 1000,
@@ -201,7 +222,7 @@ export async function playHtmlStoryboard(
     seek(t) {
       const ms = Math.max(0, Math.min(t * 1000, cursor));
       master.seek(ms, true);
-      applyVisibility(ms);
+      applyFrame(ms);
     },
     play() {
       master.play();
