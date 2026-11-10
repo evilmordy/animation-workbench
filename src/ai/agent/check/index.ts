@@ -241,7 +241,7 @@ function inspect(scene: SceneCheckInput, drafts: Draft[], seen: Set<string>) {
     push(drafts, seen, {
       sceneId: scene.id,
       kind: 'SEEK_SAME_MS',
-      severity: 'major',
+      severity: 'blocker',
       label: 'same',
       tMs: probe.tMs,
       evidence: { t_ms: probe.tMs, ratio: diff.ratio },

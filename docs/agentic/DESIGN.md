@@ -542,7 +542,7 @@ stateDiagram-v2
   "additionalProperties": false } }
 ```
 
-规则：机器问题（布局、残留、seek、控制台、空屏、时长）**只能由下一次检查自动关闭**，模型不能 `close`；只能 `waive`，豁免会记录并显示给用户，且以下类型不能豁免：`COMPILE`、`RUNTIME`、`DURATION`、`BLANK`（黑屏比 > 0.1）、`SEEK_BACKWARD`。可豁免的典型：满屏网格线被算「非文字出界」（S8d D/线代）。
+规则：机器问题（布局、残留、seek、控制台、空屏、时长）**只能由下一次检查自动关闭**，模型不能 `close`；只能 `waive`，豁免会记录并显示给用户，且以下类型不能豁免：`COMPILE`、`RUNTIME`、`DURATION`、`BLANK`（黑屏比 > 0.1）、`SEEK_BACKWARD`、`SEEK_SAME_MS`。同一毫秒 seek 两次画面不一致是分镜精确编辑的底线，也不能靠豁免算过。可豁免的典型：满屏网格线被算「非文字出界」（S8d D/线代）。
 
 **11. `finish`** — 申请结束。
 
@@ -587,7 +587,7 @@ interface Issue {
 }
 ```
 
-严重度默认：`COMPILE/RUNTIME/DURATION/BLANK/SEEK_BACKWARD/RESIDUAL` = blocker；`LAYOUT_OVERLAP/LAYOUT_OVERFLOW_TEXT/CONSOLE/USER` = major；`LAYOUT_OVERFLOW_OTHER/CONTENT` = minor（可由模型 add 时升为 major）。
+严重度默认：`COMPILE/RUNTIME/DURATION/BLANK/SEEK_BACKWARD/SEEK_SAME_MS/RESIDUAL` = blocker；`LAYOUT_OVERLAP/LAYOUT_OVERFLOW_TEXT/CONSOLE/USER` = major；`LAYOUT_OVERFLOW_OTHER/CONTENT` = minor（可由模型 add 时升为 major）。`SEEK_SAME_MS` 是分镜精确编辑的底线：同一毫秒 seek 两次画面不一致就不能算过，S8c/S8d 的官方 PASS 也要求这一项通过。
 
 #### 每轮上下文怎么拼（工作记忆投影，替代无限增长的历史，解审计 #8）
 
@@ -662,7 +662,7 @@ async function runAgent(task: AgentTask, deps: AgentDeps): Promise<AgentResult> 
 
 #### 写后自动体检（S8d A1 的关键杠杆，变成工具的一部分）
 
-`write_scene` / `edit_range` / `write_shared` 成功写入后，系统**同步**跑：运行门 → 本场 `check`（布局、残留、后向 seek、空屏、控制台）→ 截 3 帧 → 更新问题表 → 把 `{gate, issues 增减, 帧}` 作为这次工具结果返回。模型不需要「想起来」去调检查。
+`write_scene` / `edit_range` / `write_shared` 成功写入后，系统**同步**跑：运行门 → 本场 `check`（布局、残留、同毫秒 seek、后向 seek、空屏、控制台）→ 截 3 帧 → 更新问题表 → 把 `{gate, issues 增减, 帧}` 作为这次工具结果返回。模型不需要「想起来」去调检查。
 
 进入 FILM 阶段时系统自动跑一次 `check({ film: true })`。
 
@@ -692,7 +692,7 @@ async function runAgent(task: AgentTask, deps: AgentDeps): Promise<AgentResult> 
 | `budget` | 预算用完 | 失败，同上 |
 | `error` / `cancelled` | — | — |
 
-**硬门槛，任何情况下都不算完成**：任一场编译失败或运行抛错；任一场或整片 `DURATION_INVALID`（包括 `loop: true` 撑出来的超长时长）；黑屏比 > 0.1；有场 `code` 为空；整片后向 seek 有 blocker。这些存在时最好也只能是 `stuck`/`budget`。
+**硬门槛，任何情况下都不算完成**：任一场编译失败或运行抛错；任一场或整片 `DURATION_INVALID`（包括 `loop: true` 撑出来的超长时长）；黑屏比 > 0.1；有场 `code` 为空；整片后向 seek 有 blocker；同一毫秒 seek 两次画面不一致（`SEEK_SAME_MS`）。这些存在时最好也只能是 `stuck`/`budget`。
 
 ---
 
@@ -756,9 +756,9 @@ interface EditRequest {
 
 | 项 | 标准（与 S8c/S8d 初筛一致） |
 |---|---|
-| 布局 | 文本框重叠面积 ≥ 15% 才报，跳过祖先/后代对；出界按四边 48px；`data-awb-role="canvas"` 的满屏 svg/canvas 不算出界 |
+| 布局 | 文本框重叠面积 ≥ 15% 才报，跳过祖先/后代对；出界按四边 48px；`data-awb-role="canvas"` 的满屏 svg/canvas 不算出界。根 svg 为 `overflow: hidden` 时，子元素先裁到 svg 视口再量：`getBoundingClientRect` 含视口外的网格线，不裁就会被当成出界 |
 | 换场残留 | 整片 seek 到场末 vs 单场渲染，差异 > 画面 0.5% |
-| 同毫秒 seek | 同一时刻 seek 两次，色差 > 2 的像素必须为 0 |
+| 同毫秒 seek | 同一时刻 seek 两次，色差 > 2 的像素必须为 0；否则 `SEEK_SAME_MS` blocker，不可豁免 |
 | 后向 / 乱序 seek | 每场 7 个时刻（5%–95%），顺序 vs 倒序 vs 乱序；色差 > 24 且超过画面 0.1% 算失配 |
 | 空屏 | 黑屏比 ≤ 0.1；单帧非背景像素 < 0.3% 记「画面几乎是空的」 |
 | 控制台 | 运行期 `console.error` 和未捕获异常 |

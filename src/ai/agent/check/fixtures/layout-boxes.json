@@ -1,0 +1,3256 @@
+[
+  {
+    "name": "hand/zugeng",
+    "scenes": [
+      {
+        "id": "z_intro",
+        "tMs": 10199,
+        "width": 960,
+        "height": 540,
+        "truncated": false,
+        "boxes": [
+          {
+            "id": "text-0",
+            "role": "text",
+            "x": 24,
+            "y": 125,
+            "width": 912,
+            "height": 49.4,
+            "text": "祖暅原理与球的体积"
+          },
+          {
+            "id": "text-1",
+            "role": "text",
+            "x": 24,
+            "y": 200,
+            "width": 912,
+            "height": 35.1,
+            "text": "「幂势既同，则积不容异」"
+          },
+          {
+            "id": "text-2",
+            "role": "text",
+            "x": 24,
+            "y": 245,
+            "width": 912,
+            "height": 20.8,
+            "text": "祖暅（南北朝，祖冲之之子）"
+          },
+          {
+            "id": "text-3",
+            "role": "text",
+            "x": 24,
+            "y": 295,
+            "width": 912,
+            "height": 23.4,
+            "text": "幂：截面积　　势：高度"
+          },
+          {
+            "id": "text-4",
+            "role": "text",
+            "x": 24,
+            "y": 340,
+            "width": 912,
+            "height": 23.4,
+            "text": "两个立体夹在同一对平行平面之间，"
+          },
+          {
+            "id": "text-6",
+            "role": "text",
+            "x": 426,
+            "y": 369,
+            "width": 108,
+            "height": 20.5,
+            "text": "截面积都相等"
+          },
+          {
+            "id": "text-7",
+            "role": "text",
+            "x": 624,
+            "y": 369,
+            "width": 72,
+            "height": 20.5,
+            "text": "体积相等"
+          },
+          {
+            "id": "other-5",
+            "role": "other",
+            "x": 24,
+            "y": 368,
+            "width": 912,
+            "height": 23.4,
+            "text": "若任一等高平面截得的截面积都相等，则它们的体积相"
+          }
+        ]
+      },
+      {
+        "id": "z_coins",
+        "tMs": 25899,
+        "width": 960,
+        "height": 540,
+        "truncated": false,
+        "boxes": [
+          {
+            "id": "text-0",
+            "role": "text",
+            "x": 24,
+            "y": 26,
+            "width": 912,
+            "height": 32.5,
+            "text": "直观理解：一摞硬币推歪了，体积不变"
+          },
+          {
+            "id": "text-26",
+            "role": "text",
+            "x": 380,
+            "y": 266,
+            "width": 180,
+            "height": 19.5,
+            "text": "任一高度：两边截面一样大"
+          },
+          {
+            "id": "text-27",
+            "role": "text",
+            "x": 60,
+            "y": 476,
+            "width": 840,
+            "height": 22.1,
+            "text": "每一薄层体积都一样，叠起来总体积也一样。这就是祖"
+          },
+          { "id": "other-1", "role": "other", "x": 150, "y": 385, "width": 190, "height": 13 },
+          { "id": "other-2", "role": "other", "x": 620, "y": 385, "width": 190, "height": 13 },
+          { "id": "other-3", "role": "other", "x": 150, "y": 370, "width": 190, "height": 13 },
+          { "id": "other-4", "role": "other", "x": 638.5, "y": 370, "width": 190, "height": 13 },
+          { "id": "other-5", "role": "other", "x": 150, "y": 355, "width": 190, "height": 13 },
+          { "id": "other-6", "role": "other", "x": 655.7, "y": 355, "width": 190, "height": 13 },
+          { "id": "other-7", "role": "other", "x": 150, "y": 340, "width": 190, "height": 13 },
+          { "id": "other-8", "role": "other", "x": 670.3, "y": 340, "width": 190, "height": 13 },
+          { "id": "other-9", "role": "other", "x": 150, "y": 325, "width": 190, "height": 13 },
+          { "id": "other-10", "role": "other", "x": 681.2, "y": 325, "width": 190, "height": 13 },
+          { "id": "other-11", "role": "other", "x": 150, "y": 310, "width": 190, "height": 13 },
+          { "id": "other-12", "role": "other", "x": 687.7, "y": 310, "width": 190, "height": 13 },
+          { "id": "other-13", "role": "other", "x": 150, "y": 295, "width": 190, "height": 13 },
+          { "id": "other-14", "role": "other", "x": 689.1, "y": 295, "width": 190, "height": 13 },
+          { "id": "other-15", "role": "other", "x": 150, "y": 280, "width": 190, "height": 13 },
+          { "id": "other-16", "role": "other", "x": 685.2, "y": 280, "width": 190, "height": 13 },
+          { "id": "other-17", "role": "other", "x": 150, "y": 265, "width": 190, "height": 13 },
+          { "id": "other-18", "role": "other", "x": 676.2, "y": 265, "width": 190, "height": 13 },
+          { "id": "other-19", "role": "other", "x": 150, "y": 250, "width": 190, "height": 13 },
+          { "id": "other-20", "role": "other", "x": 662.6, "y": 250, "width": 190, "height": 13 },
+          { "id": "other-21", "role": "other", "x": 150, "y": 235, "width": 190, "height": 13 },
+          { "id": "other-22", "role": "other", "x": 645.1, "y": 235, "width": 190, "height": 13 },
+          { "id": "other-23", "role": "other", "x": 150, "y": 220, "width": 190, "height": 13 },
+          { "id": "other-24", "role": "other", "x": 624.7, "y": 220, "width": 190, "height": 13 },
+          { "id": "other-25", "role": "other", "x": 100, "y": 300, "width": 760, "height": 2 }
+        ]
+      },
+      {
+        "id": "z_setup",
+        "tMs": 42519,
+        "width": 960,
+        "height": 540,
+        "truncated": false,
+        "boxes": [
+          {
+            "id": "text-0",
+            "role": "text",
+            "x": 24,
+            "y": 26,
+            "width": 912,
+            "height": 32.5,
+            "text": "构造：半球 和「圆柱挖去圆锥」"
+          },
+          {
+            "id": "text-8",
+            "role": "text",
+            "x": 149,
+            "y": 404.5,
+            "width": 102,
+            "height": 19,
+            "text": "半球：半径 R"
+          },
+          {
+            "id": "text-9",
+            "role": "text",
+            "x": 406.5,
+            "y": 404.5,
+            "width": 187,
+            "height": 19,
+            "text": "圆柱：底面半径 R，高 R"
+          },
+          {
+            "id": "text-10",
+            "role": "text",
+            "x": 249.6,
+            "y": 339.5,
+            "width": 10.8,
+            "height": 16.5,
+            "text": "R"
+          },
+          {
+            "id": "text-11",
+            "role": "text",
+            "x": 637.6,
+            "y": 296.5,
+            "width": 10.8,
+            "height": 16.5,
+            "text": "R"
+          },
+          {
+            "id": "text-12",
+            "role": "text",
+            "x": 372.5,
+            "y": 430.5,
+            "width": 255,
+            "height": 16.5,
+            "text": "挖去：倒立圆锥（底面半径 R，高 R）"
+          },
+          {
+            "id": "text-13",
+            "role": "text",
+            "x": 720,
+            "y": 190,
+            "width": 80,
+            "height": 20.8,
+            "text": "两者都夹在"
+          },
+          {
+            "id": "text-14",
+            "role": "text",
+            "x": 720,
+            "y": 215,
+            "width": 141.3,
+            "height": 20.8,
+            "text": "桌面 与 高 R 的平面"
+          },
+          {
+            "id": "text-15",
+            "role": "text",
+            "x": 720,
+            "y": 240,
+            "width": 112,
+            "height": 20.8,
+            "text": "之间，高度相同"
+          },
+          {
+            "id": "text-16",
+            "role": "text",
+            "x": 720,
+            "y": 290,
+            "width": 80,
+            "height": 20.8,
+            "text": "只差验证："
+          },
+          {
+            "id": "text-17",
+            "role": "text",
+            "x": 720,
+            "y": 315,
+            "width": 128,
+            "height": 20.8,
+            "text": "每个高度的截面积"
+          },
+          {
+            "id": "text-18",
+            "role": "text",
+            "x": 720,
+            "y": 340,
+            "width": 64,
+            "height": 20.8,
+            "text": "是否相等"
+          },
+          {
+            "id": "text-19",
+            "role": "text",
+            "x": 60,
+            "y": 476,
+            "width": 840,
+            "height": 22.1,
+            "text": "要用祖暅原理，只需检查每个高度的「幂」，也就是截"
+          },
+          {
+            "id": "other-1",
+            "role": "other",
+            "x": 0,
+            "y": 0,
+            "width": 960,
+            "height": 540,
+            "text": "半球：半径 R圆柱：底面半径 R，高 RRR挖去"
+          },
+          { "id": "other-2", "role": "other", "x": 90, "y": 329.2, "width": 220, "height": 61.6 },
+          { "id": "other-3", "role": "other", "x": 90, "y": 250, "width": 220, "height": 110 },
+          { "id": "other-4", "role": "other", "x": 390, "y": 250, "width": 220, "height": 110 },
+          { "id": "other-5", "role": "other", "x": 390, "y": 329.2, "width": 220, "height": 61.6 },
+          { "id": "other-6", "role": "other", "x": 390, "y": 250, "width": 220, "height": 110 },
+          { "id": "other-7", "role": "other", "x": 390, "y": 219.2, "width": 220, "height": 61.6 }
+        ]
+      },
+      {
+        "id": "z_section",
+        "tMs": 69519,
+        "width": 960,
+        "height": 540,
+        "truncated": false,
+        "boxes": [
+          {
+            "id": "text-0",
+            "role": "text",
+            "x": 24,
+            "y": 26,
+            "width": 912,
+            "height": 32.5,
+            "text": "在高度 h 处截一刀"
+          },
+          { "id": "text-12", "role": "text", "x": 70.8, "y": 324, "width": 8.3, "height": 16.5, "text": "h" },
+          {
+            "id": "text-16",
+            "role": "text",
+            "x": 778,
+            "y": 236,
+            "width": 84,
+            "height": 15.5,
+            "text": "半球截面：圆"
+          },
+          {
+            "id": "text-17",
+            "role": "text",
+            "x": 771,
+            "y": 396,
+            "width": 98,
+            "height": 15.5,
+            "text": "圆柱截面：圆环"
+          },
+          {
+            "id": "text-18",
+            "role": "text",
+            "x": 790,
+            "y": 86.5,
+            "width": 60,
+            "height": 16.5,
+            "text": "俯视截面"
+          },
+          {
+            "id": "text-19",
+            "role": "text",
+            "x": 765,
+            "y": 430,
+            "width": 22.7,
+            "height": 20.8,
+            "text": "h ="
+          },
+          {
+            "id": "text-20",
+            "role": "text",
+            "x": 800,
+            "y": 430,
+            "width": 31.1,
+            "height": 20.8,
+            "text": "0.50"
+          },
+          { "id": "text-21", "role": "text", "x": 840, "y": 430, "width": 11.6, "height": 20.8, "text": "R" },
+          {
+            "id": "text-22",
+            "role": "text",
+            "x": 115,
+            "y": 400,
+            "width": 83.1,
+            "height": 22.1,
+            "text": "r² = R² − h²"
+          },
+          {
+            "id": "text-23",
+            "role": "text",
+            "x": 115,
+            "y": 426,
+            "width": 154.3,
+            "height": 22.1,
+            "text": "S₁ = πr² = π(R² − h²)"
+          },
+          {
+            "id": "text-24",
+            "role": "text",
+            "x": 410,
+            "y": 400,
+            "width": 149.7,
+            "height": 22.1,
+            "text": "锥在高 h 处半径 = h"
+          },
+          {
+            "id": "text-25",
+            "role": "text",
+            "x": 410,
+            "y": 426,
+            "width": 112.3,
+            "height": 22.1,
+            "text": "S₂ = πR² − πh²"
+          },
+          {
+            "id": "text-26",
+            "role": "text",
+            "x": 135,
+            "y": 80,
+            "width": 500,
+            "height": 22.5,
+            "text": "S₁ = S₂ = π(R² − h²)"
+          },
+          {
+            "id": "text-27",
+            "role": "text",
+            "x": 60,
+            "y": 476,
+            "width": 840,
+            "height": 22.1,
+            "text": "从桌面到顶面，任意高度都成立，所以两个立体体积相"
+          },
+          {
+            "id": "other-1",
+            "role": "other",
+            "x": 0,
+            "y": 0,
+            "width": 960,
+            "height": 540,
+            "text": "h半球截面：圆圆柱截面：圆环俯视截面"
+          },
+          { "id": "other-2", "role": "other", "x": 90, "y": 329.2, "width": 220, "height": 61.6 },
+          { "id": "other-3", "role": "other", "x": 90, "y": 250, "width": 220, "height": 110 },
+          { "id": "other-4", "role": "other", "x": 390, "y": 250, "width": 220, "height": 110 },
+          { "id": "other-5", "role": "other", "x": 390, "y": 329.2, "width": 220, "height": 61.6 },
+          { "id": "other-6", "role": "other", "x": 390, "y": 250, "width": 220, "height": 110 },
+          { "id": "other-7", "role": "other", "x": 390, "y": 219.2, "width": 220, "height": 61.6 },
+          { "id": "other-8", "role": "other", "x": 104.7, "y": 278.3, "width": 190.5, "height": 53.3 },
+          { "id": "other-9", "role": "other", "x": 390, "y": 274.2, "width": 220, "height": 61.6 },
+          { "id": "other-10", "role": "other", "x": 445, "y": 289.6, "width": 110, "height": 30.8 },
+          { "id": "other-11", "role": "other", "x": 200, "y": 305, "width": 95.3, "height": 55 },
+          { "id": "other-13", "role": "other", "x": 767.6, "y": 112.6, "width": 104.8, "height": 104.8 },
+          { "id": "other-14", "role": "other", "x": 759.5, "y": 264.5, "width": 121, "height": 121 },
+          { "id": "other-15", "role": "other", "x": 789.8, "y": 294.8, "width": 60.5, "height": 60.5 }
+        ]
+      },
+      {
+        "id": "z_volume",
+        "tMs": 83279,
+        "width": 960,
+        "height": 540,
+        "truncated": false,
+        "boxes": [
+          {
+            "id": "text-0",
+            "role": "text",
+            "x": 24,
+            "y": 26,
+            "width": 912,
+            "height": 32.5,
+            "text": "算出体积"
+          },
+          {
+            "id": "text-2",
+            "role": "text",
+            "x": 127.3,
+            "y": 125.2,
+            "width": 43.3,
+            "height": 24,
+            "text": "半球"
+          },
+          {
+            "id": "text-3",
+            "role": "text",
+            "x": 217.6,
+            "y": 125.2,
+            "width": 43.3,
+            "height": 24,
+            "text": "圆柱"
+          },
+          {
+            "id": "text-4",
+            "role": "text",
+            "x": 308,
+            "y": 125.2,
+            "width": 43.3,
+            "height": 24,
+            "text": "圆锥"
+          },
+          {
+            "id": "text-5",
+            "role": "text",
+            "x": 110,
+            "y": 161,
+            "width": 228,
+            "height": 30,
+            "text": "= πR²·R − ⅓·πR²·R"
+          },
+          {
+            "id": "text-6",
+            "role": "text",
+            "x": 110,
+            "y": 207,
+            "width": 96.7,
+            "height": 30,
+            "text": "= ⅔ πR³"
+          },
+          {
+            "id": "text-10",
+            "role": "text",
+            "x": 540,
+            "y": 120,
+            "width": 357,
+            "height": 19.5,
+            "text": "圆柱 = πR³ = 3 份"
+          },
+          {
+            "id": "text-12",
+            "role": "text",
+            "x": 540,
+            "y": 272,
+            "width": 115,
+            "height": 18,
+            "text": "圆锥 1 份"
+          },
+          {
+            "id": "text-15",
+            "role": "text",
+            "x": 661,
+            "y": 272,
+            "width": 236,
+            "height": 18,
+            "text": "半球 2 份"
+          },
+          { "id": "text-17", "role": "text", "x": 130, "y": 311.5, "width": 25, "height": 28, "text": "球" },
+          {
+            "id": "text-18",
+            "role": "text",
+            "x": 362.3,
+            "y": 300.5,
+            "width": 104.7,
+            "height": 33.5,
+            "text": "4/3 πR³"
+          },
+          {
+            "id": "text-20",
+            "role": "text",
+            "x": 60,
+            "y": 476,
+            "width": 840,
+            "height": 22.1,
+            "text": "两个半球拼成整球：V = 4/3 πR³"
+          },
+          {
+            "id": "other-1",
+            "role": "other",
+            "x": 110,
+            "y": 115,
+            "width": 241.3,
+            "height": 35.7,
+            "text": "V半球 = V圆柱 − V圆锥"
+          },
+          { "id": "other-7", "role": "other", "x": 540, "y": 150, "width": 115, "height": 50 },
+          { "id": "other-8", "role": "other", "x": 661, "y": 150, "width": 115, "height": 50 },
+          { "id": "other-9", "role": "other", "x": 782, "y": 150, "width": 115, "height": 50 },
+          { "id": "other-11", "role": "other", "x": 540, "y": 215, "width": 115, "height": 50 },
+          { "id": "other-13", "role": "other", "x": 661, "y": 215, "width": 115, "height": 50 },
+          { "id": "other-14", "role": "other", "x": 782, "y": 215, "width": 115, "height": 50 },
+          {
+            "id": "other-16",
+            "role": "other",
+            "x": 110,
+            "y": 300,
+            "width": 356.9,
+            "height": 40.5,
+            "text": "V球 = 2 × ⅔ πR³ = 4/3 πR³"
+          },
+          { "id": "other-19", "role": "other", "x": 98, "y": 293, "width": 410, "height": 55 }
+        ]
+      },
+      {
+        "id": "z_end",
+        "tMs": 96379,
+        "width": 960,
+        "height": 540,
+        "truncated": false,
+        "boxes": [
+          { "id": "text-0", "role": "text", "x": 24, "y": 75, "width": 912, "height": 36.4, "text": "小结" },
+          {
+            "id": "text-1",
+            "role": "text",
+            "x": 24,
+            "y": 150,
+            "width": 912,
+            "height": 26,
+            "text": "祖暅原理：等高处截面积总相等 ⇒ 体积相等"
+          },
+          {
+            "id": "text-2",
+            "role": "text",
+            "x": 24,
+            "y": 200,
+            "width": 912,
+            "height": 26,
+            "text": "构造：半球 ↔ 圆柱挖去倒立圆锥"
+          },
+          {
+            "id": "text-3",
+            "role": "text",
+            "x": 24,
+            "y": 250,
+            "width": 912,
+            "height": 26,
+            "text": "截面：π(R² − h²) = πR² − πh"
+          },
+          {
+            "id": "text-5",
+            "role": "text",
+            "x": 326.3,
+            "y": 309.5,
+            "width": 33.3,
+            "height": 18.5,
+            "text": "半球"
+          },
+          {
+            "id": "text-6",
+            "role": "text",
+            "x": 599.4,
+            "y": 309.5,
+            "width": 16.7,
+            "height": 18.5,
+            "text": "球"
+          },
+          {
+            "id": "text-7",
+            "role": "text",
+            "x": 24,
+            "y": 380,
+            "width": 912,
+            "height": 20.8,
+            "text": "西方称为卡瓦列里原理（1635），祖暅早了一千多"
+          },
+          {
+            "id": "other-4",
+            "role": "other",
+            "x": 24,
+            "y": 300,
+            "width": 912,
+            "height": 29.7,
+            "text": "体积：V半球 = πR³ − ⅓πR³ = ⅔π"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "hand/linalg",
+    "scenes": [
+      {
+        "id": "l_intro",
+        "tMs": 10499,
+        "width": 960,
+        "height": 540,
+        "truncated": false,
+        "boxes": [
+          {
+            "id": "text-0",
+            "role": "text",
+            "x": 24,
+            "y": 130,
+            "width": 912,
+            "height": 52,
+            "text": "矩阵 = 线性变换"
+          },
+          {
+            "id": "text-1",
+            "role": "text",
+            "x": 24,
+            "y": 195,
+            "width": 912,
+            "height": 24.7,
+            "text": "一个 2×2 矩阵，告诉我们整个平面怎样被拉伸、"
+          },
+          {
+            "id": "text-2",
+            "role": "text",
+            "x": 24,
+            "y": 260,
+            "width": 912,
+            "height": 23.4,
+            "text": "线性变换：原点不动，网格线变换后仍然平行且等距"
+          },
+          { "id": "text-4", "role": "text", "x": 470.5, "y": 301, "width": 5, "height": 20.5, "text": "î" },
+          { "id": "text-5", "role": "text", "x": 503.5, "y": 301, "width": 4, "height": 20.5, "text": "ĵ" },
+          {
+            "id": "text-6",
+            "role": "text",
+            "x": 24,
+            "y": 340,
+            "width": 912,
+            "height": 23.4,
+            "text": "面积被放大了多少倍？——这就是行列式"
+          },
+          {
+            "id": "other-3",
+            "role": "other",
+            "x": 24,
+            "y": 300,
+            "width": 912,
+            "height": 23.4,
+            "text": "关键问题：基向量 î 和 ĵ 被送到了哪里？"
+          }
+        ]
+      },
+      {
+        "id": "l_basis",
+        "tMs": 35399,
+        "width": 960,
+        "height": 540,
+        "truncated": true,
+        "boxes": [
+          {
+            "id": "text-0",
+            "role": "text",
+            "x": 24,
+            "y": 26,
+            "width": 912,
+            "height": 32.5,
+            "text": "看基向量去哪了，就知道整个变换"
+          },
+          {
+            "id": "text-22",
+            "role": "text",
+            "x": 408.2,
+            "y": 203.1,
+            "width": 7.5,
+            "height": 21,
+            "text": "î"
+          },
+          { "id": "text-26", "role": "text", "x": 240.6, "y": 200.2, "width": 7, "height": 21, "text": "ĵ" },
+          { "id": "text-35", "role": "text", "x": 296.7, "y": 97, "width": 10.6, "height": 21, "text": "v" },
+          {
+            "id": "text-36",
+            "role": "text",
+            "x": 600,
+            "y": 90,
+            "width": 79.5,
+            "height": 26,
+            "text": "v = (1, 2)"
+          },
+          { "id": "text-38", "role": "text", "x": 635, "y": 122, "width": 5.6, "height": 22, "text": "î" },
+          { "id": "text-39", "role": "text", "x": 681.2, "y": 122, "width": 4.4, "height": 22, "text": "ĵ" },
+          { "id": "text-41", "role": "text", "x": 600, "y": 172, "width": 5.6, "height": 22, "text": "î" },
+          { "id": "text-43", "role": "text", "x": 600, "y": 202, "width": 4.4, "height": 22, "text": "ĵ" },
+          { "id": "text-44", "role": "text", "x": 600, "y": 257, "width": 45, "height": 27.5, "text": "A =" },
+          { "id": "text-47", "role": "text", "x": 651, "y": 244, "width": 55, "height": 32, "text": "2" },
+          { "id": "text-48", "role": "text", "x": 706, "y": 244, "width": 55, "height": 32, "text": "-1" },
+          { "id": "text-49", "role": "text", "x": 651, "y": 276, "width": 55, "height": 32, "text": "1" },
+          { "id": "text-50", "role": "text", "x": 706, "y": 276, "width": 55, "height": 32, "text": "1" },
+          {
+            "id": "text-51",
+            "role": "text",
+            "x": 600,
+            "y": 325,
+            "width": 248.4,
+            "height": 19.5,
+            "text": "第 1 列 = î 的落点，第 2 列 = ĵ "
+          },
+          {
+            "id": "text-52",
+            "role": "text",
+            "x": 600,
+            "y": 365,
+            "width": 198.7,
+            "height": 24.7,
+            "text": "Av = 1·(2, 1) + 2·(−1, 1"
+          },
+          {
+            "id": "text-53",
+            "role": "text",
+            "x": 600,
+            "y": 395,
+            "width": 81.8,
+            "height": 24.7,
+            "text": "= (0, 3)"
+          },
+          {
+            "id": "text-54",
+            "role": "text",
+            "x": 60,
+            "y": 476,
+            "width": 840,
+            "height": 22.1,
+            "text": "所以 Av = (0, 3)。矩阵乘法就是在做这"
+          },
+          { "id": "other-1", "role": "other", "x": 0, "y": 0, "width": 960, "height": 540, "text": "îĵv" },
+          { "id": "other-2", "role": "other", "x": 35, "y": 70, "width": 520, "height": 380 },
+          { "id": "other-3", "role": "other", "x": 35, "y": 70, "width": 520, "height": 380 },
+          { "id": "other-4", "role": "other", "x": 35, "y": 325, "width": 125, "height": 125 },
+          { "id": "other-5", "role": "other", "x": 35, "y": 175, "width": 275, "height": 275 },
+          { "id": "other-6", "role": "other", "x": 230, "y": 70, "width": 325, "height": 325 },
+          { "id": "other-7", "role": "other", "x": 380, "y": 70, "width": 175, "height": 175 },
+          { "id": "other-8", "role": "other", "x": 530, "y": 70, "width": 25, "height": 25 },
+          { "id": "other-9", "role": "other", "x": 550, "y": 447.5, "width": 5, "height": 2.5 },
+          { "id": "other-10", "role": "other", "x": 400, "y": 372.5, "width": 155, "height": 77.5 },
+          { "id": "other-11", "role": "other", "x": 250, "y": 297.5, "width": 305, "height": 152.5 },
+          { "id": "other-12", "role": "other", "x": 100, "y": 222.5, "width": 455, "height": 227.5 },
+          { "id": "other-13", "role": "other", "x": 35, "y": 72.5, "width": 520, "height": 260 },
+          { "id": "other-14", "role": "other", "x": 35, "y": 70, "width": 375, "height": 187.5 },
+          { "id": "other-15", "role": "other", "x": 35, "y": 70, "width": 225, "height": 112.5 },
+          { "id": "other-16", "role": "other", "x": 35, "y": 70, "width": 75, "height": 37.5 },
+          { "id": "other-17", "role": "other", "x": 80, "y": 70, "width": 380, "height": 380 },
+          { "id": "other-18", "role": "other", "x": 35, "y": 147.5, "width": 520, "height": 260 },
+          {
+            "id": "other-19",
+            "role": "other",
+            "x": 290,
+            "y": 203.1,
+            "width": 125.7,
+            "height": 76.9,
+            "text": "î"
+          },
+          { "id": "other-20", "role": "other", "x": 290, "y": 235.4, "width": 89.3, "height": 44.6 },
+          { "id": "other-21", "role": "other", "x": 375.9, "y": 230, "width": 14.1, "height": 10.7 },
+          {
+            "id": "other-23",
+            "role": "other",
+            "x": 240,
+            "y": 200.2,
+            "width": 50,
+            "height": 79.8,
+            "text": "ĵ"
+          }
+        ]
+      },
+      {
+        "id": "l_det",
+        "tMs": 66299,
+        "width": 960,
+        "height": 540,
+        "truncated": true,
+        "boxes": [
+          {
+            "id": "text-0",
+            "role": "text",
+            "x": 24,
+            "y": 26,
+            "width": 912,
+            "height": 32.5,
+            "text": "行列式：面积缩放的倍数"
+          },
+          {
+            "id": "text-29",
+            "role": "text",
+            "x": 240.6,
+            "y": 200.2,
+            "width": 7.5,
+            "height": 21,
+            "text": "î"
+          },
+          { "id": "text-33", "role": "text", "x": 356.1, "y": 200.2, "width": 7, "height": 21, "text": "ĵ" },
+          {
+            "id": "text-34",
+            "role": "text",
+            "x": 275.6,
+            "y": 220.5,
+            "width": 28.9,
+            "height": 19,
+            "text": "|−2|"
+          },
+          { "id": "text-35", "role": "text", "x": 600, "y": 102, "width": 45, "height": 27.5, "text": "A =" },
+          { "id": "text-38", "role": "text", "x": 651, "y": 89, "width": 55, "height": 32, "text": "-1" },
+          { "id": "text-39", "role": "text", "x": 706, "y": 89, "width": 55, "height": 32, "text": "1" },
+          { "id": "text-40", "role": "text", "x": 651, "y": 121, "width": 55, "height": 32, "text": "1" },
+          { "id": "text-41", "role": "text", "x": 706, "y": 121, "width": 55, "height": 32, "text": "1" },
+          {
+            "id": "text-42",
+            "role": "text",
+            "x": 600,
+            "y": 200,
+            "width": 201.8,
+            "height": 26,
+            "text": "det = (−1)·1 − 1·1 = −2"
+          },
+          {
+            "id": "text-43",
+            "role": "text",
+            "x": 600,
+            "y": 235,
+            "width": 156.5,
+            "height": 23.4,
+            "text": "面积 × 2，并且翻面"
+          },
+          {
+            "id": "text-44",
+            "role": "text",
+            "x": 600,
+            "y": 265,
+            "width": 165.3,
+            "height": 20.8,
+            "text": "（î 转到了 ĵ 的另一侧）"
+          },
+          {
+            "id": "text-45",
+            "role": "text",
+            "x": 60,
+            "y": 476,
+            "width": 840,
+            "height": 22.1,
+            "text": "若 det < 0：面积放大 |det| 倍，同"
+          },
+          {
+            "id": "other-1",
+            "role": "other",
+            "x": 0,
+            "y": 0,
+            "width": 960,
+            "height": 540,
+            "text": "îĵ13|−2|"
+          },
+          { "id": "other-2", "role": "other", "x": 35, "y": 70, "width": 520, "height": 380 },
+          { "id": "other-3", "role": "other", "x": 35, "y": 70, "width": 520, "height": 380 },
+          { "id": "other-4", "role": "other", "x": 520, "y": 415, "width": 35, "height": 35 },
+          { "id": "other-5", "role": "other", "x": 420, "y": 315, "width": 135, "height": 135 },
+          { "id": "other-6", "role": "other", "x": 320, "y": 215, "width": 235, "height": 235 },
+          { "id": "other-7", "role": "other", "x": 220, "y": 115, "width": 335, "height": 335 },
+          { "id": "other-8", "role": "other", "x": 35, "y": 70, "width": 365, "height": 365 },
+          { "id": "other-9", "role": "other", "x": 35, "y": 70, "width": 265, "height": 265 },
+          { "id": "other-10", "role": "other", "x": 35, "y": 70, "width": 165, "height": 165 },
+          { "id": "other-11", "role": "other", "x": 35, "y": 70, "width": 65, "height": 65 },
+          { "id": "other-12", "role": "other", "x": 35, "y": 425, "width": 25, "height": 25 },
+          { "id": "other-13", "role": "other", "x": 35, "y": 325, "width": 125, "height": 125 },
+          { "id": "other-14", "role": "other", "x": 35, "y": 225, "width": 225, "height": 225 },
+          { "id": "other-15", "role": "other", "x": 35, "y": 125, "width": 325, "height": 325 },
+          { "id": "other-16", "role": "other", "x": 180, "y": 70, "width": 375, "height": 375 },
+          { "id": "other-17", "role": "other", "x": 280, "y": 70, "width": 275, "height": 275 },
+          { "id": "other-18", "role": "other", "x": 380, "y": 70, "width": 175, "height": 175 },
+          { "id": "other-19", "role": "other", "x": 480, "y": 70, "width": 75, "height": 75 },
+          { "id": "other-20", "role": "other", "x": 120, "y": 70, "width": 380, "height": 380 },
+          { "id": "other-21", "role": "other", "x": 80, "y": 70, "width": 380, "height": 380 },
+          { "id": "other-22", "role": "other", "x": 240, "y": 155, "width": 225, "height": 225 },
+          { "id": "other-23", "role": "other", "x": 240, "y": 155, "width": 225, "height": 225 },
+          { "id": "other-24", "role": "other", "x": 240, "y": 180, "width": 100, "height": 100 },
+          { "id": "other-25", "role": "other", "x": 365, "y": 255, "width": 100, "height": 100 },
+          {
+            "id": "other-26",
+            "role": "other",
+            "x": 240,
+            "y": 200.2,
+            "width": 50,
+            "height": 79.8,
+            "text": "î"
+          },
+          { "id": "other-27", "role": "other", "x": 248.5, "y": 238.5, "width": 41.5, "height": 41.5 }
+        ]
+      },
+      {
+        "id": "l_end",
+        "tMs": 78299,
+        "width": 960,
+        "height": 540,
+        "truncated": false,
+        "boxes": [
+          { "id": "text-0", "role": "text", "x": 24, "y": 80, "width": 912, "height": 36.4, "text": "小结" },
+          {
+            "id": "text-2",
+            "role": "text",
+            "x": 497.2,
+            "y": 156.5,
+            "width": 5.8,
+            "height": 23.5,
+            "text": "î"
+          },
+          { "id": "text-3", "role": "text", "x": 524, "y": 156.5, "width": 4.7, "height": 23.5, "text": "ĵ" },
+          {
+            "id": "text-4",
+            "role": "text",
+            "x": 24,
+            "y": 205,
+            "width": 912,
+            "height": 27.3,
+            "text": "Av = x·(新 î) + y·(新 ĵ)：组"
+          },
+          {
+            "id": "text-5",
+            "role": "text",
+            "x": 24,
+            "y": 255,
+            "width": 912,
+            "height": 27.3,
+            "text": "det A = ad − bc = 面积缩放倍数"
+          },
+          {
+            "id": "text-6",
+            "role": "text",
+            "x": 24,
+            "y": 305,
+            "width": 912,
+            "height": 27.3,
+            "text": "det = 0 压扁成线；det < 0 翻转方"
+          },
+          {
+            "id": "other-1",
+            "role": "other",
+            "x": 24,
+            "y": 155,
+            "width": 912,
+            "height": 27.3,
+            "text": "矩阵的两列 = 基向量 î、ĵ 变换后的位置"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "hand/mergesort",
+    "scenes": [
+      {
+        "id": "m_intro",
+        "tMs": 7059,
+        "width": 960,
+        "height": 540,
+        "truncated": false,
+        "boxes": [
+          {
+            "id": "text-1",
+            "role": "text",
+            "x": 506.2,
+            "y": 170,
+            "width": 135.8,
+            "height": 29,
+            "text": "Merge Sort"
+          },
+          {
+            "id": "text-2",
+            "role": "text",
+            "x": 24,
+            "y": 225,
+            "width": 912,
+            "height": 28.6,
+            "text": "分治：先拆成小问题，再把有序的小段合起来"
+          },
+          {
+            "id": "text-3",
+            "role": "text",
+            "x": 24,
+            "y": 280,
+            "width": 912,
+            "height": 24.7,
+            "text": "8 个乱序的数，怎样只用 O(n log n) "
+          },
+          { "id": "text-4", "role": "text", "x": 187.5, "y": 349, "width": 60, "height": 42, "text": "38" },
+          { "id": "text-5", "role": "text", "x": 262.5, "y": 349, "width": 60, "height": 42, "text": "27" },
+          { "id": "text-6", "role": "text", "x": 337.5, "y": 349, "width": 60, "height": 42, "text": "43" },
+          { "id": "text-7", "role": "text", "x": 412.5, "y": 349, "width": 60, "height": 42, "text": "3" },
+          { "id": "text-8", "role": "text", "x": 487.5, "y": 349, "width": 60, "height": 42, "text": "9" },
+          { "id": "text-9", "role": "text", "x": 562.5, "y": 349, "width": 60, "height": 42, "text": "82" },
+          { "id": "text-10", "role": "text", "x": 637.5, "y": 349, "width": 60, "height": 42, "text": "10" },
+          { "id": "text-11", "role": "text", "x": 712.5, "y": 349, "width": 60, "height": 42, "text": "55" },
+          {
+            "id": "other-0",
+            "role": "other",
+            "x": 24,
+            "y": 150,
+            "width": 912,
+            "height": 57.2,
+            "text": "归并排序 Merge Sort"
+          }
+        ]
+      },
+      {
+        "id": "m_sort",
+        "tMs": 59649,
+        "width": 960,
+        "height": 540,
+        "truncated": false,
+        "boxes": [
+          {
+            "id": "text-0",
+            "role": "text",
+            "x": 32,
+            "y": 116,
+            "width": 31.5,
+            "height": 18.2,
+            "text": "n = 8"
+          },
+          { "id": "text-1", "role": "text", "x": 490, "y": 104, "width": 66, "height": 42, "text": "38" },
+          { "id": "text-2", "role": "text", "x": 404, "y": 104, "width": 66, "height": 42, "text": "27" },
+          { "id": "text-3", "role": "text", "x": 576, "y": 104, "width": 66, "height": 42, "text": "43" },
+          { "id": "text-4", "role": "text", "x": 146, "y": 104, "width": 66, "height": 42, "text": "3" },
+          { "id": "text-5", "role": "text", "x": 232, "y": 104, "width": 66, "height": 42, "text": "9" },
+          { "id": "text-6", "role": "text", "x": 748, "y": 104, "width": 66, "height": 42, "text": "82" },
+          { "id": "text-7", "role": "text", "x": 318, "y": 104, "width": 66, "height": 42, "text": "10" },
+          { "id": "text-8", "role": "text", "x": 662, "y": 104, "width": 66, "height": 42, "text": "55" },
+          {
+            "id": "text-9",
+            "role": "text",
+            "x": 24,
+            "y": 26,
+            "width": 912,
+            "height": 32.5,
+            "text": "第二步：两两合并，每次取两段开头较小的那个"
+          },
+          {
+            "id": "text-10",
+            "role": "text",
+            "x": 60,
+            "y": 476,
+            "width": 840,
+            "height": 22.1,
+            "text": "3, 9, 10, 27, 38, 43, 55"
+          }
+        ]
+      },
+      {
+        "id": "m_cx",
+        "tMs": 76329,
+        "width": 960,
+        "height": 540,
+        "truncated": false,
+        "boxes": [
+          {
+            "id": "text-0",
+            "role": "text",
+            "x": 24,
+            "y": 26,
+            "width": 912,
+            "height": 32.5,
+            "text": "为什么是 O(n log n)"
+          },
+          { "id": "text-1", "role": "text", "x": 230, "y": 110, "width": 219, "height": 42, "text": "4 个" },
+          { "id": "text-2", "role": "text", "x": 455, "y": 110, "width": 219, "height": 42, "text": "4 个" },
+          {
+            "id": "text-3",
+            "role": "text",
+            "x": 710,
+            "y": 121,
+            "width": 188.5,
+            "height": 20.8,
+            "text": "合并 1 次 → 共约 n 次比较"
+          },
+          {
+            "id": "text-4",
+            "role": "text",
+            "x": 230,
+            "y": 185,
+            "width": 106.5,
+            "height": 42,
+            "text": "2 个"
+          },
+          {
+            "id": "text-5",
+            "role": "text",
+            "x": 342.5,
+            "y": 185,
+            "width": 106.5,
+            "height": 42,
+            "text": "2 个"
+          },
+          {
+            "id": "text-6",
+            "role": "text",
+            "x": 455,
+            "y": 185,
+            "width": 106.5,
+            "height": 42,
+            "text": "2 个"
+          },
+          {
+            "id": "text-7",
+            "role": "text",
+            "x": 567.5,
+            "y": 185,
+            "width": 106.5,
+            "height": 42,
+            "text": "2 个"
+          },
+          {
+            "id": "text-8",
+            "role": "text",
+            "x": 710,
+            "y": 196,
+            "width": 188.5,
+            "height": 20.8,
+            "text": "合并 2 次 → 共约 n 次比较"
+          },
+          { "id": "text-9", "role": "text", "x": 230, "y": 260, "width": 50.3, "height": 42, "text": "1 个" },
+          {
+            "id": "text-10",
+            "role": "text",
+            "x": 286.3,
+            "y": 260,
+            "width": 50.3,
+            "height": 42,
+            "text": "1 个"
+          },
+          {
+            "id": "text-11",
+            "role": "text",
+            "x": 342.5,
+            "y": 260,
+            "width": 50.3,
+            "height": 42,
+            "text": "1 个"
+          },
+          {
+            "id": "text-12",
+            "role": "text",
+            "x": 398.8,
+            "y": 260,
+            "width": 50.3,
+            "height": 42,
+            "text": "1 个"
+          },
+          {
+            "id": "text-13",
+            "role": "text",
+            "x": 455,
+            "y": 260,
+            "width": 50.3,
+            "height": 42,
+            "text": "1 个"
+          },
+          {
+            "id": "text-14",
+            "role": "text",
+            "x": 511.3,
+            "y": 260,
+            "width": 50.3,
+            "height": 42,
+            "text": "1 个"
+          },
+          {
+            "id": "text-15",
+            "role": "text",
+            "x": 567.5,
+            "y": 260,
+            "width": 50.3,
+            "height": 42,
+            "text": "1 个"
+          },
+          {
+            "id": "text-16",
+            "role": "text",
+            "x": 623.8,
+            "y": 260,
+            "width": 50.3,
+            "height": 42,
+            "text": "1 个"
+          },
+          {
+            "id": "text-17",
+            "role": "text",
+            "x": 710,
+            "y": 271,
+            "width": 188.5,
+            "height": 20.8,
+            "text": "合并 4 次 → 共约 n 次比较"
+          },
+          {
+            "id": "text-19",
+            "role": "text",
+            "x": 75,
+            "y": 195,
+            "width": 88.4,
+            "height": 22.1,
+            "text": "log₂8 = 3 层"
+          },
+          {
+            "id": "text-20",
+            "role": "text",
+            "x": 24,
+            "y": 345,
+            "width": 912,
+            "height": 29.9,
+            "text": "每层 O(n)  ×  log n 层"
+          },
+          {
+            "id": "text-21",
+            "role": "text",
+            "x": 24,
+            "y": 385,
+            "width": 912,
+            "height": 42.9,
+            "text": "= O(n log n)"
+          },
+          {
+            "id": "text-22",
+            "role": "text",
+            "x": 60,
+            "y": 476,
+            "width": 840,
+            "height": 22.1,
+            "text": "总工作量 O(n log n)；最好、最坏、平均"
+          },
+          { "id": "other-18", "role": "other", "x": 200, "y": 110, "width": 15, "height": 192 }
+        ]
+      },
+      {
+        "id": "m_end",
+        "tMs": 89029,
+        "width": 960,
+        "height": 540,
+        "truncated": false,
+        "boxes": [
+          {
+            "id": "text-0",
+            "role": "text",
+            "x": 24,
+            "y": 65,
+            "width": 912,
+            "height": 36.4,
+            "text": "归并排序小结"
+          },
+          {
+            "id": "text-1",
+            "role": "text",
+            "x": 24,
+            "y": 130,
+            "width": 912,
+            "height": 26,
+            "text": "分：对半拆，直到只剩一个数"
+          },
+          {
+            "id": "text-2",
+            "role": "text",
+            "x": 24,
+            "y": 175,
+            "width": 912,
+            "height": 26,
+            "text": "合：两段有序 → 双指针，每次取较小者"
+          },
+          {
+            "id": "text-3",
+            "role": "text",
+            "x": 24,
+            "y": 220,
+            "width": 912,
+            "height": 26,
+            "text": "时间 O(n log n)，最好最坏都一样；额外"
+          },
+          {
+            "id": "text-4",
+            "role": "text",
+            "x": 280,
+            "y": 280,
+            "width": 238.4,
+            "height": 20.5,
+            "text": "function mergeSort(a):"
+          },
+          {
+            "id": "text-5",
+            "role": "text",
+            "x": 280,
+            "y": 311,
+            "width": 303.4,
+            "height": 20.5,
+            "text": "if len(a) <= 1: return a"
+          },
+          {
+            "id": "text-6",
+            "role": "text",
+            "x": 280,
+            "y": 342,
+            "width": 292.6,
+            "height": 20.5,
+            "text": "L = mergeSort(a[: n/2])"
+          },
+          {
+            "id": "text-7",
+            "role": "text",
+            "x": 280,
+            "y": 373,
+            "width": 292.6,
+            "height": 20.5,
+            "text": "R = mergeSort(a[n/2 :])"
+          },
+          {
+            "id": "text-9",
+            "role": "text",
+            "x": 550.9,
+            "y": 406.5,
+            "width": 137,
+            "height": 20.5,
+            "text": "# 双指针，O(n)"
+          },
+          {
+            "id": "other-8",
+            "role": "other",
+            "x": 280,
+            "y": 404,
+            "width": 408,
+            "height": 24,
+            "text": "return merge(L, R)   # 双"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "hand/transform",
+    "scenes": [
+      {
+        "id": "t_intro",
+        "tMs": 11799,
+        "width": 960,
+        "height": 540,
+        "truncated": false,
+        "boxes": [
+          {
+            "id": "text-0",
+            "role": "text",
+            "x": 24,
+            "y": 85,
+            "width": 912,
+            "height": 49.4,
+            "text": "Transform 的数学原理"
+          },
+          {
+            "id": "text-1",
+            "role": "text",
+            "x": 24,
+            "y": 145,
+            "width": 912,
+            "height": 26,
+            "text": "一个图形，怎样一点一点变成另一个图形？"
+          },
+          {
+            "id": "text-4",
+            "role": "text",
+            "x": 24,
+            "y": 390,
+            "width": 912,
+            "height": 29.9,
+            "text": "核心只有一行：P(t) = (1 − t)·A "
+          },
+          {
+            "id": "text-5",
+            "role": "text",
+            "x": 24,
+            "y": 430,
+            "width": 912,
+            "height": 23.4,
+            "text": "① 点对齐 / 重采样　　② 逐点线性插值　　③"
+          },
+          { "id": "other-2", "role": "other", "x": 0, "y": 0, "width": 960, "height": 540 },
+          { "id": "other-3", "role": "other", "x": 420, "y": 220, "width": 120, "height": 120 }
+        ]
+      },
+      {
+        "id": "t_point",
+        "tMs": 32049,
+        "width": 960,
+        "height": 540,
+        "truncated": false,
+        "boxes": [
+          {
+            "id": "text-0",
+            "role": "text",
+            "x": 24,
+            "y": 26,
+            "width": 912,
+            "height": 32.5,
+            "text": "先看一个点：从 A 走到 B"
+          },
+          {
+            "id": "text-6",
+            "role": "text",
+            "x": 107.6,
+            "y": 374.5,
+            "width": 54.8,
+            "height": 19,
+            "text": "A (1, 1)"
+          },
+          {
+            "id": "text-7",
+            "role": "text",
+            "x": 442.1,
+            "y": 169.5,
+            "width": 55.7,
+            "height": 19,
+            "text": "B (7, 4)"
+          },
+          { "id": "text-14", "role": "text", "x": 586, "y": 180, "width": 7.8, "height": 18.2, "text": "0" },
+          { "id": "text-15", "role": "text", "x": 886, "y": 180, "width": 7.8, "height": 18.2, "text": "1" },
+          { "id": "text-16", "role": "text", "x": 590, "y": 125, "width": 22.8, "height": 26, "text": "t =" },
+          {
+            "id": "text-17",
+            "role": "text",
+            "x": 625,
+            "y": 125,
+            "width": 38.9,
+            "height": 26,
+            "text": "0.75"
+          },
+          {
+            "id": "text-18",
+            "role": "text",
+            "x": 590,
+            "y": 210,
+            "width": 42.4,
+            "height": 26,
+            "text": "P = ("
+          },
+          { "id": "text-19", "role": "text", "x": 636, "y": 210, "width": 45, "height": 26, "text": "5.50" },
+          { "id": "text-20", "role": "text", "x": 683, "y": 210, "width": 5.6, "height": 26, "text": "," },
+          { "id": "text-21", "role": "text", "x": 690, "y": 210, "width": 45, "height": 26, "text": "3.25" },
+          { "id": "text-22", "role": "text", "x": 738, "y": 210, "width": 6.7, "height": 26, "text": ")" },
+          {
+            "id": "text-23",
+            "role": "text",
+            "x": 590,
+            "y": 260,
+            "width": 175.1,
+            "height": 26,
+            "text": "P(t) = (1 − t)·A + t·B"
+          },
+          {
+            "id": "text-24",
+            "role": "text",
+            "x": 590,
+            "y": 290,
+            "width": 170.6,
+            "height": 26,
+            "text": "= A + t·(B − A)"
+          },
+          {
+            "id": "text-25",
+            "role": "text",
+            "x": 590,
+            "y": 340,
+            "width": 263.9,
+            "height": 19.5,
+            "text": "t = 0.25：0.75·A + 0.25·B"
+          },
+          {
+            "id": "text-26",
+            "role": "text",
+            "x": 590,
+            "y": 370,
+            "width": 263.9,
+            "height": 19.5,
+            "text": "t = 0.75：0.25·A + 0.75·B"
+          },
+          {
+            "id": "text-27",
+            "role": "text",
+            "x": 60,
+            "y": 476,
+            "width": 840,
+            "height": 22.1,
+            "text": "t 越大，越靠近 B；t 每一步走的距离都相同"
+          },
+          {
+            "id": "other-1",
+            "role": "other",
+            "x": 0,
+            "y": 0,
+            "width": 960,
+            "height": 540,
+            "text": "A (1, 1)B (7, 4)"
+          },
+          { "id": "other-2", "role": "other", "x": 85, "y": 123, "width": 462, "height": 297 },
+          { "id": "other-3", "role": "other", "x": 140, "y": 200, "width": 330, "height": 165 },
+          { "id": "other-4", "role": "other", "x": 134, "y": 359, "width": 12, "height": 12 },
+          { "id": "other-5", "role": "other", "x": 464, "y": 194, "width": 12, "height": 12 },
+          { "id": "other-8", "role": "other", "x": 219.5, "y": 320.8, "width": 6, "height": 6 },
+          { "id": "other-9", "role": "other", "x": 302, "y": 279.5, "width": 6, "height": 6 },
+          { "id": "other-10", "role": "other", "x": 384.5, "y": 238.3, "width": 6, "height": 6 },
+          { "id": "other-11", "role": "other", "x": 380, "y": 233.8, "width": 15, "height": 15 },
+          { "id": "other-12", "role": "other", "x": 590, "y": 165, "width": 300, "height": 4 },
+          { "id": "other-13", "role": "other", "x": 808, "y": 160, "width": 14, "height": 14 }
+        ]
+      },
+      {
+        "id": "t_align",
+        "tMs": 52969,
+        "width": 960,
+        "height": 540,
+        "truncated": false,
+        "boxes": [
+          {
+            "id": "text-0",
+            "role": "text",
+            "x": 24,
+            "y": 26,
+            "width": 912,
+            "height": 32.5,
+            "text": "第一步：点对齐 —— 两个图形要有同样多、一一对"
+          },
+          {
+            "id": "text-36",
+            "role": "text",
+            "x": 645,
+            "y": 150,
+            "width": 273.7,
+            "height": 20.8,
+            "text": "起点错开半圈：平均配对距离 ≈ 368 px"
+          },
+          {
+            "id": "text-37",
+            "role": "text",
+            "x": 645,
+            "y": 180,
+            "width": 248.8,
+            "height": 20.8,
+            "text": "轮换编号后：平均配对距离 ≈ 52 px"
+          },
+          {
+            "id": "text-38",
+            "role": "text",
+            "x": 60,
+            "y": 476,
+            "width": 840,
+            "height": 22.1,
+            "text": "把 B 的编号整体轮换，选总距离最小的起点：配对"
+          },
+          {
+            "id": "other-1",
+            "role": "other",
+            "x": 0,
+            "y": 0,
+            "width": 960,
+            "height": 540,
+            "text": "A：正方形，4 个顶点B：五角星，10 个顶点0"
+          },
+          { "id": "other-2", "role": "other", "x": 395, "y": 175, "width": 170, "height": 170 },
+          { "id": "other-3", "role": "other", "x": 361.1, "y": 135, "width": 237.8, "height": 226.1 },
+          { "id": "other-4", "role": "other", "x": 395, "y": 175, "width": 32.1, "height": 43.5 },
+          { "id": "other-5", "role": "other", "x": 412, "y": 175, "width": 37.1, "height": 42.5 },
+          { "id": "other-6", "role": "other", "x": 429, "y": 175, "width": 27.9, "height": 21.9 },
+          { "id": "other-7", "role": "other", "x": 463, "y": 155.6, "width": 9.3, "height": 19.4 },
+          { "id": "other-8", "role": "other", "x": 487.7, "y": 155.6, "width": 9.3, "height": 19.4 },
+          { "id": "other-9", "role": "other", "x": 503.1, "y": 175, "width": 27.9, "height": 21.9 },
+          { "id": "other-10", "role": "other", "x": 510.9, "y": 175, "width": 37.1, "height": 42.5 },
+          { "id": "other-11", "role": "other", "x": 532.9, "y": 175, "width": 32.1, "height": 43.5 },
+          { "id": "other-12", "role": "other", "x": 554.9, "y": 192, "width": 10.1, "height": 27.4 },
+          { "id": "other-13", "role": "other", "x": 565, "y": 209, "width": 11.9, "height": 11.4 },
+          { "id": "other-14", "role": "other", "x": 565, "y": 221.4, "width": 33.9, "height": 4.6 },
+          { "id": "other-15", "role": "other", "x": 565, "y": 235.1, "width": 16.6, "height": 7.9 },
+          { "id": "other-16", "role": "other", "x": 547.2, "y": 262.5, "width": 17.8, "height": 14.5 },
+          { "id": "other-17", "role": "other", "x": 529.9, "y": 276.2, "width": 35.1, "height": 17.8 },
+          { "id": "other-18", "role": "other", "x": 535.8, "y": 297.4, "width": 29.2, "height": 13.6 },
+          { "id": "other-19", "role": "other", "x": 541.7, "y": 318.7, "width": 23.3, "height": 9.3 },
+          { "id": "other-20", "role": "other", "x": 547.6, "y": 339.9, "width": 17.4, "height": 5.1 },
+          { "id": "other-21", "role": "other", "x": 548, "y": 345, "width": 5.5, "height": 16.1 },
+          { "id": "other-22", "role": "other", "x": 531, "y": 345, "width": 4.1, "height": 4 },
+          { "id": "other-23", "role": "other", "x": 514, "y": 336.8, "width": 2.7, "height": 8.2 },
+          { "id": "other-24", "role": "other", "x": 443.3, "y": 336.8, "width": 2.7, "height": 8.2 },
+          { "id": "other-25", "role": "other", "x": 424.9, "y": 345, "width": 4.1, "height": 4 },
+          { "id": "other-26", "role": "other", "x": 406.5, "y": 345, "width": 5.5, "height": 16.1 },
+          { "id": "other-27", "role": "other", "x": 395, "y": 339.9, "width": 17.4, "height": 5.1 },
+          { "id": "other-28", "role": "other", "x": 395, "y": 318.7, "width": 23.3, "height": 9.3 },
+          { "id": "other-29", "role": "other", "x": 395, "y": 297.4, "width": 29.2, "height": 13.6 },
+          { "id": "other-30", "role": "other", "x": 395, "y": 276.2, "width": 35.1, "height": 17.8 },
+          { "id": "other-31", "role": "other", "x": 395, "y": 262.5, "width": 17.8, "height": 14.5 },
+          { "id": "other-32", "role": "other", "x": 378.4, "y": 235.1, "width": 16.6, "height": 7.9 },
+          { "id": "other-33", "role": "other", "x": 361.1, "y": 221.4, "width": 33.9, "height": 4.6 },
+          { "id": "other-34", "role": "other", "x": 383.1, "y": 209, "width": 11.9, "height": 11.4 },
+          { "id": "other-35", "role": "other", "x": 395, "y": 192, "width": 10.1, "height": 27.4 }
+        ]
+      },
+      {
+        "id": "t_interp",
+        "tMs": 74319,
+        "width": 960,
+        "height": 540,
+        "truncated": true,
+        "boxes": [
+          {
+            "id": "text-0",
+            "role": "text",
+            "x": 24,
+            "y": 26,
+            "width": 912,
+            "height": 32.5,
+            "text": "第二步：逐点线性插值"
+          },
+          {
+            "id": "text-80",
+            "role": "text",
+            "x": 585.1,
+            "y": 387.5,
+            "width": 19.9,
+            "height": 15.5,
+            "text": "t=0"
+          },
+          {
+            "id": "text-82",
+            "role": "text",
+            "x": 650.3,
+            "y": 387.5,
+            "width": 39.3,
+            "height": 15.5,
+            "text": "t=0.25"
+          },
+          {
+            "id": "text-84",
+            "role": "text",
+            "x": 729.2,
+            "y": 387.5,
+            "width": 31.5,
+            "height": 15.5,
+            "text": "t=0.5"
+          },
+          {
+            "id": "text-86",
+            "role": "text",
+            "x": 800.3,
+            "y": 387.5,
+            "width": 39.3,
+            "height": 15.5,
+            "text": "t=0.75"
+          },
+          {
+            "id": "text-88",
+            "role": "text",
+            "x": 885.1,
+            "y": 387.5,
+            "width": 19.9,
+            "height": 15.5,
+            "text": "t=1"
+          },
+          {
+            "id": "text-89",
+            "role": "text",
+            "x": 560,
+            "y": 85,
+            "width": 185.6,
+            "height": 26,
+            "text": "Pᵢ(t) = (1 − t)·Aᵢ + t·B"
+          },
+          {
+            "id": "text-90",
+            "role": "text",
+            "x": 560,
+            "y": 120,
+            "width": 21.7,
+            "height": 24.7,
+            "text": "t ="
+          },
+          {
+            "id": "text-91",
+            "role": "text",
+            "x": 593,
+            "y": 120,
+            "width": 37,
+            "height": 24.7,
+            "text": "0.50"
+          },
+          {
+            "id": "text-92",
+            "role": "text",
+            "x": 560,
+            "y": 165,
+            "width": 225.8,
+            "height": 20.8,
+            "text": "样本点 6 号（屏幕像素坐标）："
+          },
+          {
+            "id": "text-93",
+            "role": "text",
+            "x": 560,
+            "y": 192.5,
+            "width": 135.6,
+            "height": 22.1,
+            "text": "A = (634.0, 350.0)"
+          },
+          {
+            "id": "text-94",
+            "role": "text",
+            "x": 560,
+            "y": 217.5,
+            "width": 135.3,
+            "height": 22.1,
+            "text": "B = (615.4, 311.3)"
+          },
+          {
+            "id": "text-95",
+            "role": "text",
+            "x": 560,
+            "y": 242.5,
+            "width": 290.6,
+            "height": 22.1,
+            "text": "P(0.5) = 0.5·A + 0.5·B ="
+          },
+          {
+            "id": "text-96",
+            "role": "text",
+            "x": 560,
+            "y": 285,
+            "width": 237.3,
+            "height": 20.8,
+            "text": "关键 t 处的中间帧（按公式计算）"
+          },
+          {
+            "id": "text-97",
+            "role": "text",
+            "x": 60,
+            "y": 476,
+            "width": 840,
+            "height": 22.1,
+            "text": "任意 t 的中间帧都只由公式决定：把所有点按同一"
+          },
+          {
+            "id": "other-1",
+            "role": "other",
+            "x": 0,
+            "y": 0,
+            "width": 960,
+            "height": 540,
+            "text": "t=0t=0.25t=0.5t=0.75t=1"
+          },
+          { "id": "other-2", "role": "other", "x": 215, "y": 175, "width": 170, "height": 170 },
+          { "id": "other-3", "role": "other", "x": 181.1, "y": 135, "width": 237.8, "height": 226.1 },
+          { "id": "other-4", "role": "other", "x": 215, "y": 175, "width": 32.1, "height": 43.5 },
+          { "id": "other-5", "role": "other", "x": 232, "y": 175, "width": 37.1, "height": 42.5 },
+          { "id": "other-6", "role": "other", "x": 249, "y": 175, "width": 27.9, "height": 21.9 },
+          { "id": "other-7", "role": "other", "x": 283, "y": 155.6, "width": 9.3, "height": 19.4 },
+          { "id": "other-8", "role": "other", "x": 307.7, "y": 155.6, "width": 9.3, "height": 19.4 },
+          { "id": "other-9", "role": "other", "x": 323.1, "y": 175, "width": 27.9, "height": 21.9 },
+          { "id": "other-10", "role": "other", "x": 330.9, "y": 175, "width": 37.1, "height": 42.5 },
+          { "id": "other-11", "role": "other", "x": 352.9, "y": 175, "width": 32.1, "height": 43.5 },
+          { "id": "other-12", "role": "other", "x": 374.9, "y": 192, "width": 10.1, "height": 27.4 },
+          { "id": "other-13", "role": "other", "x": 385, "y": 209, "width": 11.9, "height": 11.4 },
+          { "id": "other-14", "role": "other", "x": 385, "y": 221.4, "width": 33.9, "height": 4.6 },
+          { "id": "other-15", "role": "other", "x": 385, "y": 235.1, "width": 16.6, "height": 7.9 },
+          { "id": "other-16", "role": "other", "x": 367.2, "y": 262.5, "width": 17.8, "height": 14.5 },
+          { "id": "other-17", "role": "other", "x": 349.9, "y": 276.2, "width": 35.1, "height": 17.8 },
+          { "id": "other-18", "role": "other", "x": 355.8, "y": 297.4, "width": 29.2, "height": 13.6 },
+          { "id": "other-19", "role": "other", "x": 361.7, "y": 318.7, "width": 23.3, "height": 9.3 },
+          { "id": "other-20", "role": "other", "x": 367.6, "y": 339.9, "width": 17.4, "height": 5.1 },
+          { "id": "other-21", "role": "other", "x": 368, "y": 345, "width": 5.5, "height": 16.1 },
+          { "id": "other-22", "role": "other", "x": 351, "y": 345, "width": 4.1, "height": 4 },
+          { "id": "other-23", "role": "other", "x": 334, "y": 336.8, "width": 2.7, "height": 8.2 },
+          { "id": "other-24", "role": "other", "x": 263.3, "y": 336.8, "width": 2.7, "height": 8.2 },
+          { "id": "other-25", "role": "other", "x": 244.9, "y": 345, "width": 4.1, "height": 4 }
+        ]
+      },
+      {
+        "id": "t_rate",
+        "tMs": 98019,
+        "width": 960,
+        "height": 540,
+        "truncated": false,
+        "boxes": [
+          {
+            "id": "text-0",
+            "role": "text",
+            "x": 24,
+            "y": 26,
+            "width": 912,
+            "height": 32.5,
+            "text": "第三步：缓动函数 rate —— 控制 t 随时"
+          },
+          {
+            "id": "text-5",
+            "role": "text",
+            "x": 179.2,
+            "y": 391.5,
+            "width": 71.7,
+            "height": 16.5,
+            "text": "时间进度 s"
+          },
+          {
+            "id": "text-6",
+            "role": "text",
+            "x": 60.5,
+            "y": 217.7,
+            "width": 16.5,
+            "height": 64.6,
+            "text": "t = rate(s)"
+          },
+          {
+            "id": "text-10",
+            "role": "text",
+            "x": 380,
+            "y": 100,
+            "width": 85.8,
+            "height": 20.8,
+            "text": "linear：t = s"
+          },
+          {
+            "id": "text-11",
+            "role": "text",
+            "x": 380,
+            "y": 125,
+            "width": 153.8,
+            "height": 20.8,
+            "text": "smooth：t = 3s² − 2s³"
+          },
+          {
+            "id": "text-12",
+            "role": "text",
+            "x": 380,
+            "y": 165,
+            "width": 299.9,
+            "height": 22.1,
+            "text": "s = 0.25 → t = 3·0.25² −"
+          },
+          {
+            "id": "text-13",
+            "role": "text",
+            "x": 380,
+            "y": 195,
+            "width": 225.8,
+            "height": 20.8,
+            "text": "绿色虚线：公式算出的 P(0.156)"
+          },
+          {
+            "id": "text-14",
+            "role": "text",
+            "x": 60,
+            "y": 476,
+            "width": 840,
+            "height": 22.1,
+            "text": "s 已过四分之一，图形才变了约 16%：缓动只改"
+          },
+          {
+            "id": "other-1",
+            "role": "other",
+            "x": 0,
+            "y": 0,
+            "width": 960,
+            "height": 540,
+            "text": "时间进度 st = rate(s)"
+          },
+          { "id": "other-2", "role": "other", "x": 85, "y": 120, "width": 260, "height": 260 },
+          { "id": "other-3", "role": "other", "x": 85, "y": 120, "width": 260, "height": 260 },
+          { "id": "other-4", "role": "other", "x": 85, "y": 120, "width": 260, "height": 260 },
+          { "id": "other-7", "role": "other", "x": 79.5, "y": 374.5, "width": 11, "height": 11 },
+          { "id": "other-8", "role": "other", "x": 338.5, "y": 113.5, "width": 13, "height": 13 },
+          { "id": "other-9", "role": "other", "x": 556.3, "y": 272.5, "width": 147.4, "height": 140.2 }
+        ]
+      },
+      {
+        "id": "t_end",
+        "tMs": 110919,
+        "width": 960,
+        "height": 540,
+        "truncated": false,
+        "boxes": [
+          {
+            "id": "text-0",
+            "role": "text",
+            "x": 24,
+            "y": 60,
+            "width": 912,
+            "height": 36.4,
+            "text": "Transform 三步"
+          },
+          {
+            "id": "text-1",
+            "role": "text",
+            "x": 24,
+            "y": 120,
+            "width": 912,
+            "height": 26,
+            "text": "① 对齐：重采样成同样 N 个点，轮换编号让总距"
+          },
+          {
+            "id": "text-2",
+            "role": "text",
+            "x": 24,
+            "y": 160,
+            "width": 912,
+            "height": 26,
+            "text": "② 插值：Pᵢ(t) = (1 − t)·Aᵢ "
+          },
+          {
+            "id": "text-3",
+            "role": "text",
+            "x": 24,
+            "y": 200,
+            "width": 912,
+            "height": 26,
+            "text": "③ 缓动：t = rate(s)，只改变节奏，不"
+          },
+          {
+            "id": "text-4",
+            "role": "text",
+            "x": 230,
+            "y": 270,
+            "width": 378.7,
+            "height": 20,
+            "text": "A, B = resample(A, N), r"
+          },
+          {
+            "id": "text-5",
+            "role": "text",
+            "x": 230,
+            "y": 300,
+            "width": 245.6,
+            "height": 20,
+            "text": "B = rotate_to_best(A, B)"
+          },
+          {
+            "id": "text-6",
+            "role": "text",
+            "x": 230,
+            "y": 330,
+            "width": 388.9,
+            "height": 20,
+            "text": "for s in frames:        "
+          },
+          {
+            "id": "text-7",
+            "role": "text",
+            "x": 230,
+            "y": 360,
+            "width": 153.5,
+            "height": 20,
+            "text": "t = rate(s)"
+          },
+          {
+            "id": "text-8",
+            "role": "text",
+            "x": 230,
+            "y": 390,
+            "width": 481,
+            "height": 20,
+            "text": "P = [(1 - t)*a + t*b for"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "hand/psych",
+    "scenes": [
+      {
+        "id": "p_intro",
+        "tMs": 6699,
+        "width": 960,
+        "height": 540,
+        "truncated": false,
+        "boxes": [
+          {
+            "id": "text-0",
+            "role": "text",
+            "x": 24,
+            "y": 150,
+            "width": 912,
+            "height": 65,
+            "text": "蔡格尼克效应"
+          },
+          {
+            "id": "text-1",
+            "role": "text",
+            "x": 24,
+            "y": 220,
+            "width": 912,
+            "height": 27.3,
+            "text": "Zeigarnik Effect"
+          },
+          {
+            "id": "text-2",
+            "role": "text",
+            "x": 24,
+            "y": 280,
+            "width": 912,
+            "height": 29.9,
+            "text": "为什么没做完的事，总在脑子里打转？"
+          },
+          {
+            "id": "text-3",
+            "role": "text",
+            "x": 24,
+            "y": 330,
+            "width": 912,
+            "height": 23.4,
+            "text": "未完成的任务，往往比已完成的任务更容易被记住"
+          }
+        ]
+      },
+      {
+        "id": "p_waiter",
+        "tMs": 18299,
+        "width": 960,
+        "height": 540,
+        "truncated": false,
+        "boxes": [
+          {
+            "id": "text-0",
+            "role": "text",
+            "x": 24,
+            "y": 26,
+            "width": 912,
+            "height": 32.5,
+            "text": "起点：柏林一家餐馆里的观察（1920 年代）"
+          },
+          {
+            "id": "text-3",
+            "role": "text",
+            "x": 105,
+            "y": 100,
+            "width": 126,
+            "height": 27.3,
+            "text": "还没结账的桌"
+          },
+          {
+            "id": "text-4",
+            "role": "text",
+            "x": 535,
+            "y": 100,
+            "width": 126,
+            "height": 27.3,
+            "text": "已经结账的桌"
+          },
+          {
+            "id": "text-5",
+            "role": "text",
+            "x": 110,
+            "y": 145,
+            "width": 209.7,
+            "height": 23.4,
+            "text": "☐ 3 号桌：牛排、啤酒 ×2"
+          },
+          {
+            "id": "text-6",
+            "role": "text",
+            "x": 110,
+            "y": 190,
+            "width": 220.1,
+            "height": 23.4,
+            "text": "☐ 7 号桌：汤、面包、咖啡"
+          },
+          {
+            "id": "text-7",
+            "role": "text",
+            "x": 110,
+            "y": 235,
+            "width": 155.7,
+            "height": 23.4,
+            "text": "☐ 9 号桌：甜点 ×3"
+          },
+          {
+            "id": "text-8",
+            "role": "text",
+            "x": 540,
+            "y": 145,
+            "width": 219.1,
+            "height": 23.4,
+            "text": "✓ 2 号桌：牛排、沙拉……"
+          },
+          {
+            "id": "text-9",
+            "role": "text",
+            "x": 540,
+            "y": 190,
+            "width": 219.1,
+            "height": 23.4,
+            "text": "✓ 5 号桌：意面、红酒……"
+          },
+          {
+            "id": "text-10",
+            "role": "text",
+            "x": 540,
+            "y": 235,
+            "width": 201.1,
+            "height": 23.4,
+            "text": "✓ 8 号桌：鱼排、汤……"
+          },
+          {
+            "id": "text-11",
+            "role": "text",
+            "x": 24,
+            "y": 340,
+            "width": 912,
+            "height": 24.7,
+            "text": "心理学家勒温（Kurt Lewin）和学生蔡格尼"
+          },
+          {
+            "id": "text-12",
+            "role": "text",
+            "x": 60,
+            "y": 476,
+            "width": 840,
+            "height": 22.1,
+            "text": "他们决定在实验室里检验它"
+          },
+          { "id": "other-1", "role": "other", "x": 85, "y": 85, "width": 360, "height": 215 },
+          { "id": "other-2", "role": "other", "x": 515, "y": 85, "width": 360, "height": 215 }
+        ]
+      },
+      {
+        "id": "p_exp",
+        "tMs": 31229,
+        "width": 960,
+        "height": 540,
+        "truncated": false,
+        "boxes": [
+          {
+            "id": "text-0",
+            "role": "text",
+            "x": 24,
+            "y": 26,
+            "width": 912,
+            "height": 32.5,
+            "text": "经典实验：蔡格尼克，1927"
+          },
+          {
+            "id": "text-1",
+            "role": "text",
+            "x": 180,
+            "y": 80,
+            "width": 453,
+            "height": 24.7,
+            "text": "① 让被试做约 20 个小任务：拼图、捏黏土、算"
+          },
+          {
+            "id": "text-2",
+            "role": "text",
+            "x": 180,
+            "y": 115,
+            "width": 402.3,
+            "height": 24.7,
+            "text": "② 其中一半做到一半就被打断，另一半允许做完"
+          },
+          {
+            "id": "text-3",
+            "role": "text",
+            "x": 180,
+            "y": 150,
+            "width": 307.3,
+            "height": 24.7,
+            "text": "③ 事后突然问：刚才做过哪些任务？"
+          },
+          {
+            "id": "text-22",
+            "role": "text",
+            "x": 300,
+            "y": 290,
+            "width": 66,
+            "height": 22.1,
+            "text": "■ 做完了"
+          },
+          {
+            "id": "text-23",
+            "role": "text",
+            "x": 500,
+            "y": 290,
+            "width": 190.8,
+            "height": 22.1,
+            "text": "◧ 被打断（只做了一半）"
+          },
+          {
+            "id": "text-24",
+            "role": "text",
+            "x": 24,
+            "y": 350,
+            "width": 912,
+            "height": 31.2,
+            "text": "哪一类被回忆起来得更多？"
+          },
+          {
+            "id": "text-25",
+            "role": "text",
+            "x": 60,
+            "y": 476,
+            "width": 840,
+            "height": 22.1,
+            "text": "如果记忆只看「做了多久」，做完的任务应该记得更牢"
+          },
+          { "id": "other-4", "role": "other", "x": 135, "y": 225, "width": 45, "height": 45 },
+          { "id": "other-5", "role": "other", "x": 195, "y": 225, "width": 45, "height": 45 },
+          { "id": "other-6", "role": "other", "x": 197, "y": 247.5, "width": 41, "height": 20.5 },
+          { "id": "other-7", "role": "other", "x": 255, "y": 225, "width": 45, "height": 45 },
+          { "id": "other-8", "role": "other", "x": 315, "y": 225, "width": 45, "height": 45 },
+          { "id": "other-9", "role": "other", "x": 317, "y": 247.5, "width": 41, "height": 20.5 },
+          { "id": "other-10", "role": "other", "x": 375, "y": 225, "width": 45, "height": 45 },
+          { "id": "other-11", "role": "other", "x": 435, "y": 225, "width": 45, "height": 45 },
+          { "id": "other-12", "role": "other", "x": 437, "y": 247.5, "width": 41, "height": 20.5 },
+          { "id": "other-13", "role": "other", "x": 495, "y": 225, "width": 45, "height": 45 },
+          { "id": "other-14", "role": "other", "x": 555, "y": 225, "width": 45, "height": 45 },
+          { "id": "other-15", "role": "other", "x": 557, "y": 247.5, "width": 41, "height": 20.5 },
+          { "id": "other-16", "role": "other", "x": 615, "y": 225, "width": 45, "height": 45 },
+          { "id": "other-17", "role": "other", "x": 675, "y": 225, "width": 45, "height": 45 },
+          { "id": "other-18", "role": "other", "x": 677, "y": 247.5, "width": 41, "height": 20.5 },
+          { "id": "other-19", "role": "other", "x": 735, "y": 225, "width": 45, "height": 45 },
+          { "id": "other-20", "role": "other", "x": 795, "y": 225, "width": 45, "height": 45 },
+          { "id": "other-21", "role": "other", "x": 797, "y": 247.5, "width": 41, "height": 20.5 }
+        ]
+      },
+      {
+        "id": "p_result",
+        "tMs": 43329,
+        "width": 960,
+        "height": 540,
+        "truncated": false,
+        "boxes": [
+          {
+            "id": "text-0",
+            "role": "text",
+            "x": 24,
+            "y": 26,
+            "width": 912,
+            "height": 32.5,
+            "text": "结果：被打断的任务，回忆量约是做完的 1.9 倍"
+          },
+          {
+            "id": "text-2",
+            "role": "text",
+            "x": 255,
+            "y": 411,
+            "width": 200,
+            "height": 23.4,
+            "text": "做完的任务"
+          },
+          { "id": "text-3", "role": "text", "x": 290, "y": 240, "width": 130, "height": 32.5, "text": "1" },
+          {
+            "id": "text-5",
+            "role": "text",
+            "x": 505,
+            "y": 411,
+            "width": 200,
+            "height": 23.4,
+            "text": "被打断的任务"
+          },
+          {
+            "id": "text-6",
+            "role": "text",
+            "x": 540,
+            "y": 127.5,
+            "width": 130,
+            "height": 32.5,
+            "text": "≈ 1.9"
+          },
+          {
+            "id": "text-7",
+            "role": "text",
+            "x": 70,
+            "y": 210,
+            "width": 80,
+            "height": 20.8,
+            "text": "相对回忆量"
+          },
+          {
+            "id": "text-8",
+            "role": "text",
+            "x": 60,
+            "y": 476,
+            "width": 840,
+            "height": 22.1,
+            "text": "这就是蔡格尼克效应：未完成的事更容易被记住"
+          },
+          { "id": "other-1", "role": "other", "x": 290, "y": 275, "width": 130, "height": 125 },
+          { "id": "other-4", "role": "other", "x": 540, "y": 162.5, "width": 130, "height": 237.5 }
+        ]
+      },
+      {
+        "id": "p_why",
+        "tMs": 57529,
+        "width": 960,
+        "height": 540,
+        "truncated": false,
+        "boxes": [
+          {
+            "id": "text-0",
+            "role": "text",
+            "x": 24,
+            "y": 26,
+            "width": 912,
+            "height": 32.5,
+            "text": "解释：任务会在心里留下一股「张力」"
+          },
+          {
+            "id": "text-1",
+            "role": "text",
+            "x": 115,
+            "y": 105,
+            "width": 72,
+            "height": 23.4,
+            "text": "心理张力"
+          },
+          {
+            "id": "text-4",
+            "role": "text",
+            "x": 24,
+            "y": 175,
+            "width": 912,
+            "height": 26,
+            "text": "开始一个任务 → 张力升起"
+          },
+          {
+            "id": "text-5",
+            "role": "text",
+            "x": 24,
+            "y": 220,
+            "width": 912,
+            "height": 26,
+            "text": "做完 → 张力释放，记忆可以放下"
+          },
+          {
+            "id": "text-6",
+            "role": "text",
+            "x": 24,
+            "y": 265,
+            "width": 912,
+            "height": 26,
+            "text": "被打断 → 张力一直挂着，念头反复冒出来"
+          },
+          {
+            "id": "text-7",
+            "role": "text",
+            "x": 60,
+            "y": 476,
+            "width": 840,
+            "height": 22.1,
+            "text": "被打断：目标悬而未决，它会不断把相关信息拉回注意"
+          },
+          {
+            "id": "text-8",
+            "role": "text",
+            "x": 24,
+            "y": 340,
+            "width": 912,
+            "height": 22.1,
+            "text": "勒温「场论」：未完成的目标保持着一个紧张系统，让"
+          },
+          { "id": "other-2", "role": "other", "x": 210, "y": 102, "width": 550, "height": 28 },
+          { "id": "other-3", "role": "other", "x": 211.5, "y": 103.5, "width": 500, "height": 25 }
+        ]
+      },
+      {
+        "id": "p_caveat",
+        "tMs": 68029,
+        "width": 960,
+        "height": 540,
+        "truncated": false,
+        "boxes": [
+          {
+            "id": "text-0",
+            "role": "text",
+            "x": 24,
+            "y": 26,
+            "width": 912,
+            "height": 32.5,
+            "text": "但要小心：这个效应没那么稳定"
+          },
+          {
+            "id": "text-1",
+            "role": "text",
+            "x": 24,
+            "y": 95,
+            "width": 912,
+            "height": 26,
+            "text": "后来的重复实验，结果有好有坏："
+          },
+          {
+            "id": "text-3",
+            "role": "text",
+            "x": 172,
+            "y": 159,
+            "width": 190,
+            "height": 21,
+            "text": "「没做完的记得更牢」"
+          },
+          {
+            "id": "text-4",
+            "role": "text",
+            "x": 172,
+            "y": 189,
+            "width": 400,
+            "height": 18,
+            "text": "时有时无，受动机、任务难度、被试是否在意结果等影"
+          },
+          {
+            "id": "text-6",
+            "role": "text",
+            "x": 172,
+            "y": 249,
+            "width": 266,
+            "height": 21,
+            "text": "「没做完的就想回去把它做完」"
+          },
+          {
+            "id": "text-7",
+            "role": "text",
+            "x": 172,
+            "y": 279,
+            "width": 346.4,
+            "height": 18,
+            "text": "更稳定，叫奥夫相基娜效应（Ovsiankina "
+          },
+          {
+            "id": "text-8",
+            "role": "text",
+            "x": 24,
+            "y": 345,
+            "width": 912,
+            "height": 22.1,
+            "text": "近年的元分析：记忆优势并不可靠，「想完成」的冲动"
+          },
+          {
+            "id": "text-9",
+            "role": "text",
+            "x": 60,
+            "y": 476,
+            "width": 840,
+            "height": 22.1,
+            "text": "但「想回去完成」的倾向一直比较稳定"
+          },
+          {
+            "id": "other-2",
+            "role": "other",
+            "x": 150,
+            "y": 145,
+            "width": 660,
+            "height": 77.1,
+            "text": "「没做完的记得更牢」时有时无，受动机、任务难度、"
+          },
+          {
+            "id": "other-5",
+            "role": "other",
+            "x": 150,
+            "y": 235,
+            "width": 660,
+            "height": 77.1,
+            "text": "「没做完的就想回去把它做完」更稳定，叫奥夫相基娜"
+          }
+        ]
+      },
+      {
+        "id": "p_use",
+        "tMs": 79429,
+        "width": 960,
+        "height": 540,
+        "truncated": false,
+        "boxes": [
+          {
+            "id": "text-0",
+            "role": "text",
+            "x": 24,
+            "y": 26,
+            "width": 912,
+            "height": 32.5,
+            "text": "怎么用"
+          },
+          { "id": "text-2", "role": "text", "x": 150, "y": 91.5, "width": 12.7, "height": 23.5, "text": "●" },
+          {
+            "id": "text-3",
+            "role": "text",
+            "x": 180,
+            "y": 120,
+            "width": 496.7,
+            "height": 20.8,
+            "text": "给张力一个出口，晚上不容易惦记（Masicamp"
+          },
+          {
+            "id": "text-5",
+            "role": "text",
+            "x": 150,
+            "y": 191.5,
+            "width": 12.7,
+            "height": 23.5,
+            "text": "●"
+          },
+          {
+            "id": "text-6",
+            "role": "text",
+            "x": 180,
+            "y": 220,
+            "width": 320,
+            "height": 20.8,
+            "text": "一旦开了头，「没做完」的感觉会推着你继续"
+          },
+          {
+            "id": "text-8",
+            "role": "text",
+            "x": 150,
+            "y": 291.5,
+            "width": 12.7,
+            "height": 23.5,
+            "text": "●"
+          },
+          {
+            "id": "text-9",
+            "role": "text",
+            "x": 180,
+            "y": 320,
+            "width": 240,
+            "height": 20.8,
+            "text": "海明威的习惯：第二天最容易接上"
+          },
+          {
+            "id": "text-10",
+            "role": "text",
+            "x": 60,
+            "y": 476,
+            "width": 840,
+            "height": 22.1,
+            "text": "利用它：让「未完成」帮你开始，也别让它在睡前一直"
+          },
+          {
+            "id": "other-1",
+            "role": "other",
+            "x": 150,
+            "y": 90,
+            "width": 296.2,
+            "height": 27.3,
+            "text": "● 写下「下一步做什么」再停手"
+          },
+          {
+            "id": "other-4",
+            "role": "other",
+            "x": 150,
+            "y": 190,
+            "width": 256.5,
+            "height": 27.3,
+            "text": "● 难以开始时，先做 5 分钟"
+          },
+          {
+            "id": "other-7",
+            "role": "other",
+            "x": 150,
+            "y": 290,
+            "width": 233.2,
+            "height": 27.3,
+            "text": "● 写作停在一句话的中间"
+          }
+        ]
+      },
+      {
+        "id": "p_end",
+        "tMs": 86129,
+        "width": 960,
+        "height": 540,
+        "truncated": false,
+        "boxes": [
+          {
+            "id": "text-0",
+            "role": "text",
+            "x": 24,
+            "y": 165,
+            "width": 912,
+            "height": 39,
+            "text": "没做完的事，会在心里一直「挂着」"
+          },
+          {
+            "id": "text-1",
+            "role": "text",
+            "x": 24,
+            "y": 225,
+            "width": 912,
+            "height": 29.9,
+            "text": "与其硬忘，不如写下下一步"
+          },
+          {
+            "id": "text-2",
+            "role": "text",
+            "x": 24,
+            "y": 280,
+            "width": 912,
+            "height": 20.8,
+            "text": "蔡格尼克效应 · 1927"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "D/linalg",
+    "scenes": [
+      {
+        "id": "s_intro",
+        "tMs": 8199,
+        "width": 960,
+        "height": 540,
+        "truncated": false,
+        "boxes": [
+          {
+            "id": "text-0",
+            "role": "text",
+            "x": 24,
+            "y": 26,
+            "width": 912,
+            "height": 32.5,
+            "text": "矩阵 = 线性变换"
+          },
+          { "id": "text-4", "role": "text", "x": 433, "y": 254, "width": 17.8, "height": 26, "text": "e₁" },
+          { "id": "text-5", "role": "text", "x": 322, "y": 193, "width": 17.8, "height": 26, "text": "e₂" },
+          { "id": "text-8", "role": "text", "x": 673, "y": 142, "width": 75, "height": 45, "text": "1.5" },
+          { "id": "text-9", "role": "text", "x": 758, "y": 142, "width": 75, "height": 45, "text": "0.5" },
+          { "id": "text-10", "role": "text", "x": 673, "y": 198, "width": 75, "height": 45, "text": "0.5" },
+          { "id": "text-11", "role": "text", "x": 758, "y": 198, "width": 75, "height": 45, "text": "1.2" },
+          {
+            "id": "text-12",
+            "role": "text",
+            "x": 673,
+            "y": 259,
+            "width": 75,
+            "height": 18,
+            "text": "第 1 列"
+          },
+          {
+            "id": "text-13",
+            "role": "text",
+            "x": 758,
+            "y": 259,
+            "width": 75,
+            "height": 18,
+            "text": "第 2 列"
+          },
+          {
+            "id": "text-14",
+            "role": "text",
+            "x": 640,
+            "y": 289,
+            "width": 220,
+            "height": 22,
+            "text": "两列 = 两个基向量被送去的方向"
+          },
+          {
+            "id": "text-15",
+            "role": "text",
+            "x": 60,
+            "y": 476,
+            "width": 840,
+            "height": 22.1,
+            "text": "矩阵不是数字表格，而是一台把平面揉变形的机器"
+          },
+          { "id": "other-1", "role": "other", "x": 0, "y": 0, "width": 960, "height": 540 },
+          { "id": "other-2", "role": "other", "x": 413, "y": 274, "width": 12, "height": 12 },
+          { "id": "other-3", "role": "other", "x": 344, "y": 205, "width": 12, "height": 12 },
+          { "id": "other-6", "role": "other", "x": 645, "y": 125, "width": 13, "height": 125 },
+          { "id": "other-7", "role": "other", "x": 845, "y": 125, "width": 13, "height": 125 }
+        ]
+      },
+      {
+        "id": "s_basis",
+        "tMs": 18099,
+        "width": 960,
+        "height": 540,
+        "truncated": false,
+        "boxes": [
+          {
+            "id": "text-0",
+            "role": "text",
+            "x": 24,
+            "y": 26,
+            "width": 912,
+            "height": 32.5,
+            "text": "列 = 基向量的去向"
+          },
+          {
+            "id": "text-23",
+            "role": "text",
+            "x": 433,
+            "y": 254,
+            "width": 16.9,
+            "height": 24.7,
+            "text": "e₁"
+          },
+          {
+            "id": "text-24",
+            "role": "text",
+            "x": 322,
+            "y": 193,
+            "width": 16.9,
+            "height": 24.7,
+            "text": "e₂"
+          },
+          {
+            "id": "text-25",
+            "role": "text",
+            "x": 665,
+            "y": 97,
+            "width": 90,
+            "height": 19.5,
+            "text": "第 1 列"
+          },
+          {
+            "id": "text-26",
+            "role": "text",
+            "x": 755,
+            "y": 97,
+            "width": 90,
+            "height": 19.5,
+            "text": "第 2 列"
+          },
+          { "id": "text-27", "role": "text", "x": 665, "y": 140, "width": 90, "height": 40, "text": "1.5" },
+          { "id": "text-28", "role": "text", "x": 665, "y": 190, "width": 90, "height": 40, "text": "0.5" },
+          { "id": "text-29", "role": "text", "x": 755, "y": 140, "width": 90, "height": 40, "text": "0.5" },
+          { "id": "text-30", "role": "text", "x": 755, "y": 190, "width": 90, "height": 40, "text": "1.2" },
+          {
+            "id": "text-33",
+            "role": "text",
+            "x": 471.5,
+            "y": 214.5,
+            "width": 35,
+            "height": 23.4,
+            "text": "A·e₁"
+          },
+          {
+            "id": "text-34",
+            "role": "text",
+            "x": 396.5,
+            "y": 180,
+            "width": 35,
+            "height": 23.4,
+            "text": "A·e₂"
+          },
+          {
+            "id": "text-35",
+            "role": "text",
+            "x": 60,
+            "y": 476,
+            "width": 840,
+            "height": 22.1,
+            "text": "第 j 列 = eⱼ 被送到的新位置"
+          },
+          { "id": "other-1", "role": "other", "x": 0, "y": 0, "width": 960, "height": 540 },
+          { "id": "other-2", "role": "other", "x": 0, "y": 0, "width": 800, "height": 540 },
+          { "id": "other-3", "role": "other", "x": 0, "y": 122.5, "width": 125, "height": 417.5 },
+          { "id": "other-4", "role": "other", "x": 0, "y": 437.5, "width": 575, "height": 102.5 },
+          { "id": "other-5", "role": "other", "x": 12.5, "y": 85, "width": 225, "height": 455 },
+          { "id": "other-6", "role": "other", "x": 0, "y": 347.5, "width": 612.5, "height": 192.5 },
+          { "id": "other-7", "role": "other", "x": 125, "y": 47.5, "width": 225, "height": 492.5 },
+          { "id": "other-8", "role": "other", "x": 0, "y": 257.5, "width": 650, "height": 225 },
+          { "id": "other-9", "role": "other", "x": 237.5, "y": 10, "width": 225, "height": 530 },
+          { "id": "other-10", "role": "other", "x": 12.5, "y": 167.5, "width": 675, "height": 225 },
+          { "id": "other-11", "role": "other", "x": 350, "y": 0, "width": 225, "height": 512.5 },
+          { "id": "other-12", "role": "other", "x": 50, "y": 77.5, "width": 675, "height": 225 },
+          { "id": "other-13", "role": "other", "x": 462.5, "y": 0, "width": 225, "height": 475 },
+          { "id": "other-14", "role": "other", "x": 87.5, "y": 0, "width": 675, "height": 212.5 },
+          { "id": "other-15", "role": "other", "x": 575, "y": 0, "width": 225, "height": 437.5 },
+          { "id": "other-16", "role": "other", "x": 125, "y": 0, "width": 675, "height": 122.5 },
+          { "id": "other-17", "role": "other", "x": 413, "y": 274, "width": 12, "height": 12 },
+          { "id": "other-18", "role": "other", "x": 344, "y": 205, "width": 12, "height": 12 },
+          { "id": "other-19", "role": "other", "x": 350, "y": 242.5, "width": 112.5, "height": 37.5 },
+          { "id": "other-20", "role": "other", "x": 449.2, "y": 240.6, "width": 13.3, "height": 11.4 },
+          { "id": "other-21", "role": "other", "x": 350, "y": 190, "width": 37.5, "height": 90 },
+          { "id": "other-22", "role": "other", "x": 377.3, "y": 190, "width": 11.1, "height": 13.4 },
+          { "id": "other-31", "role": "other", "x": 658, "y": 131, "width": 104, "height": 104 },
+          { "id": "other-32", "role": "other", "x": 748, "y": 131, "width": 104, "height": 104 },
+          {
+            "id": "other-36",
+            "role": "other",
+            "x": 640,
+            "y": 250,
+            "width": 210,
+            "height": 46,
+            "text": "整张网格跟着一起动原点不动，直线仍是直线"
+          }
+        ]
+      },
+      {
+        "id": "s_vector",
+        "tMs": 28599,
+        "width": 960,
+        "height": 540,
+        "truncated": false,
+        "boxes": [
+          {
+            "id": "text-0",
+            "role": "text",
+            "x": 24,
+            "y": 26,
+            "width": 912,
+            "height": 32.5,
+            "text": "任意向量跟着走"
+          },
+          { "id": "text-18", "role": "text", "x": 433, "y": 254, "width": 16, "height": 23.4, "text": "e₁" },
+          { "id": "text-19", "role": "text", "x": 323, "y": 194, "width": 16, "height": 23.4, "text": "e₂" },
+          {
+            "id": "text-20",
+            "role": "text",
+            "x": 511,
+            "y": 122.5,
+            "width": 32.2,
+            "height": 26,
+            "text": "A·v"
+          },
+          {
+            "id": "text-21",
+            "role": "text",
+            "x": 60,
+            "y": 476,
+            "width": 840,
+            "height": 22.1,
+            "text": "v 跟着平面一起被送过去，落到 A·v"
+          },
+          {
+            "id": "text-22",
+            "role": "text",
+            "x": 645,
+            "y": 125,
+            "width": 280,
+            "height": 26,
+            "text": "A·v = 1·(第 1 列) + 1·(第 2"
+          },
+          {
+            "id": "text-23",
+            "role": "text",
+            "x": 645,
+            "y": 160,
+            "width": 280,
+            "height": 26,
+            "text": "= (1.5, 0.5) + (0.5, 1.2"
+          },
+          {
+            "id": "text-24",
+            "role": "text",
+            "x": 645,
+            "y": 196,
+            "width": 280,
+            "height": 29,
+            "text": "= (2.0, 1.7)"
+          },
+          { "id": "other-1", "role": "other", "x": 0, "y": 0, "width": 960, "height": 540 },
+          { "id": "other-2", "role": "other", "x": 50, "y": 25, "width": 600, "height": 510 },
+          { "id": "other-3", "role": "other", "x": 50, "y": 175, "width": 150, "height": 360 },
+          { "id": "other-4", "role": "other", "x": 50, "y": 385, "width": 450, "height": 150 },
+          { "id": "other-5", "role": "other", "x": 162.5, "y": 137.5, "width": 150, "height": 360 },
+          { "id": "other-6", "role": "other", "x": 87.5, "y": 295, "width": 450, "height": 150 },
+          { "id": "other-7", "role": "other", "x": 275, "y": 100, "width": 150, "height": 360 },
+          { "id": "other-8", "role": "other", "x": 125, "y": 205, "width": 450, "height": 150 },
+          { "id": "other-9", "role": "other", "x": 387.5, "y": 62.5, "width": 150, "height": 360 },
+          { "id": "other-10", "role": "other", "x": 162.5, "y": 115, "width": 450, "height": 150 },
+          { "id": "other-11", "role": "other", "x": 500, "y": 25, "width": 150, "height": 360 },
+          { "id": "other-12", "role": "other", "x": 200, "y": 25, "width": 450, "height": 150 },
+          { "id": "other-13", "role": "other", "x": 413, "y": 274, "width": 12, "height": 12 },
+          { "id": "other-14", "role": "other", "x": 344, "y": 205, "width": 12, "height": 12 },
+          { "id": "other-15", "role": "other", "x": 350, "y": 152.5, "width": 150, "height": 127.5 },
+          { "id": "other-16", "role": "other", "x": 487, "y": 152.5, "width": 13, "height": 12.3 },
+          { "id": "other-17", "role": "other", "x": 350, "y": 152.5, "width": 150, "height": 127.5 },
+          {
+            "id": "other-25",
+            "role": "other",
+            "x": 645,
+            "y": 250,
+            "width": 280,
+            "height": 46,
+            "text": "组合系数 1、1 没变变的只是基向量"
+          }
+        ]
+      },
+      {
+        "id": "s_det",
+        "tMs": 39199,
+        "width": 960,
+        "height": 540,
+        "truncated": false,
+        "boxes": [
+          {
+            "id": "text-0",
+            "role": "text",
+            "x": 24,
+            "y": 26,
+            "width": 912,
+            "height": 32.5,
+            "text": "行列式 = 面积缩放倍数"
+          },
+          {
+            "id": "text-18",
+            "role": "text",
+            "x": 330,
+            "y": 172.5,
+            "width": 91.5,
+            "height": 23.4,
+            "text": "面积 = 1.55"
+          },
+          {
+            "id": "text-19",
+            "role": "text",
+            "x": 645,
+            "y": 100,
+            "width": 280,
+            "height": 28,
+            "text": "det A = ad − bc"
+          },
+          {
+            "id": "text-20",
+            "role": "text",
+            "x": 645,
+            "y": 136,
+            "width": 280,
+            "height": 25,
+            "text": "= 1.5 × 1.2 − 0.5 × 0.5"
+          },
+          {
+            "id": "text-21",
+            "role": "text",
+            "x": 645,
+            "y": 170,
+            "width": 280,
+            "height": 28,
+            "text": "= 1.55"
+          },
+          {
+            "id": "text-22",
+            "role": "text",
+            "x": 645,
+            "y": 220,
+            "width": 280,
+            "height": 18,
+            "text": "单位方格面积"
+          },
+          { "id": "text-23", "role": "text", "x": 645, "y": 243, "width": 280, "height": 60, "text": "1.55" },
+          {
+            "id": "text-25",
+            "role": "text",
+            "x": 60,
+            "y": 476,
+            "width": 840,
+            "height": 22.1,
+            "text": "det = 面积缩放倍数"
+          },
+          { "id": "other-1", "role": "other", "x": 0, "y": 0, "width": 960, "height": 540 },
+          { "id": "other-2", "role": "other", "x": 50, "y": 25, "width": 600, "height": 510 },
+          { "id": "other-3", "role": "other", "x": 50, "y": 175, "width": 150, "height": 360 },
+          { "id": "other-4", "role": "other", "x": 50, "y": 385, "width": 450, "height": 150 },
+          { "id": "other-5", "role": "other", "x": 162.5, "y": 137.5, "width": 150, "height": 360 },
+          { "id": "other-6", "role": "other", "x": 87.5, "y": 295, "width": 450, "height": 150 },
+          { "id": "other-7", "role": "other", "x": 275, "y": 100, "width": 150, "height": 360 },
+          { "id": "other-8", "role": "other", "x": 125, "y": 205, "width": 450, "height": 150 },
+          { "id": "other-9", "role": "other", "x": 387.5, "y": 62.5, "width": 150, "height": 360 },
+          { "id": "other-10", "role": "other", "x": 162.5, "y": 115, "width": 450, "height": 150 },
+          { "id": "other-11", "role": "other", "x": 500, "y": 25, "width": 150, "height": 360 },
+          { "id": "other-12", "role": "other", "x": 200, "y": 25, "width": 450, "height": 150 },
+          { "id": "other-13", "role": "other", "x": 350, "y": 242.5, "width": 112.5, "height": 37.5 },
+          { "id": "other-14", "role": "other", "x": 462.5, "y": 152.5, "width": 37.5, "height": 90 },
+          { "id": "other-15", "role": "other", "x": 387.5, "y": 152.5, "width": 112.5, "height": 37.5 },
+          { "id": "other-16", "role": "other", "x": 350, "y": 190, "width": 37.5, "height": 90 },
+          { "id": "other-17", "role": "other", "x": 350, "y": 152.5, "width": 150, "height": 127.5 },
+          {
+            "id": "other-24",
+            "role": "other",
+            "x": 645,
+            "y": 320,
+            "width": 280,
+            "height": 46,
+            "text": "det 就是这台机器把面积放大的倍数"
+          }
+        ]
+      },
+      {
+        "id": "s_degenerate",
+        "tMs": 48799,
+        "width": 960,
+        "height": 540,
+        "truncated": false,
+        "boxes": [
+          {
+            "id": "text-0",
+            "role": "text",
+            "x": 24,
+            "y": 26,
+            "width": 912,
+            "height": 32.5,
+            "text": "det = 0：平面被压扁"
+          },
+          {
+            "id": "text-18",
+            "role": "text",
+            "x": 292.5,
+            "y": 158.8,
+            "width": 170,
+            "height": 22.1,
+            "text": "所有点都落在这条线上"
+          },
+          {
+            "id": "text-19",
+            "role": "text",
+            "x": 645,
+            "y": 100,
+            "width": 280,
+            "height": 25,
+            "text": "B = [[1, 2], [0.5, 1]]"
+          },
+          {
+            "id": "text-20",
+            "role": "text",
+            "x": 645,
+            "y": 140,
+            "width": 280,
+            "height": 25,
+            "text": "det B = 1×1 − 2×0.5"
+          },
+          { "id": "text-21", "role": "text", "x": 645, "y": 175, "width": 280, "height": 30, "text": "= 0" },
+          {
+            "id": "text-22",
+            "role": "text",
+            "x": 645,
+            "y": 220,
+            "width": 280,
+            "height": 18,
+            "text": "单位方格面积"
+          },
+          { "id": "text-23", "role": "text", "x": 645, "y": 243, "width": 280, "height": 60, "text": "0.00" },
+          {
+            "id": "text-25",
+            "role": "text",
+            "x": 60,
+            "y": 476,
+            "width": 840,
+            "height": 22.1,
+            "text": "det = 0 ⇒ 面积没了 ⇒ 不可逆"
+          },
+          { "id": "other-1", "role": "other", "x": 0, "y": 0, "width": 960, "height": 540 },
+          { "id": "other-2", "role": "other", "x": 0, "y": 55, "width": 800, "height": 450 },
+          { "id": "other-3", "role": "other", "x": 0, "y": 205, "width": 500, "height": 300 },
+          { "id": "other-4", "role": "other", "x": 0, "y": 355, "width": 200, "height": 150 },
+          { "id": "other-5", "role": "other", "x": 0, "y": 167.5, "width": 575, "height": 300 },
+          { "id": "other-6", "role": "other", "x": 50, "y": 280, "width": 300, "height": 150 },
+          { "id": "other-7", "role": "other", "x": 50, "y": 130, "width": 600, "height": 300 },
+          { "id": "other-8", "role": "other", "x": 200, "y": 205, "width": 300, "height": 150 },
+          { "id": "other-9", "role": "other", "x": 125, "y": 92.5, "width": 600, "height": 300 },
+          { "id": "other-10", "role": "other", "x": 350, "y": 130, "width": 300, "height": 150 },
+          { "id": "other-11", "role": "other", "x": 200, "y": 55, "width": 600, "height": 300 },
+          { "id": "other-12", "role": "other", "x": 500, "y": 55, "width": 300, "height": 150 },
+          { "id": "other-13", "role": "other", "x": 350, "y": 242.5, "width": 75, "height": 37.5 },
+          { "id": "other-14", "role": "other", "x": 425, "y": 167.5, "width": 150, "height": 75 },
+          { "id": "other-15", "role": "other", "x": 500, "y": 167.5, "width": 75, "height": 37.5 },
+          { "id": "other-16", "role": "other", "x": 350, "y": 205, "width": 150, "height": 75 },
+          { "id": "other-17", "role": "other", "x": 230, "y": 208.8, "width": 262.5, "height": 131.3 },
+          {
+            "id": "other-24",
+            "role": "other",
+            "x": 645,
+            "y": 320,
+            "width": 280,
+            "height": 46,
+            "text": "面积没了 ⇒ 信息丢了这个变换不可逆"
+          }
+        ]
+      },
+      {
+        "id": "s_flip",
+        "tMs": 57999,
+        "width": 960,
+        "height": 540,
+        "truncated": false,
+        "boxes": [
+          {
+            "id": "text-0",
+            "role": "text",
+            "x": 24,
+            "y": 26,
+            "width": 912,
+            "height": 32.5,
+            "text": "负 det：翻了个面"
+          },
+          {
+            "id": "text-4",
+            "role": "text",
+            "x": 445,
+            "y": 270,
+            "width": 90,
+            "height": 19.5,
+            "text": "朝向：顺时针"
+          },
+          {
+            "id": "text-5",
+            "role": "text",
+            "x": 645,
+            "y": 100,
+            "width": 280,
+            "height": 25,
+            "text": "C = [[0, 1], [1, 0]]"
+          },
+          {
+            "id": "text-6",
+            "role": "text",
+            "x": 645,
+            "y": 140,
+            "width": 280,
+            "height": 25,
+            "text": "det C = 0×0 − 1×1"
+          },
+          { "id": "text-7", "role": "text", "x": 645, "y": 175, "width": 280, "height": 30, "text": "= −1" },
+          {
+            "id": "text-8",
+            "role": "text",
+            "x": 645,
+            "y": 220,
+            "width": 280,
+            "height": 18,
+            "text": "面积（取绝对值）"
+          },
+          { "id": "text-9", "role": "text", "x": 645, "y": 243, "width": 280, "height": 60, "text": "1.00" },
+          {
+            "id": "text-11",
+            "role": "text",
+            "x": 60,
+            "y": 476,
+            "width": 840,
+            "height": 22.1,
+            "text": "负号 = 翻转朝向，面积仍取绝对值"
+          },
+          { "id": "other-1", "role": "other", "x": 0, "y": 0, "width": 960, "height": 540 },
+          { "id": "other-2", "role": "other", "x": 200, "y": 130, "width": 300, "height": 300 },
+          { "id": "other-3", "role": "other", "x": 365, "y": 220, "width": 45, "height": 45 },
+          {
+            "id": "other-10",
+            "role": "other",
+            "x": 645,
+            "y": 320,
+            "width": 280,
+            "height": 46,
+            "text": "负号 = 翻转朝向面积仍取绝对值"
+          }
+        ]
+      },
+      {
+        "id": "s_summary",
+        "tMs": 66799,
+        "width": 960,
+        "height": 540,
+        "truncated": false,
+        "boxes": [
+          {
+            "id": "text-0",
+            "role": "text",
+            "x": 24,
+            "y": 26,
+            "width": 912,
+            "height": 32.5,
+            "text": "三句话带走"
+          },
+          {
+            "id": "text-2",
+            "role": "text",
+            "x": 210,
+            "y": 140,
+            "width": 540,
+            "height": 40,
+            "text": "列 = 基向量的像"
+          },
+          {
+            "id": "text-4",
+            "role": "text",
+            "x": 210,
+            "y": 220,
+            "width": 540,
+            "height": 40,
+            "text": "det = 面积缩放倍数"
+          },
+          {
+            "id": "text-6",
+            "role": "text",
+            "x": 210,
+            "y": 300,
+            "width": 540,
+            "height": 40,
+            "text": "符号 = 是否翻转"
+          },
+          {
+            "id": "text-7",
+            "role": "text",
+            "x": 24,
+            "y": 390,
+            "width": 912,
+            "height": 28.6,
+            "text": "矩阵 = 一台把平面揉变形的机器"
+          },
+          {
+            "id": "text-8",
+            "role": "text",
+            "x": 60,
+            "y": 476,
+            "width": 840,
+            "height": 22.1,
+            "text": "列定去向，det 定面积，符号定朝向"
+          },
+          { "id": "other-1", "role": "other", "x": 180, "y": 144, "width": 5, "height": 28 },
+          { "id": "other-3", "role": "other", "x": 180, "y": 224, "width": 5, "height": 28 },
+          { "id": "other-5", "role": "other", "x": 180, "y": 304, "width": 5, "height": 28 }
+        ]
+      }
+    ]
+  }
+]

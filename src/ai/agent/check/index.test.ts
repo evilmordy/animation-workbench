@@ -203,7 +203,7 @@ describe('体检', () => {
     const drifted = checkScenes([
       { id: 's', width: 16, height: 16, sameMs: [{ tMs: 200, first: base, second: three }] },
     ]);
-    expect(drifted.map((issue) => [issue.kind, issue.severity])).toEqual([['SEEK_SAME_MS', 'major']]);
+    expect(drifted.map((issue) => [issue.kind, issue.severity])).toEqual([['SEEK_SAME_MS', 'blocker']]);
 
     const hot = shift(base, 2, 2, 30);
     const back = checkScenes([
