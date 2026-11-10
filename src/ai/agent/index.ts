@@ -13,7 +13,6 @@ export {
   diskFrameStore,
   memoryFrameStore,
   runVisionReview,
-  unavailableCapture,
   visionContext,
   visionTools,
   VISION_KEY_NOTE,

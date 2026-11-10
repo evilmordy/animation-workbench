@@ -84,3 +84,27 @@ test('取消能中止 Agent', async ({ page }) => {
   await expect(page.getByTestId('cancel-agent')).toHaveCount(0);
   await expect(page.getByTestId('agent-log')).not.toContainText('已写入场景');
 });
+
+test('空项目体检说明没有代码场', async ({ page }) => {
+  await enableAgent(page);
+  await page.getByTestId('agent-check').click();
+  await expect(page.getByTestId('agent-check-result')).toContainText('没有可体检的代码场');
+  await expect(page.getByTestId('agent-check-result')).not.toContainText('尚未接入');
+});
+
+test('代码场出界能从隐藏预览报出来', async ({ page }) => {
+  await enableAgent(page);
+  await page.getByTestId('insert-scene').click();
+  await page.getByRole('tab', { name: '场景' }).click();
+  await page.getByTestId('scene-kind').getByText('代码', { exact: true }).click();
+  await page
+    .getByTestId('scene-code')
+    .locator('textarea')
+    .fill("el('div', { left: -400, top: 40, fontSize: 32, color: '#fff' }, '出界标题');\nwait(400);");
+  await page.getByRole('tab', { name: 'AI' }).click();
+  await page.getByTestId('agent-check').click();
+  const result = page.getByTestId('agent-check-result');
+  await expect(result).toContainText('出界', { timeout: 30_000 });
+  await expect(result).not.toContainText('尚未接入');
+  await expect(result).toContainText('像素：');
+});

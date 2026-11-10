@@ -14,7 +14,9 @@ import {
   useMessage,
 } from 'naive-ui';
 import { computed, ref, watch } from 'vue';
+import { checkStoryboardInApp } from '../../ai/agent/check/backend-app';
 import { dispatchGenerate, usesAgenticEngine } from '../../ai/agent/engine';
+import { previewPageUrl } from '../../ai/agent/renderer';
 import { budgetFromSettings, lineFromEvent, type AgentLogLine } from '../../ai/agent/log';
 import { runProjectAgent } from '../../ai/agent/run';
 import type { Outline } from '../../ai/prompts';
@@ -62,6 +64,8 @@ const instruction = ref('');
 const scope = ref<'scene' | 'all'>('scene');
 const fixing = ref<{ sceneId: string; text: string } | null>(null);
 const agentBusy = ref(false);
+const checking = ref(false);
+const checkText = ref('');
 const agentNote = ref('');
 const agentLog = ref<AgentLogLine[]>([]);
 const agentTurns = ref(0);
@@ -138,6 +142,23 @@ async function runAgentEntry() {
 
 function cancelAgent() {
   agentAbort?.abort();
+}
+
+async function runCheck() {
+  const sb = project.storyboard;
+  if (!sb || checking.value) return;
+  checking.value = true;
+  checkText.value = '';
+  try {
+    const report = await checkStoryboardInApp(sb, {
+      previewSrc: previewPageUrl(platform.previewSrc(), 'anime', true),
+    });
+    checkText.value = report.text;
+  } catch (error) {
+    checkText.value = `体检失败：${error instanceof Error ? error.message : String(error)}`;
+  } finally {
+    checking.value = false;
+  }
 }
 
 watch(agentic, (on, was) => {
@@ -313,10 +334,13 @@ function applyFix(scene: Scene) {
     <AgentPanel
       v-if="agentic"
       :busy="agentBusy"
+      :checking="checking"
+      :check-text="checkText"
       :lines="agentLog"
       :turns="agentTurns"
       :tokens="agentTokens"
       @cancel="cancelAgent"
+      @check="runCheck"
     />
     <p v-if="agentNote" class="muted" data-testid="agent-note">{{ agentNote }}</p>
 

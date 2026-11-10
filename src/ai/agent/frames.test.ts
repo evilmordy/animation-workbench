@@ -456,9 +456,52 @@ describe('闭环工具', () => {
     expect(await view?.run({ frame: 'frames/s_code-sequence-start.png' })).toContain('没有这张截帧');
     expect(await view?.run({ frame: '../storyboard.json' })).toContain('拒绝读取');
 
-    const dslOnly = visionContext({ getStoryboard: () => board([dslScene]) });
+    const dslOnly = visionContext({
+      getStoryboard: () => board([dslScene]),
+      capture: async () => {
+        throw new Error('不应截帧');
+      },
+    });
     const skipped = await visionTools(dslOnly)[0]?.run({});
     expect(skipped).toContain('没有 kind:code');
+
+    const noPixels = visionContext({
+      getStoryboard: () => sb,
+      capture: async (request) => ({
+        backend: 'app-iframe',
+        frames: request.shots.flatMap((item) => {
+          const sources = item.isolated ? (['sequence', 'isolated'] as const) : (['sequence'] as const);
+          return sources.map((source) => ({
+            sceneId: item.sceneId,
+            source,
+            t: 1,
+            png: new Uint8Array(),
+            raster: { width: 1, height: 1, rgba: new Uint8Array(4) },
+            boxes: [
+              { id: 'title', role: 'text' as const, x: 10, y: 10, width: 40, height: 20, text: '标题' },
+            ],
+            consoleErrors: [] as string[],
+            pixels: false,
+            stageWidth: 960,
+            stageHeight: 540,
+            rasterError: 'foreignObject 没有解码成图片',
+          }));
+        }),
+      }),
+    });
+    const noPixelTools = visionTools(noPixels);
+    const rendered = await noPixelTools[0]?.run({});
+    expect(rendered).toContain('没有像素图');
+    expect(rendered).not.toContain('view_image');
+    expect(rendered).not.toContain('尚未接入');
+    const layout = await noPixelTools
+      .find((tool) => tool.definition.function.name === 'check_layout')
+      ?.run({});
+    expect(layout).toContain('没有发现出界或字叠');
+    const residual = await noPixelTools
+      .find((tool) => tool.definition.function.name === 'check_residual')
+      ?.run({});
+    expect(residual).toContain('没有像素帧');
 
     const named = planCapture(board([dslScene, codeScene]), { sceneIds: ['s_old'], isolated: false });
     expect(named.ok).toBe(true);
@@ -512,7 +555,12 @@ describe('闭环工具', () => {
       enabled: settings.runtime.agentTools,
       messages: [{ role: 'user', content: '看画面' }],
       transport,
-      ctx: visionContext({ getStoryboard: () => emptyStoryboard('t') }),
+      ctx: visionContext({
+        getStoryboard: () => emptyStoryboard('t'),
+        capture: async () => {
+          throw new Error('不应截帧');
+        },
+      }),
     });
     expect(review.status).toBe('disabled');
     expect(seen).toEqual([undefined]);

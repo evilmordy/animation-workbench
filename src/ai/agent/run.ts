@@ -3,6 +3,7 @@ import { useProjectStore } from '../../stores/project';
 import { useSettingsStore } from '../../stores/settings';
 import { aiSession } from '../session';
 import { acceptStoryboard, applyAgentScenes } from './apply';
+import { appFrameCapture } from './check/backend-app';
 import { agentToolsEnabled, diskFrameStore, runVisionReview, visionContext } from './frames';
 import type { AgentLogEvent } from './log';
 import { DEFAULT_AGENT_BUDGET_SETTINGS, budgetFromSettings } from './log';
@@ -10,7 +11,13 @@ import type { AgentBudget, AgentHost, AgentResult, RunAgentOpts } from './loop';
 import { runAgent } from './loop';
 import { isAnimPath } from './parse';
 import { taskCard } from './prompts';
-import { readRendererFile, resolveAgentRenderer, writeRendererFile, type CodeRenderer } from './renderer';
+import {
+  previewPageUrl,
+  readRendererFile,
+  resolveAgentRenderer,
+  writeRendererFile,
+  type CodeRenderer,
+} from './renderer';
 
 /** 模型代码块不能写 source.md。生成开始时由系统写入。 */
 function isSidecar(name: string): boolean {
@@ -130,6 +137,7 @@ export async function runProjectAgent(
       ctx: visionContext({
         getStoryboard: () => project.storyboard,
         store: project.dir ? diskFrameStore(project.dir) : undefined,
+        capture: appFrameCapture(previewPageUrl(platform.previewSrc(), 'anime', true)),
       }),
       signal: opts.signal,
       onCancelRequest: (id) => session.cancel(id),

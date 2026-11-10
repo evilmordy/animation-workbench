@@ -199,6 +199,8 @@ function startPreview(stage: HTMLElement) {
       case 'setRate':
         p?.setPlaybackRate(m.data.rate);
         break;
+      case 'probe':
+        break;
     }
   });
 

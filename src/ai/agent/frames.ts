@@ -26,6 +26,9 @@ export interface StoredFrame {
   boxes: LayoutBox[];
   boxesTruncated?: boolean;
   consoleErrors: string[];
+  pixels?: boolean;
+  stageWidth?: number;
+  stageHeight?: number;
 }
 
 export interface VisionSession {
@@ -83,22 +86,14 @@ export function diskFrameStore(projectDir: string): FrameStore {
   };
 }
 
-export function unavailableCapture(reason?: string): VisionContext['capture'] {
-  const message =
-    reason ?? '没有截帧后端。应用内 webview 截帧尚未接入；Playwright 预览不可用时已降级，没有图片。';
-  return async () => {
-    throw new Error(message);
-  };
-}
-
 export function visionContext(opts: {
   getStoryboard: () => Storyboard | null;
-  capture?: VisionContext['capture'];
+  capture: VisionContext['capture'];
   store?: FrameStore;
 }): VisionContext {
   return {
     getStoryboard: opts.getStoryboard,
-    capture: opts.capture ?? unavailableCapture(),
+    capture: opts.capture,
     store: opts.store ?? memoryFrameStore(),
     session: { frames: new Map(), consoleErrors: [] },
   };
@@ -303,16 +298,19 @@ async function renderFrames(ctx: VisionContext, args: unknown): Promise<string> 
     return `截帧失败，已降级：${message}\n没有写出图片。可以继续根据代码改场景，不必等看图模型。`;
   }
   if (!batch.frames.length) return `截帧后端 ${batch.backend} 没有返回画面。没有写出图片。`;
-  const lines: string[] = [];
+  const saved: string[] = [];
+  const domOnly: string[] = [];
   for (const frame of batch.frames) {
     const at = planned.request.shots.find((shot) => shot.sceneId === frame.sceneId)?.at ?? 'start';
+    const where = frame.source === 'sequence' ? '整片' : '单场';
+    const pixels = frame.pixels !== false && frame.png.byteLength > 0;
     let name: string;
     try {
       name = frameName(frame.sceneId, frame.source, at);
-      await ctx.store.write(name, frame.png);
+      if (pixels) await ctx.store.write(name, frame.png);
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
-      const wrote = lines.length ? `已写出 ${lines.length} 张后中断。` : '没有写出图片。';
+      const wrote = saved.length ? `已写出 ${saved.length} 张后中断。` : '没有写出图片。';
       return `截帧失败，已降级：${message}\n${wrote}`;
     }
     remember(ctx, {
@@ -325,15 +323,29 @@ async function renderFrames(ctx: VisionContext, args: unknown): Promise<string> 
       boxes: frame.boxes,
       ...(frame.boxesTruncated ? { boxesTruncated: true } : {}),
       consoleErrors: frame.consoleErrors,
+      pixels,
+      ...(frame.stageWidth ? { stageWidth: frame.stageWidth } : {}),
+      ...(frame.stageHeight ? { stageHeight: frame.stageHeight } : {}),
     });
-    const where = frame.source === 'sequence' ? '整片' : '单场';
-    lines.push(`- ${name} 场 ${frame.sceneId} ${where} t=${frame.t.toFixed(2)}`);
+    if (pixels) saved.push(`- ${name} 场 ${frame.sceneId} ${where} t=${frame.t.toFixed(2)}`);
+    else {
+      domOnly.push(
+        `- 场 ${frame.sceneId} ${where} t=${frame.t.toFixed(2)} 没有像素图。${frame.rasterError ?? ''} DOM 框 ${frame.boxes.length} 个。`,
+      );
+    }
   }
+  const header = saved.length
+    ? `已写出 ${saved.length} 张截帧（${batch.backend}），目录是项目 .awb/anim/frames/。`
+    : `没有写出图片（${batch.backend}）。`;
+  const tail = saved.length
+    ? '用 view_image 把图放回对话，用 check_layout 看出界和字叠，用 check_residual 比像素残留。'
+    : '没有像素图，不要把图放回对话。用 check_layout 看 DOM 包围盒。';
   return [
-    `已写出 ${lines.length} 张截帧（${batch.backend}），目录是项目 .awb/anim/frames/。`,
-    ...lines,
+    header,
+    ...saved,
+    ...domOnly,
     `控制台错误 ${ctx.session.consoleErrors.length} 条。`,
-    '用 view_image 把图放回对话，用 check_layout 看出界和字叠，用 check_residual 比像素残留。',
+    tail,
     VISION_KEY_NOTE,
   ].join('\n');
 }
@@ -360,11 +372,13 @@ function checkLayoutTool(ctx: VisionContext, args: unknown): string {
   if (requested && !isFramePath(requested)) return `拒绝读取：${requested}`;
   const frame = findFrame(ctx, requested, requested ? undefined : 'sequence');
   if (!frame) return '还没有截帧。先调用 render_frames。';
+  const width = frame.pixels === false && frame.stageWidth ? frame.stageWidth : frame.raster.width;
+  const height = frame.pixels === false && frame.stageHeight ? frame.stageHeight : frame.raster.height;
   const report = checkLayout({
-    width: frame.raster.width,
-    height: frame.raster.height,
+    width,
+    height,
     boxes: frame.boxes,
-    raster: frame.raster,
+    ...(frame.pixels === false ? {} : { raster: frame.raster }),
     ...(frame.boxesTruncated ? { truncated: true } : {}),
   });
   return `${frame.name}\n${report.summary}`;
@@ -383,6 +397,9 @@ function checkResidualTool(ctx: VisionContext, args: unknown): string {
     .reverse()
     .find((frame) => frame.source === 'isolated' && frame.sceneId === (sceneId ?? sequence?.sceneId));
   if (!sequence || !isolated) return '还没有成对的整片帧和单场帧。render_frames 请保持 isolated 为 true。';
+  if (sequence.pixels === false || isolated.pixels === false) {
+    return `场 ${sequence.sceneId}：没有像素帧。布局已按 DOM 包围盒检查；残留对比需要像素，这一端没有截到图。`;
+  }
   const scene = ctx.getStoryboard()?.scenes.find((item) => item.id === sequence.sceneId);
   const note = scene?.enter === 'keep' ? '这一场 enter 是 keep，共享对象留在画面上不一定是残留。' : undefined;
   const report = compareResidual(sequence.raster, isolated.raster, { note });
