@@ -1,4 +1,4 @@
-/** 模型用宽松的分文件代码块交卷。只认 plan / rubric / shared / scenes/<id>.js。 */
+/** 模型用分文件代码块，或独立成行的 file: 路径交卷。只认 plan / rubric / shared / scenes/<id>.js。 */
 
 export interface AgentFile {
   /** plan.md、rubric.json、shared.js，或 scenes/<id>.js */
@@ -43,6 +43,27 @@ function takeNamed(info: string, body: string): { name: string; content: string 
   return { name, content: body.slice(first.length + 1).replace(/\n$/, '') };
 }
 
+/** 整行恰好是白名单路径才算边界，句子里的 file: 不算。后写的同名覆盖先写的。 */
+function bareFiles(normalized: string): Map<string, string> {
+  const lines = normalized.split('\n');
+  const marks: { name: string; at: number }[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const token = /^\s*file:\s*(\S+)\s*$/.exec(lines[i] ?? '')?.[1] ?? '';
+    const name = canonicalAnimName(token);
+    if (name && (token === name || token === `anim/${name}`)) marks.push({ name, at: i });
+  }
+  const files = new Map<string, string>();
+  for (const [i, mark] of marks.entries()) {
+    const next = marks[i + 1];
+    const content = lines
+      .slice(mark.at + 1, next?.at ?? lines.length)
+      .join('\n')
+      .replace(/\n$/, '');
+    files.set(mark.name, content);
+  }
+  return files;
+}
+
 function closedFences(normalized: string): { files: Map<string, string>; end: number } {
   const files = new Map<string, string>();
   const fence = /```([^\n`]*)\n([\s\S]*?)```/g;
@@ -55,11 +76,18 @@ function closedFences(normalized: string): { files: Map<string, string>; end: nu
   return { files, end };
 }
 
-/** 从一轮模型输出里抽出文件。后面的同名块覆盖前面的。没有代码块时，整段 JSON 当作 rubric。 */
+/**
+ * 从一轮模型输出里抽出文件。后面的同名块覆盖前面的。
+ * 有代码围栏时只认围栏；没有围栏时认独立成行的 file: 路径。都没有时，整段 JSON 当作 rubric。
+ */
 export function parseAgentFiles(text: string): AgentFile[] {
   const normalized = text.replace(/\r\n/g, '\n');
   const { files } = closedFences(normalized);
   if (files.size) return [...files].map(([name, content]) => ({ name, content }));
+  if (!normalized.includes('```')) {
+    const bare = bareFiles(normalized);
+    if (bare.size) return [...bare].map(([name, content]) => ({ name, content }));
+  }
 
   const trimmed = normalized.trim();
   if (trimmed.startsWith('{')) {
