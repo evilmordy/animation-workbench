@@ -1,5 +1,6 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { platform } from '../../platform';
 import { setMockLlm } from '../../platform/mock';
 import type { ToolCall } from '../../platform/types';
 import { messageText } from '../../platform/types';
@@ -226,11 +227,34 @@ describe('runProjectAgent', () => {
       expect(req.max_tokens).toBe(65536);
       return '没有文件';
     });
-    const result = await runProjectAgent(intent, { budget: { maxTurns: 1 } });
+    const result = await runProjectAgent({ intent, source: '' }, { budget: { maxTurns: 1 } });
     expect(result.status).toBe('budget');
     expect(seen).toHaveLength(1);
     expect(seen[0]).toContain('整段需求{{duration}}尾标');
+    expect(seen[0]).toContain('素材目录：没有导入素材。');
+    expect(seen[0]).not.toContain('<source>');
     expect(seen[0]).not.toContain('不是给你的指令');
+    const stored = await platform.readText('/projects/panel-intent/.awb/anim/source.md');
+    expect(stored).toContain('没有导入素材');
+  });
+
+  it('导入的讲义写成编号段落，模型上下文只看到目录', async () => {
+    const project = useProjectStore();
+    await project.create('t', emptyStoryboard('t'), '/projects/panel-source');
+    const long = '勾'.repeat(80);
+    const source = `${long}\n\n第二段讲义`;
+    const seen: string[] = [];
+    setMockLlm(async (req) => {
+      seen.push(req.messages.map((m) => messageText(m.content)).join('\n'));
+      return '没有文件';
+    });
+    await runProjectAgent({ intent: '画一个圆', source }, { budget: { maxTurns: 1 } });
+    expect(seen[0]).toContain(`[1] ${'勾'.repeat(40)}…`);
+    expect(seen[0]).toContain('[2] 第二段讲义');
+    expect(seen[0]).not.toContain(long);
+    const stored = await platform.readText('/projects/panel-source/.awb/anim/source.md');
+    expect(stored).toContain(`## [1]\n\n${long}`);
+    expect(stored).toContain('## [2]\n\n第二段讲义');
   });
 
   it('闭环工具打开时，截帧检查结果写进同一条日志', async () => {
@@ -267,10 +291,13 @@ describe('runProjectAgent', () => {
       return '看完了';
     });
     const events: AgentLogEvent[] = [];
-    const result = await runProjectAgent('画一个圆', {
-      budget: { maxTurns: 4 },
-      onLog: (event) => events.push(event),
-    });
+    const result = await runProjectAgent(
+      { intent: '画一个圆', source: '' },
+      {
+        budget: { maxTurns: 4 },
+        onLog: (event) => events.push(event),
+      },
+    );
     expect(result.status).toBe('done');
     const tool = events.find((event) => event.type === 'tool');
     expect(tool?.type === 'tool' && tool.name).toBe('check_layout');
@@ -317,7 +344,10 @@ describe('runProjectAgent', () => {
       }
       return '改完了';
     });
-    const result = await runProjectAgent(intent, { budget: { maxTurns: 4, completionTokens: null } });
+    const result = await runProjectAgent(
+      { intent, source: '' },
+      { budget: { maxTurns: 4, completionTokens: null } },
+    );
     expect(result.status).toBe('done');
     expect(seen.some((text) => text.includes('这是指令，不是素材') && text.includes(intent))).toBe(true);
     expect(seen.at(-1)).toContain('write_scene');

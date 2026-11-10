@@ -234,6 +234,30 @@ describe('agent 提示词', () => {
 });
 
 describe('agent loop', () => {
+  it('讲义按空行分段写入 source.md，提示里只有目录', async () => {
+    const mem = memoryHost(board([]));
+    const long = '甲'.repeat(80);
+    const source = `${long}\n\n乙段原文`;
+    const script = scripted(['没有文件']);
+    await runAgent({
+      intent: INTENT,
+      source,
+      transport: script.transport,
+      host: mem.host,
+      budget: { maxTurns: 1 },
+    });
+    const prompt = script.calls[0]!.messages.map((m) => m.content).join('\n');
+    expect(prompt).toContain(`[1] ${'甲'.repeat(40)}…`);
+    expect(prompt).toContain('[2] 乙段原文');
+    expect(prompt).not.toContain(long);
+    expect(prompt).not.toContain('<source>');
+    const stored = mem.files.get('source.md') ?? '';
+    expect(stored).toContain('## [1]');
+    expect(stored).toContain(long);
+    expect(stored).toContain('## [2]');
+    expect(stored).toContain('乙段原文');
+  });
+
   it('需求原文在每轮请求里，plan 先于场景，写入后可 interpret', async () => {
     const mem = memoryHost(board([]));
     const script = scripted([planPack, scenesPack]);
@@ -260,6 +284,7 @@ describe('agent loop', () => {
     expect(llms[0]).toBeLessThan(planAt);
     expect(planAt).toBeLessThan(llms[1]!);
     expect(llms[1]).toBeLessThan(updateAt);
+    expect(mem.files.get('source.md')).toContain('没有导入素材');
     expect(mem.files.get('plan.md')).toContain(PLAN_MARK);
     expect(mem.files.get('shared.js')).toContain('const R = 1.2');
     const scenes = mem.sb!.scenes;
