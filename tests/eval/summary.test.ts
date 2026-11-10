@@ -141,19 +141,21 @@ describe('五题评测', () => {
     expect(row.math).toContain('缺 (2/3)πR³');
   });
 
-  it('请求体固定 deepseek-chat、0.3、65536，且没有密钥和 json_object', () => {
+  it('请求体固定 deepseek-chat、0.3，不传 max_tokens，也没有密钥和 json_object', () => {
     const body = deepseekRequestBody([{ role: 'user', content: '画一个圆' }]);
     expect(body).toEqual({
       model: 'deepseek-chat',
       messages: [{ role: 'user', content: '画一个圆' }],
       temperature: 0.3,
-      max_tokens: 65536,
     });
+    expect(JSON.stringify(body)).not.toContain('max_tokens');
     expect(JSON.stringify(body)).not.toContain('response_format');
     const source = readFileSync(join(process.cwd(), 'tests/eval/run.eval.ts'), 'utf8');
     expect(source).toContain('DEEPSEEK_API_KEY');
     expect(source).not.toMatch(/sk-[A-Za-z0-9]{8,}/);
     expect(source).not.toContain('response_format');
+    expect(source).not.toContain('max_tokens');
+    expect(source).not.toContain('65536');
   });
 
   it('PNG 往返，Sub 过滤和 RGB 也能解', () => {

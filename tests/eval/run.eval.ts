@@ -129,7 +129,7 @@ it('五题机器初筛', async () => {
       {
         model: 'deepseek-chat',
         temperature: 0.3,
-        maxTokens: 65536,
+        maxTokens: null,
         pass: '运行门 + 布局 + 残留 + 同毫秒 + 后向 + 乱序 + 导出 + 控制台 + 黑屏比 ≤ 0.1',
         rows,
       },
