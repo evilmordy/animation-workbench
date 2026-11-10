@@ -50,14 +50,14 @@ export interface RuntimeSettings {
 const RUNTIME_DEFAULTS: RuntimeSettings = {
   codeScenes: false,
   agentTools: false,
-  codeRenderer: 'gsap',
+  codeRenderer: 'anime',
 };
 
 function normalizeRuntime(saved: Partial<RuntimeSettings> | null | undefined): RuntimeSettings {
   return {
     ...RUNTIME_DEFAULTS,
     ...saved,
-    codeRenderer: saved?.codeRenderer === 'manim' ? 'manim' : 'gsap',
+    codeRenderer: saved?.codeRenderer === 'manim' ? 'manim' : 'anime',
   };
 }
 

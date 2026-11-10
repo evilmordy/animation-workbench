@@ -1,4 +1,4 @@
-import gsap from 'gsap';
+import { animate, createTimeline, stagger, utils, type Timeline } from 'animejs';
 import { resolveColor, resolvePalette } from '../../shared/palette';
 import type { Scene, Storyboard } from '../../shared/schema';
 
@@ -8,22 +8,20 @@ export const STAGE_HEIGHT = 1080;
 
 export const STAGE_FONT = '"Noto Sans CJK SC", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif';
 
-/**
- * 打包进运行时，避免压缩时把版权声明剪掉。
- * GSAP 3 标准免许可协议：https://gsap.com/standard-license
- */
-export const GSAP_LICENSE =
-  'GSAP Copyright GreenSock. Subject to the terms at https://gsap.com/standard-license.';
+/** 传给场景代码的 anime。只有 v4 这几个入口，没有 v3 的 anime()。 */
+export const animeApi = { createTimeline, animate, stagger, utils };
 
-export interface GsapSceneError {
+export type AnimeApi = typeof animeApi;
+
+export interface HtmlSceneError {
   sceneId?: string;
   message: string;
 }
 
-export interface GsapShow {
+export interface HtmlShow {
   duration: number;
   scenes: { id: string; start: number; end: number }[];
-  errors: GsapSceneError[];
+  errors: HtmlSceneError[];
   seek(t: number): void;
   play(): void;
   pause(): void;
@@ -33,7 +31,7 @@ export interface GsapShow {
   kill(): void;
 }
 
-interface GsapContext {
+interface HtmlContext {
   theme: {
     primary: string;
     secondary: string;
@@ -50,12 +48,7 @@ interface GsapContext {
   height: number;
 }
 
-type SceneFn = (
-  root: HTMLElement,
-  gsapApi: typeof gsap,
-  tl: gsap.core.Timeline,
-  ctx: GsapContext,
-) => Promise<unknown>;
+type SceneFn = (root: HTMLElement, anime: AnimeApi, tl: Timeline, ctx: HtmlContext) => Promise<unknown>;
 
 const errText = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
@@ -63,7 +56,7 @@ function compile(code: string): SceneFn {
   const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor as new (
     ...args: string[]
   ) => SceneFn;
-  return new AsyncFunction('root', 'gsap', 'tl', 'ctx', code);
+  return new AsyncFunction('root', 'anime', 'tl', 'ctx', code);
 }
 
 function layer(sceneId: string): HTMLDivElement {
@@ -76,15 +69,23 @@ function layer(sceneId: string): HTMLDivElement {
   return el;
 }
 
+interface Span {
+  id: string;
+  startMs: number;
+  endMs: number;
+  last: boolean;
+  root?: HTMLElement;
+}
+
 /**
- * 把分镜录成一条暂停的 GSAP 时间线。seek 只改时间，不靠计时器往前推。
- * 每一场是空的图层；上一场在这一场开始的时刻被藏起来，画面上不留残影。
+ * 把分镜录成一条暂停的 anime.js 时间线。对外的秒和预览协议一致，时间线内部是毫秒。
+ * seek 只改当前时间。每一场是空图层，上一场在这一场开始的时刻被藏起来。
  */
-export async function playGsapStoryboard(
+export async function playHtmlStoryboard(
   sb: Storyboard,
   stage: HTMLElement,
   opts: { loop?: boolean } = {},
-): Promise<GsapShow> {
+): Promise<HtmlShow> {
   const palette = resolvePalette(sb.meta);
   const bg = resolveColor(sb.meta.background, palette);
   const theme = { ...palette, bg };
@@ -121,85 +122,102 @@ export async function playGsapStoryboard(
   const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => fit());
   observer?.observe(stage);
 
-  const master = gsap.timeline({ paused: true });
-  const errors: GsapSceneError[] = [];
-  const spans: { id: string; start: number; end: number }[] = [];
+  const master = createTimeline({ autoplay: false, loop: opts.loop ? true : 0 });
+  const errors: HtmlSceneError[] = [];
+  const spans: Span[] = [];
   let cursor = 0;
   const list = sb.scenes;
 
   for (let i = 0; i < list.length; i++) {
     const scene = list[i]!;
     const source = scene.kind === 'code' && typeof scene.code === 'string' ? scene.code.trim() : '';
+    const holdMs = (Number.isFinite(scene.hold) ? Math.max(0, scene.hold) : 0) * 1000;
     if (!source) {
       errors.push({
         sceneId: scene.id,
-        message: scene.kind === 'code' ? '代码场景缺少 code' : 'GSAP 播放只跑代码场景，这一场已跳过',
+        message: scene.kind === 'code' ? '代码场景缺少 code' : 'HTML 播放只跑代码场景，这一场已跳过',
       });
-      const dur = Math.max(0.1, Number.isFinite(scene.hold) ? scene.hold : 0);
-      master.set({}, {}, cursor + dur);
-      spans.push({ id: scene.id, start: cursor, end: cursor + dur });
+      const dur = Math.max(100, holdMs);
+      master.add({ duration: dur }, cursor);
+      spans.push({ id: scene.id, startMs: cursor, endMs: cursor + dur, last: i === list.length - 1 });
       cursor += dur;
       continue;
     }
 
     const root = layer(scene.id);
     canvas.appendChild(root);
-    const tl = gsap.timeline();
-    const hold = Number.isFinite(scene.hold) ? Math.max(0, scene.hold) : 0;
-    const ctx: GsapContext = {
+    const tl = createTimeline({
+      autoplay: false,
+      defaults: { duration: 800, ease: 'inOutQuad' },
+    });
+    const ctx: HtmlContext = {
       theme,
       sceneId: scene.id,
       title: scene.title,
-      hold,
+      hold: Number.isFinite(scene.hold) ? Math.max(0, scene.hold) : 0,
       enter: scene.enter,
       width: STAGE_WIDTH,
       height: STAGE_HEIGHT,
     };
     try {
-      await compile(source)(root, gsap, tl, ctx);
+      await compile(source)(root, animeApi, tl, ctx);
     } catch (e) {
       errors.push({ sceneId: scene.id, message: errText(e) });
     }
-    if (hold > 0) tl.to({}, { duration: hold });
-    const dur = Math.max(0.1, tl.duration());
-    const end = cursor + dur;
-    master.set(root, { autoAlpha: i === 0 ? 1 : 0 }, 0);
-    if (i > 0) master.set(root, { autoAlpha: 1 }, cursor);
-    master.add(tl, cursor);
-    if (i < list.length - 1) master.set(root, { autoAlpha: 0 }, end);
-    else master.set({}, {}, end);
-    spans.push({ id: scene.id, start: cursor, end });
-    cursor = end;
+    if (holdMs > 0) tl.add({ duration: holdMs });
+    let dur = tl.duration;
+    if (dur < 100) {
+      tl.add({ duration: 100 - dur });
+      dur = tl.duration;
+    }
+    master.sync(tl, cursor);
+    spans.push({
+      id: scene.id,
+      startMs: cursor,
+      endMs: cursor + dur,
+      last: i === list.length - 1,
+      root,
+    });
+    cursor += dur;
   }
 
-  if (opts.loop && cursor > 0) master.repeat(-1);
-  master.pause(0);
-  gsap.ticker.sleep();
+  const applyVisibility = (ms: number) => {
+    for (const span of spans) {
+      if (!span.root) continue;
+      const on = ms >= span.startMs && (span.last ? ms <= span.endMs : ms < span.endMs);
+      span.root.style.visibility = on ? 'visible' : 'hidden';
+    }
+  };
 
-  const show: GsapShow = {
-    duration: cursor,
-    scenes: spans,
+  master.pause();
+  master.seek(0, true);
+  applyVisibility(0);
+  master.onUpdate = () => applyVisibility(master.currentTime);
+
+  const show: HtmlShow = {
+    duration: cursor / 1000,
+    scenes: spans.map((span) => ({ id: span.id, start: span.startMs / 1000, end: span.endMs / 1000 })),
     errors,
     seek(t) {
-      master.seek(Math.max(0, Math.min(t, cursor)), false);
+      const ms = Math.max(0, Math.min(t * 1000, cursor));
+      master.seek(ms, true);
+      applyVisibility(ms);
     },
     play() {
-      gsap.ticker.wake();
       master.play();
     },
     pause() {
       master.pause();
     },
     setRate(rate) {
-      master.timeScale(rate);
+      master.speed = rate;
     },
-    time: () => master.time(),
-    playing: () => !master.paused(),
+    time: () => master.currentTime / 1000,
+    playing: () => !master.paused,
     kill() {
-      master.kill();
+      master.cancel();
       observer?.disconnect();
       stage.replaceChildren();
-      gsap.ticker.sleep();
     },
   };
   return show;

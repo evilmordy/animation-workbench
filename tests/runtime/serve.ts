@@ -10,8 +10,8 @@ const FILES: Record<string, [string, string]> = {
   'http://awpreview.test/runtime.js': ['dist-runtime/runtime.js', 'text/javascript'],
   'http://awpreview.test/code-harness.html': ['tests/runtime/code-harness.html', 'text/html'],
   'http://awpreview.test/code-harness.js': ['tests/runtime/code-harness.js', 'text/javascript'],
-  'http://awpreview.test/gsap.html': ['dist-runtime/gsap.html', 'text/html'],
-  'http://awpreview.test/gsap-runtime.js': ['dist-runtime/gsap-runtime.js', 'text/javascript'],
+  'http://awpreview.test/anime.html': ['dist-runtime/anime.html', 'text/html'],
+  'http://awpreview.test/anime-runtime.js': ['dist-runtime/anime-runtime.js', 'text/javascript'],
   'http://host.test/harness.html': ['tests/runtime/harness.html', 'text/html'],
   'http://host.test/harness.js': ['tests/runtime/harness.js', 'text/javascript'],
 };

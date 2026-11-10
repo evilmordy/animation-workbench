@@ -90,7 +90,7 @@ describe('预算', () => {
     await settings.load();
     expect(settings.engine).toBe('legacy');
     expect(settings.agentBudget).toEqual({ maxTurns: 24, maxTokens: null, completionTokens: 65536 });
-    expect(settings.runtime.codeRenderer).toBe('gsap');
+    expect(settings.runtime.codeRenderer).toBe('anime');
     expect(settings.engine).toBe('legacy');
     settings.setAgentBudget({ maxTurns: 2, maxTokens: 30 });
     expect(settings.agentBudget).toEqual({ maxTurns: 2, maxTokens: 30, completionTokens: 65536 });

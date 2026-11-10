@@ -32,8 +32,8 @@ function devPreview(): Plugin {
   const files: Record<string, string> = {
     '/index.html': 'text/html',
     '/runtime.js': 'text/javascript',
-    '/gsap.html': 'text/html',
-    '/gsap-runtime.js': 'text/javascript',
+    '/anime.html': 'text/html',
+    '/anime-runtime.js': 'text/javascript',
   };
   return {
     name: 'awb-dev-preview',

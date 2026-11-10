@@ -16,8 +16,8 @@ S8a 处理了表里标成「已处理」的较早条目。S8b 更新了 #4、#5�
 | 1 | 致命 | 实验 | `eval/s7.eval.ts`（gitignore） | 忽略 | `max_tokens: 16000` 是评测脚本自己设的，产品代码里没有。 |
 | 2 | 致命 | agentic | `src/ai/agent/loop.ts` | 已处理 | 读 `finish_reason`。空正文直接停。截断只收下闭合代码块；下一轮若和上一轮相同就停，不再打满轮次。日志里能看到原因。 |
 | 3 | 致命 | agentic | `src/ai/agent/prompts/scenes.md` | 已处理 | 删掉「为整片每一个还没写的场景写函数体」。每一轮只点名一场。模型若一次写了多场，仍然收下。 |
-| 4 | 致命 | agentic | `prompts/system.md` | 已处理 | 默认提示改成 GSAP：时间线必须可 seek、舞台 1920×1080、浅色字深色底、每场空 root。manim 说明只在分镜选了 manim-web 时使用。 |
-| 5 | 致命 | agentic | `prompts/system.md` | 已处理 | 不新增 schema kind。Agent 在空项目上默认写 GSAP；manim-web 由设置或 `.awb/anim/renderer.json` 选择。产品默认引擎仍是 legacy。 |
+| 4 | 致命 | agentic | `prompts/system.md` | 已处理 | 默认提示改成 anime.js 4：`createTimeline` + `tl.add`，时间是毫秒，必须可 seek。舞台 1920×1080，浅色字深色底，每场空 root。禁止 v3 的 `anime()` / `anime.timeline()`。manim 说明只在分镜选了 manim-web 时使用。 |
+| 5 | 致命 | agentic | `prompts/system.md` | 已处理 | 不新增 schema kind。Agent 在空项目上默认写 anime.js；manim-web 由设置或 `.awb/anim/renderer.json` 选择。产品默认引擎仍是 legacy。 |
 | 6 | 致命 | legacy | `src/ai/prompts/outline.md` | 未改 | legacy 链路。agentic 的需求原文已经标成指令。 |
 | 7 | 严重 | agentic | `src/ai/agent/parse.ts` | 已处理 | 未闭合的尾块不再扔掉：认得出路径就交回模型重发这一块，认不出就说明原因。不把半截内容写成完成的场景。 |
 | 8 | 严重 | agentic | `loop.ts`、`prompts.ts` | 未改 | 历史里仍保留每一轮。逐场之后单次输出变小；把历史折成一份要改消息结构，这次不动。 |
@@ -35,7 +35,7 @@ S8a 处理了表里标成「已处理」的较早条目。S8b 更新了 #4、#5�
 | 20 | 一般 | 两条 | 不传 `max_tokens` | 已处理 | 只在 agent 请求上显式传递。默认 65536，与 DeepSeek 思考模式的默认输出上限一致（思考和正文共用；不传时非思考模式只有 8K）。面板「单次输出」可改，清空则不传。上限按文档夹到 384K。 |
 | 21 | 一般 | agentic | `agentTools: false` | 未改 | 默认打开会让每次生成都截帧。等这次误报修正在用过之后再单独开。 |
 | 22 | 一般 | agentic | 审查共用剩余轮次 | 部分 | 删掉「审查只用写代码剩下的轮次」。审查用工具环自己的 6 轮。token 总预算用完仍不做截帧。没有新的预算字段。 |
-| 23 | 一般 | agentic | DOM 框最多 40 个 | 已处理 | 上限仍是 40，文字框优先。跳过图层容器和不可见元素。没有 DOM 框时明确说布局检查不可用。GSAP 场用 DOM 包围盒。 |
+| 23 | 一般 | agentic | DOM 框最多 40 个 | 已处理 | 上限仍是 40，文字框优先。跳过图层容器和不可见元素。没有 DOM 框时明确说布局检查不可用。anime.js 场用 DOM 包围盒。 |
 | 24 | 一般 | agentic | 浅色字、黑底 | 未改 | 对比度要求先留着。 |
 | 25 | 一般 | agentic | token 按字符数/4 估算 | 未改 | 估算只在服务商没回 usage 时用。 |
 | 26 | 一般 | 两条 | 读超时 90 秒 | 未改 | 在 `llm.rs`，这次不改传输层超时。 |

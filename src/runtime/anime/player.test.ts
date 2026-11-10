@@ -1,8 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it } from 'vitest';
-import gsap from 'gsap';
 import type { Storyboard } from '../../shared/schema';
-import { playGsapStoryboard } from './player';
+import { playHtmlStoryboard } from './player';
 
 function board(codes: { id: string; code: string; hold?: number }[]): Storyboard {
   return {
@@ -33,22 +32,21 @@ el.style.width = '200px';
 el.style.height = '80px';
 el.style.background = ${JSON.stringify(color)};
 root.appendChild(el);
-tl.from(el, { autoAlpha: 0, duration: 0.2 });
-tl.to({}, { duration: 0.8 });
+tl.add(el, { opacity: [0, 1], duration: 200 }, 0);
+tl.add({ duration: 800 });
 `;
 
 afterEach(() => {
-  gsap.ticker.sleep();
   document.body.replaceChildren();
 });
 
-describe('GSAP 播放', () => {
+describe('anime.js 播放', () => {
   it('seek 只改时间，下一场开始时上一场图层已经拿掉', async () => {
     const stage = document.createElement('div');
     stage.style.width = '960px';
     stage.style.height = '540px';
     document.body.appendChild(stage);
-    const show = await playGsapStoryboard(
+    const show = await playHtmlStoryboard(
       board([
         { id: 's1', code: box('s1', '#ff3366') },
         { id: 's2', code: box('s2', '#33cc88'), hold: 0.5 },
@@ -64,14 +62,12 @@ describe('GSAP 播放', () => {
 
     show.seek(1.4);
     expect(show.seek(1.4)).toBeUndefined();
-    const first = document.getElementById('s1');
     const second = document.getElementById('s2');
     const firstLayer = stage.querySelector('[data-scene="s1"]') as HTMLElement;
     const secondLayer = stage.querySelector('[data-scene="s2"]') as HTMLElement;
     expect(firstLayer.style.visibility).toBe('hidden');
     expect(secondLayer.style.visibility).not.toBe('hidden');
     expect(second?.textContent).toBe('s2');
-    expect(first).toBeTruthy();
 
     show.seek(0.5);
     expect(firstLayer.style.visibility).not.toBe('hidden');
@@ -82,7 +78,7 @@ describe('GSAP 播放', () => {
   it('坏代码只记在这一场，不让整片抛出去', async () => {
     const stage = document.createElement('div');
     document.body.appendChild(stage);
-    const show = await playGsapStoryboard(
+    const show = await playHtmlStoryboard(
       board([
         { id: 'bad', code: 'throw new Error("boom")' },
         { id: 'ok', code: box('ok', '#ffffff') },

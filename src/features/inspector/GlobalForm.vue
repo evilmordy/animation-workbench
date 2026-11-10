@@ -141,10 +141,12 @@ const TOKEN_LABEL = {
         data-testid="storyboard-renderer"
         @update:value="(v: CodeRenderer) => setStoryboardRenderer(v)"
       >
-        <NRadioButton value="gsap">GSAP</NRadioButton>
+        <NRadioButton value="anime">anime.js</NRadioButton>
         <NRadioButton value="manim">manim-web</NRadioButton>
       </NRadioGroup>
-      <span class="hint"> 整片都是代码场时才用 GSAP 播放。没选过、或还夹着分镜场时，仍用 manim-web。 </span>
+      <span class="hint">
+        整片都是代码场时才用 anime.js 播放。没选过、或还夹着分镜场时，仍用 manim-web。
+      </span>
     </NFormItem>
 
     <NDivider title-placement="left">AI 生成参数</NDivider>

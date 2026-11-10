@@ -7,9 +7,9 @@ export default defineConfig({
     emptyOutDir: false,
     target: 'es2022',
     lib: {
-      entry: 'src/runtime/gsap/main.ts',
+      entry: 'src/runtime/anime/main.ts',
       formats: ['es'],
-      fileName: () => 'gsap-runtime.js',
+      fileName: () => 'anime-runtime.js',
     },
     rolldownOptions: {
       output: { codeSplitting: false, comments: { legal: true } },

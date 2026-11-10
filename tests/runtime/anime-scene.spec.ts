@@ -7,7 +7,7 @@ import { serveRuntime } from './serve';
 
 const sb: Storyboard = {
   schemaVersion: 1,
-  meta: { title: 'gsap', mode: '2d', aspect: '16:9', background: '#000000', stylePreset: '3b1b' },
+  meta: { title: 'html', mode: '2d', aspect: '16:9', background: '#000000', stylePreset: '3b1b' },
   scenes: [
     {
       id: 's1',
@@ -30,8 +30,8 @@ const sb: Storyboard = {
         el.style.background = '#ff3366';
         el.style.color = '#ffffff';
         root.appendChild(el);
-        tl.from(el, { autoAlpha: 0, duration: 0.2 });
-        tl.to({}, { duration: 0.8 });
+        tl.add(el, { opacity: [0, 1], duration: 200 }, 0);
+        tl.add({ duration: 800 });
       `,
     },
     {
@@ -55,8 +55,8 @@ const sb: Storyboard = {
         el.style.background = '#33cc88';
         el.style.color = '#ffffff';
         root.appendChild(el);
-        tl.from(el, { autoAlpha: 0, duration: 0.2 });
-        tl.to({}, { duration: 0.8 });
+        tl.add(el, { opacity: [0, 1], duration: 200 }, 0);
+        tl.add({ duration: 800 });
       `,
     },
   ],
@@ -64,9 +64,9 @@ const sb: Storyboard = {
 
 test.use({ viewport: { width: 960, height: 540 } });
 
-test('GSAP 场可 seek，换场后上一场色块不留在画面上', async ({ page }) => {
+test('anime.js 场可 seek，换场后上一场色块不留在画面上', async ({ page }) => {
   const external = await serveRuntime(page);
-  await page.goto('http://awpreview.test/gsap.html');
+  await page.goto('http://awpreview.test/anime.html');
   await page.waitForFunction(() => (window as unknown as { __ready?: boolean }).__ready);
   const result = await page.evaluate((storyboard) => {
     const win = window as unknown as {
@@ -96,10 +96,10 @@ test('GSAP 场可 seek，换场后上一场色块不留在画面上', async ({ p
   expect(external).toEqual([]);
 });
 
-test('导出的 GSAP HTML 内联运行时，CSP 不改指令', async () => {
-  const runtime = readFileSync('dist-runtime/gsap-runtime.js', 'utf8');
-  expect(runtime).toContain('standard-license');
-  expect(runtime).not.toContain('cdn');
+test('导出的 HTML 代码场内联 anime.js，CSP 不改指令', async () => {
+  const runtime = readFileSync('dist-runtime/anime-runtime.js', 'utf8');
+  expect(runtime).toContain('animejs@4.5.0');
+  expect(runtime).not.toMatch(/cdn\.jsdelivr|unpkg\.com/);
   const html = await assembleExportHtml(runtime, sb, { slides: false, loop: false, codeScenes: true });
   expect(html).toContain(runtime.slice(0, 80));
   expect(html).not.toMatch(/src="https?:/);

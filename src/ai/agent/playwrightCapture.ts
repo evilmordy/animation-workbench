@@ -19,13 +19,13 @@ const MANIM_FILES: Record<string, [string, string]> = {
   'http://awpreview.test/runtime.js': ['dist-runtime/runtime.js', 'text/javascript'],
 };
 
-const GSAP_FILES: Record<string, [string, string]> = {
-  'http://awpreview.test/gsap.html': ['dist-runtime/gsap.html', 'text/html'],
-  'http://awpreview.test/gsap-runtime.js': ['dist-runtime/gsap-runtime.js', 'text/javascript'],
+const ANIME_FILES: Record<string, [string, string]> = {
+  'http://awpreview.test/anime.html': ['dist-runtime/anime.html', 'text/html'],
+  'http://awpreview.test/anime-runtime.js': ['dist-runtime/anime-runtime.js', 'text/javascript'],
 };
 
 function previewFiles(renderer: CodeRenderer): Record<string, [string, string]> {
-  return renderer === 'gsap' ? GSAP_FILES : MANIM_FILES;
+  return renderer === 'anime' ? ANIME_FILES : MANIM_FILES;
 }
 
 function requirePreviewFiles(root: string, renderer: CodeRenderer) {
@@ -54,7 +54,7 @@ export async function launchPlaywrightHarness(
   requirePreviewFiles(root, renderer);
   const files = previewFiles(renderer);
   const pageUrl =
-    renderer === 'gsap' ? 'http://awpreview.test/gsap.html' : 'http://awpreview.test/code-harness.html';
+    renderer === 'anime' ? 'http://awpreview.test/anime.html' : 'http://awpreview.test/code-harness.html';
   let chromium: typeof import('@playwright/test').chromium;
   try {
     ({ chromium } = await import('@playwright/test'));

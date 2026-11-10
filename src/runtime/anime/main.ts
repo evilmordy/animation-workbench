@@ -1,10 +1,10 @@
 import { HostMessage, type PreviewMessage, type SceneSpan } from '../../shared/protocol';
 import { parseStoryboard } from '../../shared/schema';
-import { GSAP_LICENSE, playGsapStoryboard, type GsapShow } from './player';
+import { playHtmlStoryboard, type HtmlShow } from './player';
 
 const RUNTIME_VERSION = '1.0.0';
 
-interface GsapPage {
+interface HtmlPage {
   __ready?: boolean;
   __run?: (storyboard: unknown) => Promise<{
     duration: number;
@@ -15,7 +15,6 @@ interface GsapPage {
   __seek?: (t: number) => void;
   __play?: () => void;
   __pause?: () => void;
-  __gsapLicense?: string;
   __awbExport?: {
     scenes: SceneSpan[];
     duration: number;
@@ -23,20 +22,19 @@ interface GsapPage {
   };
 }
 
-const page = window as Window & GsapPage;
-page.__gsapLicense = GSAP_LICENSE;
+const page = window as Window & HtmlPage;
 
 const stage = document.getElementById('stage');
 const embedded = document.getElementById('awb-storyboard');
 
-function spansOf(show: GsapShow): SceneSpan[] {
+function spansOf(show: HtmlShow): SceneSpan[] {
   return show.scenes.map((scene) => ({ id: scene.id, start: scene.start, end: scene.end }));
 }
 
 if (stage && embedded) {
   const sb = parseStoryboard(JSON.parse(embedded.textContent ?? 'null'));
   if (sb.ok) {
-    void playGsapStoryboard(sb.value, stage, { loop: embedded.dataset.loop === 'true' }).then((show) => {
+    void playHtmlStoryboard(sb.value, stage, { loop: embedded.dataset.loop === 'true' }).then((show) => {
       page.__awbExport = {
         scenes: spansOf(show),
         duration: show.duration,
@@ -50,7 +48,7 @@ if (stage && embedded) {
 } else if (stage && window.parent !== window) {
   startPreview(stage);
 } else if (stage) {
-  let show: GsapShow | null = null;
+  let show: HtmlShow | null = null;
   page.__ready = true;
   page.__run = async (storyboard) => {
     const t0 = performance.now();
@@ -65,7 +63,7 @@ if (stage && embedded) {
         buildMs: 0,
       };
     }
-    const next = await playGsapStoryboard(parsed.value, stage);
+    const next = await playHtmlStoryboard(parsed.value, stage);
     show = next;
     return {
       duration: next.duration,
@@ -83,7 +81,7 @@ if (stage && embedded) {
 
 function startPreview(stageEl: HTMLElement) {
   const post = (m: PreviewMessage) => window.parent.postMessage(m, '*');
-  let current: GsapShow | null = null;
+  let current: HtmlShow | null = null;
   let duration = 0;
   let lastT = -1;
   let queued: { data: unknown; startAt?: number } | null = null;
@@ -101,7 +99,7 @@ function startPreview(stageEl: HTMLElement) {
     }
     current?.kill();
     current = null;
-    const show = await playGsapStoryboard(parsed.value, stageEl);
+    const show = await playHtmlStoryboard(parsed.value, stageEl);
     current = show;
     duration = show.duration;
     for (const error of show.errors) post({ type: 'error', ...error });
@@ -160,7 +158,7 @@ function startPreview(stageEl: HTMLElement) {
   post({
     type: 'ready',
     runtimeVersion: RUNTIME_VERSION,
-    manimWebVersion: 'gsap',
+    manimWebVersion: 'animejs@4.5.0',
     caps: { webcodecs: typeof VideoEncoder !== 'undefined' },
   });
 }

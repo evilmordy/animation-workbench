@@ -7,15 +7,17 @@ import scenesTpl from './prompts/scenes.md?raw';
 import systemManimTpl from './prompts/system-manim.md?raw';
 import systemTpl from './prompts/system.md?raw';
 
-/** 系统提示。默认 GSAP。manim 只在这一片明确选了 manim-web 时用。 */
-export function agentSystemPrompt(renderer: CodeRenderer = 'gsap'): string {
+/** 系统提示。默认 anime.js。manim 只在这一片明确选了 manim-web 时用。 */
+export function agentSystemPrompt(renderer: CodeRenderer = 'anime'): string {
   return (renderer === 'manim' ? systemManimTpl : systemTpl).trim();
 }
 
 /** 用户需求原文放在消息开头，作为指令，不截断。 */
-export function planRequest(intent: string, renderer: CodeRenderer = 'gsap'): string {
+export function planRequest(intent: string, renderer: CodeRenderer = 'anime'): string {
   const stage =
-    renderer === 'gsap' ? '\n\n画面是 1920×1080 的 HTML/SVG。每场开头是空的，不要安排留到下一场的对象。' : '';
+    renderer === 'anime'
+      ? '\n\n画面是 1920×1080 的 HTML/SVG，用 anime.js 4 的时间线，单位是毫秒。每场开头是空的，不要安排留到下一场的对象。'
+      : '';
   return `用户需求（这是指令，不是素材）：\n${intent}\n\n${planTpl.trim()}${stage}`;
 }
 
@@ -64,7 +66,7 @@ export function fenceRetry(intent: string, open: { name: string | null; content:
   ].join('\n\n');
 }
 
-export function openingMessages(intent: string, renderer: CodeRenderer = 'gsap'): ChatMessage[] {
+export function openingMessages(intent: string, renderer: CodeRenderer = 'anime'): ChatMessage[] {
   return [
     { role: 'system', content: agentSystemPrompt(renderer) },
     { role: 'user', content: planRequest(intent, renderer) },

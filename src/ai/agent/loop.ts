@@ -47,7 +47,7 @@ export interface RunAgentOpts {
   transport: Transport;
   host: AgentHost;
   budget?: Partial<AgentBudget>;
-  /** 这一片用哪套代码契约。缺省 GSAP。 */
+  /** 这一片用哪套代码契约。缺省 anime.js。 */
   renderer?: CodeRenderer;
   signal?: AbortSignal;
   onPhase?: (phase: 'plan' | 'scenes') => void;
@@ -87,7 +87,7 @@ async function writeAnim(host: AgentHost, name: string, text: string) {
  */
 export async function runAgent(opts: RunAgentOpts): Promise<AgentResult> {
   const maxTurns = opts.budget?.maxTurns ?? DEFAULT_AGENT_BUDGET.maxTurns;
-  const renderer: CodeRenderer = opts.renderer === 'manim' ? 'manim' : 'gsap';
+  const renderer: CodeRenderer = opts.renderer === 'manim' ? 'manim' : 'anime';
   const maxTokens = opts.budget?.maxTokens;
   const usage: [number, number] = [0, 0];
   const sceneIds: string[] = [];

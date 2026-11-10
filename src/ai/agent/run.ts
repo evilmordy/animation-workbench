@@ -39,7 +39,7 @@ export function projectAgentHost(): AgentHost {
 function reviewContract(renderer: CodeRenderer): string {
   return renderer === 'manim'
     ? '这一场是 manim-web。函数体签名是 (scene, M, ctx)。'
-    : '这一场是 HTML/SVG + GSAP。函数体签名是 (root, gsap, tl, ctx)，动画都在 tl 上。';
+    : '这一场是 HTML/SVG + anime.js 4。函数体签名是 (root, anime, tl, ctx)，动画用 tl.add，时间是毫秒。不要写 anime.timeline()。';
 }
 
 function isCancelled(e: unknown): boolean {
@@ -76,7 +76,7 @@ export async function runProjectAgent(
   );
   const renderer = resolveAgentRenderer({
     sidecar,
-    fallback: settings.runtime.codeRenderer === 'manim' ? 'manim' : 'gsap',
+    fallback: settings.runtime.codeRenderer === 'manim' ? 'manim' : 'anime',
     hasCodeScenes,
   });
   if (project.dir && sidecar !== renderer) await writeRendererFile(project.dir, renderer);

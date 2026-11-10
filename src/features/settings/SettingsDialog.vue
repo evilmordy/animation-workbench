@@ -120,7 +120,7 @@ const engine = computed({
 });
 const codeRenderer = computed({
   get: () => settings.runtime.codeRenderer,
-  set: (v: 'gsap' | 'manim') => {
+  set: (v: 'anime' | 'manim') => {
     settings.runtime.codeRenderer = v;
   },
 });
@@ -268,10 +268,10 @@ const host = computed(() => {
       </NFormItem>
       <NFormItem label="Agent 渲染">
         <NRadioGroup v-model:value="codeRenderer" data-testid="code-renderer">
-          <NRadioButton value="gsap">GSAP</NRadioButton>
+          <NRadioButton value="anime">anime.js</NRadioButton>
           <NRadioButton value="manim">manim-web</NRadioButton>
         </NRadioGroup>
-        <span class="hint inline"> 空项目里 Agent 默认写 GSAP。已经选过的分镜以分镜上的选择为准。 </span>
+        <span class="hint inline"> 空项目里 Agent 默认写 anime.js。已经选过的分镜以分镜上的选择为准。 </span>
       </NFormItem>
     </NForm>
   </NModal>

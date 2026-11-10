@@ -109,7 +109,7 @@ const fix = () =>
         :autosize="{ minRows: 8, maxRows: 18 }"
         :value="scene.code ?? ''"
         :input-props="{ 'aria-label': '场景代码' }"
-        placeholder="函数体。GSAP 场是 (root, gsap, tl, ctx)，动画写在 tl 上。manim-web 场是 (scene, M, ctx)。"
+        placeholder="函数体。anime.js 场是 (root, anime, tl, ctx)，用 tl.add，时间是毫秒。manim-web 场是 (scene, M, ctx)。"
         @update:value="(v: string) => patch('code', (s) => ({ ...s, code: v }))"
       />
     </NFormItem>
