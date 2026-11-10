@@ -161,6 +161,51 @@ describe('解析', () => {
       scenes: [{ id: 's_a', title: 'A', description: '', hold: 4, enter: 'keep' }],
     });
   });
+
+  it('没有围栏时认独立成行的 file: 路径，后写覆盖先写', () => {
+    const rubric =
+      '{"title":"祖暅","scenes":[{"id":"s_intro","title":"引入","description":"问","hold":3,"enter":"fresh"}]}';
+    const files = parseAgentFiles(
+      [
+        '先想清楚。句子里的 file:anim/plan.md 不是文件。',
+        'file:anim/notes.md',
+        '不要',
+        'file:anim/plan.md',
+        '# 旧计划',
+        'file:anim/plan.md',
+        '# 新计划',
+        '',
+        '第二段',
+        'file:anim/rubric.json',
+        rubric,
+        'file:anim/shared.js',
+        'const R = 1;',
+        'file:anim/scenes/s_intro.js',
+        'const intro = 1;',
+      ].join('\n'),
+    );
+    expect(files.map((f) => f.name)).toEqual(['plan.md', 'rubric.json', 'shared.js', 'scenes/s_intro.js']);
+    expect(files.find((f) => f.name === 'plan.md')?.content).toBe('# 新计划\n\n第二段');
+    expect(files.find((f) => f.name === 'shared.js')?.content).toBe('const R = 1;');
+    expect(files.find((f) => f.name === 'scenes/s_intro.js')?.content).toBe('const intro = 1;');
+    expect(
+      parseRubric(files.find((f) => f.name === 'rubric.json')?.content ?? '')?.scenes.map((s) => s.id),
+    ).toEqual(['s_intro']);
+
+    const fenced = [
+      'file:anim/shared.js',
+      'const ignored = 1;',
+      '```file:anim/plan.md',
+      '# 计划',
+      '```',
+    ].join('\n');
+    expect(parseAgentFiles(fenced)).toEqual([{ name: 'plan.md', content: '# 计划' }]);
+    expect(parseAgentFiles('```file:anim/scenes/s_ask.js\nfile:anim/plan.md\n# 半截\n')).toEqual([]);
+    expect(parseAgentFiles('例如 file:anim/plan.md、file:anim/rubric.json。')).toEqual([]);
+    expect(parseAgentFiles('file:anim/plan.md.bak\n# 不是\n')).toEqual([]);
+    expect(parseAgentFiles('file:../plan.md\n# 越界\n')).toEqual([]);
+    expect(parseAgentFiles('file:anim/frames/s_a-sequence-start.png\nabc\n')).toEqual([]);
+  });
 });
 
 describe('agent 提示词', () => {
