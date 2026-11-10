@@ -7,6 +7,7 @@ import { describeAgentStop, type AgentLogEvent } from './log';
 import { isAnimPath, parseAgentFiles, sceneIdFromName, unclosedFence } from './parse';
 import { fenceRetry, openingMessages, planRequest, scenesRequest } from './prompts';
 import type { CodeRenderer } from './renderer';
+import { renderSourceMd, splitSource } from './source';
 
 export interface AgentBudget {
   /** 最多调用模型几次。计划占一轮，场景接着写。 */
@@ -23,7 +24,7 @@ export interface AgentBudget {
  */
 export const DEFAULT_AGENT_BUDGET: AgentBudget = { maxTurns: 24 };
 
-/** 旁路文件写在项目的 .awb/anim/ 下，名字是 plan.md、rubric.json、shared.js、scenes/<id>.js。 */
+/** 旁路文件写在项目的 .awb/anim/ 下。模型只能写 plan.md、rubric.json、shared.js、scenes/<id>.js。source.md 只由系统在生成开始时写入。 */
 export interface AgentHost {
   getStoryboard(): Storyboard | null;
   /** 唯一写分镜的入口。产品里就是 project.update，因此可以撤销。 */
@@ -44,6 +45,8 @@ export interface AgentResult {
 export interface RunAgentOpts {
   /** 用户需求原文。每一轮请求都会带上它，当作指令。 */
   intent: string;
+  /** 导入的讲义。生成开始时写成 source.md，提示里只放段落目录。 */
+  source?: string;
   transport: Transport;
   host: AgentHost;
   budget?: Partial<AgentBudget>;
@@ -120,8 +123,10 @@ export async function runAgent(opts: RunAgentOpts): Promise<AgentResult> {
   };
 
   if (!opts.intent.trim()) return finish('error', '需求是空的');
+  const source = opts.source ?? '';
   const initial = opts.host.getStoryboard();
   if (!initial) return finish('error', '没有打开的分镜');
+  await opts.host.writeFile('source.md', renderSourceMd(splitSource(source)));
 
   const startedEmpty = initial.scenes.length === 0;
   let phase: 'plan' | 'scenes' = 'plan';
@@ -131,7 +136,7 @@ export async function runAgent(opts: RunAgentOpts): Promise<AgentResult> {
   let rubricTitle = '';
   let planned: PlannedScene[] = [];
   const authored = new Map<string, string>();
-  const messages: ChatMessage[] = openingMessages(opts.intent, renderer);
+  const messages: ChatMessage[] = openingMessages(opts.intent, renderer, source);
   const overBudget = () => turns >= maxTurns || (maxTokens !== undefined && usage[0] + usage[1] >= maxTokens);
 
   while (true) {
@@ -235,7 +240,7 @@ export async function runAgent(opts: RunAgentOpts): Promise<AgentResult> {
           ? `代码块未闭合（${open.name}），没有当完整文件，已要求重发`
           : '代码块未闭合，认不出路径，已要求重发',
       });
-      return pushUser(fenceRetry(opts.intent, open ?? { name: null, content: text }));
+      return pushUser(fenceRetry(opts.intent, open ?? { name: null, content: text }, source));
     };
     if (phase === 'plan') {
       const planFile = files.find((f) => f.name === 'plan.md');
@@ -247,7 +252,7 @@ export async function runAgent(opts: RunAgentOpts): Promise<AgentResult> {
         const why =
           finishReason === 'length' ? '上一轮输出被长度上限截断。' : '上一轮没有同时给出这两个文件。';
         return pushUser(
-          `${planRequest(opts.intent, renderer)}\n\n${why}请只补 anim/plan.md 和带 scenes 的 anim/rubric.json，还不要写场景代码。`,
+          `${planRequest(opts.intent, renderer, source)}\n\n${why}请只补 anim/plan.md 和带 scenes 的 anim/rubric.json，还不要写场景代码。`,
         );
       }
       plan = planFile.content;
@@ -279,6 +284,7 @@ export async function runAgent(opts: RunAgentOpts): Promise<AgentResult> {
           authored,
           lockedIds: lockedIds(opts.host.getStoryboard()),
           renderer,
+          source,
         }),
       );
       return asked === 'stalled' ? 'stalled' : 'to-scenes';
@@ -334,6 +340,7 @@ export async function runAgent(opts: RunAgentOpts): Promise<AgentResult> {
         authored,
         lockedIds: lockedIds(opts.host.getStoryboard()),
         renderer,
+        source,
       }),
     );
   }

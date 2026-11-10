@@ -9,7 +9,13 @@ import { DEFAULT_AGENT_BUDGET_SETTINGS, budgetFromSettings } from './log';
 import type { AgentBudget, AgentHost, AgentResult, RunAgentOpts } from './loop';
 import { runAgent } from './loop';
 import { isAnimPath } from './parse';
+import { taskCard } from './prompts';
 import { readRendererFile, resolveAgentRenderer, writeRendererFile, type CodeRenderer } from './renderer';
+
+/** 模型代码块不能写 source.md。生成开始时由系统写入。 */
+function isSidecar(name: string): boolean {
+  return name === 'source.md' || isAnimPath(name);
+}
 
 /** 把 agent 的旁路文件放进 <project>/.awb/anim/，不改 PROJECT_DIRS，也不另立一套撤销。 */
 export function projectAgentHost(): AgentHost {
@@ -18,7 +24,7 @@ export function projectAgentHost(): AgentHost {
     getStoryboard: () => project.storyboard,
     updateStoryboard: (next) => project.update(next),
     async writeFile(name, text) {
-      if (!isAnimPath(name)) throw new Error(`拒绝写入：${name}`);
+      if (!isSidecar(name)) throw new Error(`拒绝写入：${name}`);
       if (!project.dir) throw new Error('没有打开的项目');
       const base = await platform.join(project.dir, '.awb', 'anim');
       await platform.mkdir(base);
@@ -28,7 +34,7 @@ export function projectAgentHost(): AgentHost {
       await platform.writeTextAtomic(await platform.join(base, ...parts), text);
     },
     async readFile(name) {
-      if (!isAnimPath(name) || !project.dir) return null;
+      if (!isSidecar(name) || !project.dir) return null;
       const file = await platform.join(project.dir, '.awb', 'anim', ...name.split('/'));
       if (!(await platform.exists(file))) return null;
       return platform.readText(file);
@@ -46,9 +52,14 @@ function isCancelled(e: unknown): boolean {
   return typeof e === 'object' && e !== null && 'code' in e && (e as { code?: unknown }).code === 'cancelled';
 }
 
+export interface ProjectAgentTask {
+  intent: string;
+  source: string;
+}
+
 /** 用当前会话的模型通道跑 agent。json_mode 不传，避免强制 json_object。 */
 export async function runProjectAgent(
-  intent: string,
+  task: ProjectAgentTask,
   opts: {
     signal?: AbortSignal;
     budget?: Partial<AgentBudget>;
@@ -81,7 +92,8 @@ export async function runProjectAgent(
   });
   if (project.dir && sidecar !== renderer) await writeRendererFile(project.dir, renderer);
   const result = await runAgent({
-    intent,
+    intent: task.intent,
+    source: task.source,
     host: projectAgentHost(),
     budget,
     renderer,
@@ -107,7 +119,10 @@ export async function runProjectAgent(
       messages: [
         {
           role: 'user',
-          content: `用户需求（这是指令，不是素材）：\n${intent}\n\n代码场景已经写好。${reviewContract(renderer)}请调用 render_frames，再用 check_layout 和 check_residual 看画面。有真实问题就用 write_scene 改那一场，然后重新截帧。`,
+          content: [
+            taskCard(task.intent, task.source),
+            `代码场景已经写好。${reviewContract(renderer)}请调用 render_frames，再用 check_layout 和 check_residual 看画面。有真实问题就用 write_scene 改那一场，然后重新截帧。`,
+          ].join('\n\n'),
         },
       ],
       transport,

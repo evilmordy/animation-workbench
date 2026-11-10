@@ -90,7 +90,7 @@ const errText = (code?: string) =>
 
 async function runAgentEntry() {
   if (agentBusy.value) return;
-  // 需求原文整段送进 agent。不走大纲，也不按 SOURCE_BUDGET 截断。
+  // 需求原文整段送进 agent。讲义写入 source.md，提示里只有段落目录，不按 SOURCE_BUDGET 截断需求。
   const intent = gen.intent;
   agentBusy.value = true;
   agentNote.value = '';
@@ -100,20 +100,23 @@ async function runAgentEntry() {
   const ac = new AbortController();
   agentAbort = ac;
   try {
-    const result = await runProjectAgent(intent, {
-      signal: ac.signal,
-      budget: budgetFromSettings(settings.agentBudget),
-      onLog: (event) => {
-        if (event.type === 'usage') {
-          agentTurns.value = event.turns;
-          agentTokens.value = event.usage[0] + event.usage[1];
-        }
-        const line = lineFromEvent(event, agentLog.value.length + 1);
-        if (line) agentLog.value = [...agentLog.value, line];
-        if (event.type === 'phase') agentNote.value = line?.title ?? agentNote.value;
-        if (event.type === 'status') agentNote.value = event.message;
+    const result = await runProjectAgent(
+      { intent, source: gen.source },
+      {
+        signal: ac.signal,
+        budget: budgetFromSettings(settings.agentBudget),
+        onLog: (event) => {
+          if (event.type === 'usage') {
+            agentTurns.value = event.turns;
+            agentTokens.value = event.usage[0] + event.usage[1];
+          }
+          const line = lineFromEvent(event, agentLog.value.length + 1);
+          if (line) agentLog.value = [...agentLog.value, line];
+          if (event.type === 'phase') agentNote.value = line?.title ?? agentNote.value;
+          if (event.type === 'status') agentNote.value = event.message;
+        },
       },
-    });
+    );
     if (ac.signal.aborted || result.status === 'cancelled') {
       if (!agentNote.value) agentNote.value = '已取消';
       return;
