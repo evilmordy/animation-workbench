@@ -4,6 +4,7 @@ dist-runtime/
 src-tauri/target/
 src-tauri/gen/
 test-results/
+tests/eval/out/
 playwright-report/
 *.log
 .DS_Store
