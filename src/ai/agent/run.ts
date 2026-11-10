@@ -9,6 +9,7 @@ import { DEFAULT_AGENT_BUDGET_SETTINGS, budgetFromSettings } from './log';
 import type { AgentBudget, AgentHost, AgentResult, RunAgentOpts } from './loop';
 import { runAgent } from './loop';
 import { isAnimPath } from './parse';
+import { readRendererFile, resolveAgentRenderer, writeRendererFile, type CodeRenderer } from './renderer';
 
 /** 把 agent 的旁路文件放进 <project>/.awb/anim/，不改 PROJECT_DIRS，也不另立一套撤销。 */
 export function projectAgentHost(): AgentHost {
@@ -33,6 +34,12 @@ export function projectAgentHost(): AgentHost {
       return platform.readText(file);
     },
   };
+}
+
+function reviewContract(renderer: CodeRenderer): string {
+  return renderer === 'manim'
+    ? '这一场是 manim-web。函数体签名是 (scene, M, ctx)。'
+    : '这一场是 HTML/SVG + anime.js 4。函数体签名是 (root, anime, tl, ctx)，动画用 tl.add，时间是毫秒。不要写 anime.timeline()。';
 }
 
 function isCancelled(e: unknown): boolean {
@@ -63,10 +70,21 @@ export async function runProjectAgent(
       jsonMode: null,
       ...(typeof completionTokens === 'number' ? { maxTokens: completionTokens } : {}),
     });
+  const sidecar = project.dir ? await readRendererFile(project.dir) : null;
+  const hasCodeScenes = (project.storyboard?.scenes ?? []).some(
+    (scene) => scene.kind === 'code' && !!scene.code?.trim(),
+  );
+  const renderer = resolveAgentRenderer({
+    sidecar,
+    fallback: settings.runtime.codeRenderer === 'manim' ? 'manim' : 'anime',
+    hasCodeScenes,
+  });
+  if (project.dir && sidecar !== renderer) await writeRendererFile(project.dir, renderer);
   const result = await runAgent({
     intent,
     host: projectAgentHost(),
     budget,
+    renderer,
     signal: opts.signal,
     onPhase: opts.onPhase,
     onLog: opts.onLog,
@@ -89,7 +107,7 @@ export async function runProjectAgent(
       messages: [
         {
           role: 'user',
-          content: `用户需求（这是指令，不是素材）：\n${intent}\n\n代码场景已经写好。请调用 render_frames，再用 check_layout 和 check_residual 看画面。有真实问题就用 write_scene 改那一场，然后重新截帧。`,
+          content: `用户需求（这是指令，不是素材）：\n${intent}\n\n代码场景已经写好。${reviewContract(renderer)}请调用 render_frames，再用 check_layout 和 check_residual 看画面。有真实问题就用 write_scene 改那一场，然后重新截帧。`,
         },
       ],
       transport,

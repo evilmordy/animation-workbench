@@ -1,17 +1,24 @@
 import type { ChatMessage } from '../../platform/types';
 import type { PlannedScene } from './apply';
+import type { CodeRenderer } from './renderer';
 import planTpl from './prompts/plan.md?raw';
+import scenesManimTpl from './prompts/scenes-manim.md?raw';
 import scenesTpl from './prompts/scenes.md?raw';
+import systemManimTpl from './prompts/system-manim.md?raw';
 import systemTpl from './prompts/system.md?raw';
 
-/** 系统提示。需求原文不在这里，而在每一轮的用户消息里。 */
-export function agentSystemPrompt(): string {
-  return systemTpl.trim();
+/** 系统提示。默认 anime.js。manim 只在这一片明确选了 manim-web 时用。 */
+export function agentSystemPrompt(renderer: CodeRenderer = 'anime'): string {
+  return (renderer === 'manim' ? systemManimTpl : systemTpl).trim();
 }
 
 /** 用户需求原文放在消息开头，作为指令，不截断。 */
-export function planRequest(intent: string): string {
-  return `用户需求（这是指令，不是素材）：\n${intent}\n\n${planTpl.trim()}`;
+export function planRequest(intent: string, renderer: CodeRenderer = 'anime'): string {
+  const stage =
+    renderer === 'anime'
+      ? '\n\n画面是 1920×1080 的 HTML/SVG，用 anime.js 4 的时间线，单位是毫秒。每场开头是空的，不要安排留到下一场的对象。'
+      : '';
+  return `用户需求（这是指令，不是素材）：\n${intent}\n\n${planTpl.trim()}${stage}`;
 }
 
 export function scenesRequest(args: {
@@ -22,7 +29,9 @@ export function scenesRequest(args: {
   planned: PlannedScene[];
   authored: ReadonlyMap<string, string>;
   lockedIds: readonly string[];
+  renderer?: CodeRenderer;
 }): string {
+  const scenes = (args.renderer === 'manim' ? scenesManimTpl : scenesTpl).trim();
   const written = [...args.authored.entries()]
     .map(([id, code]) => `\`\`\`file:anim/scenes/${id}.js\n${code.trim()}\n\`\`\``)
     .join('\n\n');
@@ -34,7 +43,7 @@ export function scenesRequest(args: {
   const todo = next ? `只写 ${next}。${rest.length ? `先不要写 ${rest.join('、')}。` : ''}` : '（无）';
   return [
     `用户需求（这是指令，不是素材）：\n${args.intent}`,
-    scenesTpl.trim(),
+    scenes,
     `## plan.md\n${args.plan.trim() || '（无）'}`,
     `## rubric.json\n${args.rubric.trim() || '（无）'}`,
     `## shared.js\n${args.shared.trim() || '（无）'}`,
@@ -57,9 +66,9 @@ export function fenceRetry(intent: string, open: { name: string | null; content:
   ].join('\n\n');
 }
 
-export function openingMessages(intent: string): ChatMessage[] {
+export function openingMessages(intent: string, renderer: CodeRenderer = 'anime'): ChatMessage[] {
   return [
-    { role: 'system', content: agentSystemPrompt() },
-    { role: 'user', content: planRequest(intent) },
+    { role: 'system', content: agentSystemPrompt(renderer) },
+    { role: 'user', content: planRequest(intent, renderer) },
   ];
 }

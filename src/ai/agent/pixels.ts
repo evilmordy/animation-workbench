@@ -243,6 +243,7 @@ export function checkLayout(input: {
   height: number;
   boxes: LayoutBox[];
   raster?: Raster;
+  truncated?: boolean;
 }): LayoutReport {
   const eps = 0.5;
   const outOfBounds: string[] = [];
@@ -274,7 +275,10 @@ export function checkLayout(input: {
     }
   }
   const lines = [...outOfBounds, ...overlaps];
-  if (!input.boxes.length) lines.push('没有 DOM 框，出界和字叠只靠边缘像素。');
+  if (!input.boxes.length) {
+    lines.push('布局检查不可用：这一帧没有 DOM 包围盒。canvas 场景画在画布上，出界和字叠无法按元素判断。');
+  }
+  if (input.truncated) lines.push('DOM 框超过 40 个，只检查了前 40 个，文字框优先。');
   if (input.raster) {
     const ratio = edgeContentRatio(input.raster);
     if (ratio > 0.08) lines.push(`像素启发式：画框边缘有 ${Math.round(ratio * 100)}% 非背景像素，可能出界`);

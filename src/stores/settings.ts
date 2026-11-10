@@ -5,6 +5,7 @@ import {
   normalizeAgentBudget,
   type AgentBudgetSettings,
 } from '../ai/agent/log';
+import type { CodeRenderer } from '../ai/agent/renderer';
 import { providerById } from '../ai/providers';
 import { platform } from '../platform';
 
@@ -42,12 +43,23 @@ export interface RuntimeSettings {
    * 打开也不改变 generation.engine，也不打开代码场景预览。
    */
   agentTools: boolean;
+  /** Agent 写新代码场时的默认。不改 legacy 引擎，也不改已经选过渲染的分镜。 */
+  codeRenderer: CodeRenderer;
 }
 
 const RUNTIME_DEFAULTS: RuntimeSettings = {
   codeScenes: false,
   agentTools: false,
+  codeRenderer: 'anime',
 };
+
+function normalizeRuntime(saved: Partial<RuntimeSettings> | null | undefined): RuntimeSettings {
+  return {
+    ...RUNTIME_DEFAULTS,
+    ...saved,
+    codeRenderer: saved?.codeRenderer === 'manim' ? 'manim' : 'anime',
+  };
+}
 
 export const useSettingsStore = defineStore('settings', () => {
   const ai = ref<AiSettings>({ ...DEFAULTS });
@@ -63,7 +75,7 @@ export const useSettingsStore = defineStore('settings', () => {
     const savedEngine = await platform.storeGet<unknown>('generationEngine');
     const savedBudget = await platform.storeGet<unknown>('agentBudget');
     ai.value = { ...DEFAULTS, ...saved };
-    runtime.value = { ...RUNTIME_DEFAULTS, ...savedRuntime };
+    runtime.value = normalizeRuntime(savedRuntime);
     engine.value = savedEngine === 'agentic' ? 'agentic' : 'legacy';
     agentBudget.value = normalizeAgentBudget(savedBudget);
     loaded.value = true;

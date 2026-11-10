@@ -1,4 +1,5 @@
-//! awpreview:// 自定义协议（PLAN §3.4）：只提供预览页和运行时两个文件，响应头带严格 CSP。
+//! awpreview:// 自定义协议（PLAN §3.4）：只提供白名单里的预览页和运行时，响应头带严格 CSP。
+//! HTML 代码场和 manim 播放页分开，消息仍是 load / play / pause / seek / setRate。
 
 use tauri::http::{header, Response, StatusCode};
 
@@ -11,6 +12,8 @@ fn asset(name: &str) -> Option<Vec<u8>> {
     match name {
         "index.html" => Some(include_bytes!("../../dist-runtime/index.html").to_vec()),
         "runtime.js" => Some(include_bytes!("../../dist-runtime/runtime.js").to_vec()),
+        "anime.html" => Some(include_bytes!("../../dist-runtime/anime.html").to_vec()),
+        "anime-runtime.js" => Some(include_bytes!("../../dist-runtime/anime-runtime.js").to_vec()),
         _ => None,
     }
 }
@@ -34,7 +37,7 @@ fn mime(name: &str) -> &'static str {
 pub fn respond(path: &str) -> Response<Vec<u8>> {
     let name = path.trim_start_matches('/');
     let body = match name {
-        "index.html" | "runtime.js" => asset(name),
+        "index.html" | "runtime.js" | "anime.html" | "anime-runtime.js" => asset(name),
         _ => None,
     };
     match body {
@@ -56,7 +59,7 @@ mod tests {
 
     #[test]
     fn serves_whitelist_with_csp() {
-        for p in ["/index.html", "/runtime.js"] {
+        for p in ["/index.html", "/runtime.js", "/anime.html", "/anime-runtime.js"] {
             let r = respond(p);
             assert_eq!(r.status(), StatusCode::OK, "{p}（需要先 pnpm build:runtime）");
             assert_eq!(r.headers()["Content-Security-Policy"], PREVIEW_CSP);

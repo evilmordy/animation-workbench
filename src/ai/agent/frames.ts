@@ -24,6 +24,7 @@ export interface StoredFrame {
   at: FrameAt;
   raster: Raster;
   boxes: LayoutBox[];
+  boxesTruncated?: boolean;
   consoleErrors: string[];
 }
 
@@ -240,7 +241,7 @@ export function visionTools(ctx: VisionContext): ToolSpec[] {
         function: {
           name: 'check_layout',
           description:
-            '检查截帧的出界和字叠。只比较两个文字框，容器和它里面的文字不算字叠。没有 DOM 框时看边缘像素。',
+            '检查截帧的出界和字叠。有 DOM 框时用包围盒，只比较两个文字框。没有 DOM 框时说明布局检查不可用（canvas 场景）。',
           parameters: {
             type: 'object',
             properties: { frame: { type: 'string', description: '缺省时检查最近一张整片帧' } },
@@ -322,6 +323,7 @@ async function renderFrames(ctx: VisionContext, args: unknown): Promise<string> 
       at,
       raster: frame.raster,
       boxes: frame.boxes,
+      ...(frame.boxesTruncated ? { boxesTruncated: true } : {}),
       consoleErrors: frame.consoleErrors,
     });
     const where = frame.source === 'sequence' ? '整片' : '单场';
@@ -363,6 +365,7 @@ function checkLayoutTool(ctx: VisionContext, args: unknown): string {
     height: frame.raster.height,
     boxes: frame.boxes,
     raster: frame.raster,
+    ...(frame.boxesTruncated ? { truncated: true } : {}),
   });
   return `${frame.name}\n${report.summary}`;
 }

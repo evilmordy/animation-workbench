@@ -13,7 +13,7 @@ export interface AgentBudgetSettings {
 
 /** 与 loop 里的 DEFAULT_AGENT_BUDGET.maxTurns 一致。不在这里改引擎默认值。 */
 export const DEFAULT_AGENT_BUDGET_SETTINGS: AgentBudgetSettings = {
-  maxTurns: 8,
+  maxTurns: 24,
   maxTokens: null,
   completionTokens: 65_536,
 };

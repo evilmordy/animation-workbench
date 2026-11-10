@@ -118,6 +118,12 @@ const engine = computed({
     settings.engine = v;
   },
 });
+const codeRenderer = computed({
+  get: () => settings.runtime.codeRenderer,
+  set: (v: 'anime' | 'manim') => {
+    settings.runtime.codeRenderer = v;
+  },
+});
 
 const urlChanged = computed(() => status.value?.exists && urlInput.value.trim() !== status.value.base_url);
 const host = computed(() => {
@@ -259,6 +265,13 @@ const host = computed(() => {
         <span class="hint inline">
           默认仍是旧大纲。Agent 还要打开代码场景才生效，关掉其中任意一个就回到旧生成。
         </span>
+      </NFormItem>
+      <NFormItem label="Agent 渲染">
+        <NRadioGroup v-model:value="codeRenderer" data-testid="code-renderer">
+          <NRadioButton value="anime">anime.js</NRadioButton>
+          <NRadioButton value="manim">manim-web</NRadioButton>
+        </NRadioGroup>
+        <span class="hint inline"> 空项目里 Agent 默认写 anime.js。已经选过的分镜以分镜上的选择为准。 </span>
       </NFormItem>
     </NForm>
   </NModal>
