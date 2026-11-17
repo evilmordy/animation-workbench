@@ -168,7 +168,7 @@ export async function runAgent(opts: RunAgentOpts): Promise<AgentResult> {
   } catch (error) {
     return finish('error', error instanceof Error ? error.message : String(error));
   }
-  const system = agentSystemPrompt(renderer);
+  const system = agentSystemPrompt(renderer, opts.intent);
 
   const overTokens = () => typeof maxTokens === 'number' && usage[0] + usage[1] >= maxTokens;
 

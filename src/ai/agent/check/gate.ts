@@ -114,6 +114,14 @@ const URL_RULES: Rule[] = [
 const HAN = /\p{Script=Han}/u;
 const CODE_SYMBOL = /[A-Za-z0-9_$=()[\]{};,.<>+\-*/%&|!~?:\\'"`@#]/;
 
+/** 整行中文且没有代码符号。提示里的禁用清单和扫描用同一个名字。 */
+export const HAN_LINE_RULE = '整行中文';
+
+/** 运行门规则名。提示词只列这些名字，不另写一份正则。 */
+export function bannedRuleLabels(): readonly string[] {
+  return [...RULES, ...URL_RULES].map((rule) => rule.rule).concat(HAN_LINE_RULE);
+}
+
 function normalize(code: string): string {
   return code.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 }
@@ -256,7 +264,7 @@ function scanBanned(code: string): BanMatch[] {
     matches.push(...lineHits(stripped[i] ?? '', lineNo, RULES, original));
     const text = (stripped[i] ?? '').trim();
     if (text && HAN.test(text) && !CODE_SYMBOL.test(text)) {
-      matches.push({ line: lineNo, rule: '整行中文', snippet: original.trim().slice(0, 180) });
+      matches.push({ line: lineNo, rule: HAN_LINE_RULE, snippet: original.trim().slice(0, 180) });
     }
     matches.push(...lineHits(withStrings[i] ?? '', lineNo, URL_RULES, original));
   }

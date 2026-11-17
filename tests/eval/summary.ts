@@ -3,6 +3,7 @@ import { parseRubric } from '../../src/ai/agent/apply';
 import { runScene } from '../../src/ai/agent/check/gate';
 import type { Issue } from '../../src/ai/agent/check/index';
 import { runAgent, type AgentHost } from '../../src/ai/agent/loop';
+import type { ToolChoice, ToolDef } from '../../src/platform/types';
 import { emptyStoryboard } from '../../src/shared/project';
 import type { Storyboard } from '../../src/shared/schema';
 import { EVAL_MODEL, EVAL_TEMPERATURE, type Topic, type TopicId } from './topics';
@@ -280,15 +281,35 @@ export async function evaluateTopic(opts: {
   };
 }
 
-/** DeepSeek 请求体。不含密钥，不传 max_tokens，也不打开 json_object。 */
-export function deepseekRequestBody(messages: { role: string; content: string }[]): {
+/**
+ * DeepSeek 请求体。不含密钥。
+ * 与产品 agent 路径一样：有工具才写 tools 和 tool_choice，不传 max_tokens，也不打开 json_object。
+ * 产品端另外带 stream；这里仍一次取回完整响应，方便读 tool_calls。
+ */
+export function deepseekRequestBody(
+  messages: readonly { role: string; content: unknown }[],
+  call?: { tools?: readonly ToolDef[]; toolChoice?: ToolChoice },
+): {
   model: string;
-  messages: { role: string; content: string }[];
+  messages: readonly { role: string; content: unknown }[];
   temperature: number;
+  tools?: readonly ToolDef[];
+  tool_choice?: ToolChoice;
 } {
-  return {
+  const body: {
+    model: string;
+    messages: readonly { role: string; content: unknown }[];
+    temperature: number;
+    tools?: readonly ToolDef[];
+    tool_choice?: ToolChoice;
+  } = {
     model: EVAL_MODEL,
     messages,
     temperature: EVAL_TEMPERATURE,
   };
+  if (call?.tools?.length) {
+    body.tools = call.tools;
+    body.tool_choice = call.toolChoice ?? 'auto';
+  }
+  return body;
 }
