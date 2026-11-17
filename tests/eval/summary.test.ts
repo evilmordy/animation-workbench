@@ -179,6 +179,29 @@ describe('五题评测', () => {
     expect(source).not.toContain('response_format');
     expect(source).not.toContain('max_tokens');
     expect(source).not.toContain('65536');
+    expect(source).toContain('opts.tools');
+    expect(source).toContain('toolChoice');
+    expect(source).toContain('finish_reason');
+    expect(source).toContain('tool_calls');
+  });
+
+  it('有工具时带上 tools 和 tool_choice，消息结构原样保留', () => {
+    const tools = [
+      { type: 'function' as const, function: { name: 'write_plan', parameters: { type: 'object' } } },
+    ];
+    const messages = [{ role: 'user', content: [{ type: 'text', text: '看图' }] }];
+    const body = deepseekRequestBody(messages, { tools, toolChoice: 'auto' });
+    expect(body).toEqual({
+      model: 'deepseek-chat',
+      messages,
+      temperature: 0.3,
+      tools,
+      tool_choice: 'auto',
+    });
+    const json = JSON.stringify(body);
+    expect(json).not.toContain('max_tokens');
+    expect(json).not.toContain('response_format');
+    expect(json).not.toContain('65536');
   });
 
   it('PNG 往返，Sub 过滤和 RGB 也能解', () => {

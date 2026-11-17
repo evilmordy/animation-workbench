@@ -8,25 +8,36 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { it } from 'vitest';
 import type { Transport } from '../../src/ai/client';
-import { messageText, type LlmMessage } from '../../src/platform/types';
+import type { ToolCall } from '../../src/platform/types';
 import { parseStoryboard } from '../../src/shared/schema';
 import { screenStoryboard } from './screen';
 import { deepseekRequestBody, evaluateTopic, type EvalRow } from './summary';
 import { TOPICS, type Topic } from './topics';
 
-function apiMessages(messages: LlmMessage[]): { role: string; content: string }[] {
-  return messages.map((message) => ({
-    role: message.role,
-    content: typeof message.content === 'string' ? message.content : messageText(message.content),
-  }));
+function toolCallsOf(raw: unknown): ToolCall[] {
+  if (!Array.isArray(raw)) return [];
+  const calls: ToolCall[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue;
+    const call = item as { id?: unknown; function?: { name?: unknown; arguments?: unknown } };
+    const name = call.function?.name;
+    if (typeof call.id !== 'string' || typeof name !== 'string') continue;
+    const args = call.function?.arguments;
+    calls.push({
+      id: call.id,
+      type: 'function',
+      function: { name, arguments: typeof args === 'string' ? args : JSON.stringify(args ?? {}) },
+    });
+  }
+  return calls;
 }
 
 function transport(key: string): Transport {
-  return async (messages) => {
+  return async (messages, opts) => {
     const res = await fetch('https://api.deepseek.com/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
-      body: JSON.stringify(deepseekRequestBody(apiMessages(messages))),
+      body: JSON.stringify(deepseekRequestBody(messages, { tools: opts.tools, toolChoice: opts.toolChoice })),
       signal: AbortSignal.timeout(600_000),
     });
     const raw = await res.text();
@@ -35,13 +46,21 @@ function transport(key: string): Transport {
       throw new Error(`DeepSeek ${res.status}：${redacted.slice(0, 200)}`);
     }
     const data = JSON.parse(redacted) as {
-      choices?: { message?: { content?: string } }[];
+      choices?: {
+        finish_reason?: string | null;
+        message?: { content?: string | null; tool_calls?: unknown };
+      }[];
       usage?: { prompt_tokens?: number; completion_tokens?: number };
     };
+    const choice = data.choices?.[0];
+    const content = choice?.message?.content;
+    const toolCalls = toolCallsOf(choice?.message?.tool_calls);
     const usage = data.usage;
     return {
-      text: data.choices?.[0]?.message?.content ?? '',
+      text: typeof content === 'string' ? content : '',
       usage: usage ? [usage.prompt_tokens ?? 0, usage.completion_tokens ?? 0] : null,
+      finishReason: choice?.finish_reason ?? null,
+      ...(toolCalls.length ? { toolCalls } : {}),
     };
   };
 }
