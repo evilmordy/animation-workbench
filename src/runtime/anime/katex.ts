@@ -9,10 +9,21 @@ function fontUri(file: string): string {
 }
 
 /** 只留 woff2。woff / ttf 的相对地址在导出会去请求，CSP 会拦。 */
-export const KATEX_CSS = css.replace(
+const inlined = css.replace(
   /url\(fonts\/([^)]+\.woff2)\) format\("woff2"\),url\(fonts\/[^)]+\) format\("woff"\),url\(fonts\/[^)]+\) format\("truetype"\)/g,
   (_match: string, file: string) => `url("${fontUri(file)}") format("woff2")`,
 );
+
+/**
+ * 数学斜体在 48px 上下会把笔画收口收成 1px，右上角露出断开的白点或竖线。
+ * 八个方向各补 1px 同色阴影，把收口补上。strut / pstrut / vlist-s 是排版支架，不该有墨。
+ */
+const TEX_INK =
+  '.katex{text-shadow:1px 0 currentColor,-1px 0 currentColor,0 1px currentColor,0 -1px currentColor,' +
+  '1px 1px currentColor,-1px -1px currentColor,1px -1px currentColor,-1px 1px currentColor}' +
+  '.katex .katex-strut,.katex .pstrut,.katex .vlist-s{color:transparent}';
+
+export const KATEX_CSS = inlined + TEX_INK;
 
 const STYLE_ID = 'awb-katex-css';
 

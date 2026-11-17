@@ -115,6 +115,14 @@ function pair(value: unknown, fallback: [number, number] = [0, 0]): [number, num
   return fallback;
 }
 
+/**
+ * manim 逆时针为正，CSS rotate 顺时针为正。舞台已经把 y 翻成向下，
+ * 同一个度数画出来是反的，只在写进 CSS 时取反。元素上记下的角度仍是 manim 的。
+ */
+function cssRotate(deg: number): number {
+  return -deg;
+}
+
 function visualSize(w: number, h: number, rotate: number): { w: number; h: number } {
   if (!rotate) return { w, h };
   const rad = (Math.abs(rotate) * Math.PI) / 180;
@@ -237,7 +245,7 @@ export function createDsl(env: DslEnv): DslApi {
     };
     mount(handle);
     utils.set(outer, { x: 0, y: 0, scale: 1 });
-    if (spec.rotate) utils.set(inner, { rotate: spec.rotate });
+    if (spec.rotate) utils.set(inner, { rotate: cssRotate(spec.rotate) });
     handles.set(spec.id, handle);
     return handle;
   };
@@ -462,7 +470,7 @@ export function createDsl(env: DslEnv): DslApi {
     };
     mount(handle);
     utils.set(outer, { x: 0, y: 0, scale: 1 });
-    if (spec.rotate) utils.set(inner, { rotate: spec.rotate });
+    if (spec.rotate) utils.set(inner, { rotate: cssRotate(spec.rotate) });
     handles.set(spec.id, handle);
     return handle;
   };
@@ -509,7 +517,7 @@ export function createDsl(env: DslEnv): DslApi {
     inner.dataset.latex = latex;
     mount(handle);
     utils.set(outer, { x: 0, y: 0, scale: 1 });
-    if (spec.rotate) utils.set(inner, { rotate: spec.rotate });
+    if (spec.rotate) utils.set(inner, { rotate: cssRotate(spec.rotate) });
     handles.set(spec.id, handle);
     return handle;
   };
@@ -935,7 +943,7 @@ export function createDsl(env: DslEnv): DslApi {
       }
       case 'Rotate': {
         const next = handle.rotate + Number(params.degrees ?? 0);
-        tl.add(handle.inner, { rotate: [handle.rotate, next], duration, ease }, at);
+        tl.add(handle.inner, { rotate: [cssRotate(handle.rotate), cssRotate(next)], duration, ease }, at);
         handle.rotate = next;
         return;
       }
@@ -967,7 +975,7 @@ export function createDsl(env: DslEnv): DslApi {
         tl.add(
           handle.inner,
           {
-            rotate: [handle.rotate, handle.rotate + 8],
+            rotate: [cssRotate(handle.rotate), cssRotate(handle.rotate + 8)],
             duration,
             ease: (t: number) => Math.sin(t * Math.PI * 3) * (1 - t),
           },

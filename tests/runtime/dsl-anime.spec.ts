@@ -199,3 +199,185 @@ test('没尺寸时三种宽高比的舞台比例正确', async ({ page }) => {
     expect(box.w / box.h).toBeCloseTo(ratios[aspect], 2);
   }
 });
+
+test.describe('勾股几何', () => {
+  test.use({ viewport: { width: 1920, height: 1080 } });
+
+  test('斜边上的正方形贴在外侧，公式标签没有断开的残点', async ({ page }) => {
+    await serveRuntime(page);
+    await page.goto('http://awpreview.test/anime.html');
+    await page.waitForFunction(() => (window as unknown as { __ready?: boolean }).__ready);
+    const run = await page.evaluate(async (storyboard) => {
+      const win = window as unknown as {
+        __run?: (sb: unknown) => Promise<{ errors: { message: string }[] }>;
+      };
+      return win.__run!(storyboard);
+    }, pythagoras);
+    expect(run.errors).toEqual([]);
+    const seek = (t: number) =>
+      page.evaluate((time) => (window as unknown as { __seek?: (n: number) => void }).__seek!(time), t);
+
+    await seek(9.5);
+    const square = await page.evaluate(() => {
+      const layer = [...document.querySelectorAll('.awb-layer')].find(
+        (el) => (el as HTMLElement).style.visibility !== 'hidden',
+      );
+      const rect = layer?.querySelector('[data-awb-id="sc"] rect') as SVGRectElement | null;
+      const svg = rect?.ownerSVGElement ?? null;
+      const canvas = document.getElementById('canvas')?.getBoundingClientRect();
+      if (!rect || !svg || !canvas || canvas.width < 2) return null;
+      const ctm = svg.getScreenCTM();
+      if (!ctm) return null;
+      const x = Number(rect.getAttribute('x'));
+      const y = Number(rect.getAttribute('y'));
+      const w = Number(rect.getAttribute('width'));
+      const h = Number(rect.getAttribute('height'));
+      const toStage = (sx: number, sy: number) => ({
+        x: ((sx - canvas.left) / canvas.width) * 1920,
+        y: ((sy - canvas.top) / canvas.height) * 1080,
+      });
+      const corner = (px: number, py: number) => {
+        const p = svg.createSVGPoint();
+        p.x = px;
+        p.y = py;
+        const o = p.matrixTransform(ctm);
+        return toStage(o.x, o.y);
+      };
+      const actual = [corner(x, y), corner(x + w, y), corner(x + w, y + h), corner(x, y + h)];
+      const angle = (-36.87 * Math.PI) / 180;
+      const cos = Math.cos(angle);
+      const sin = Math.sin(angle);
+      const cx = 0.75;
+      const cy = 1.25;
+      const half = 1.25;
+      const expected = [
+        [-half, -half],
+        [half, -half],
+        [half, half],
+        [-half, half],
+      ].map(([dx, dy]) => {
+        const mx = cx + (dx ?? 0) * cos - (dy ?? 0) * sin;
+        const my = cy + (dx ?? 0) * sin + (dy ?? 0) * cos;
+        return { x: 960 + mx * 135, y: 540 - my * 135, mx, my };
+      });
+      const center = actual.reduce((acc, p) => ({ x: acc.x + p.x / 4, y: acc.y + p.y / 4 }), { x: 0, y: 0 });
+      const mx = (center.x - 960) / 135;
+      const my = (540 - center.y) / 135;
+      const cross = (px: number, py: number) => -2 * (py + 0.5) - 1.5 * (px - 1);
+      return { actual, expected, mx, my, right: cross(-1, -0.5), center: cross(mx, my) };
+    });
+    expect(square).not.toBeNull();
+    if (!square) return;
+    expect(Math.sign(square.center)).not.toBe(0);
+    expect(Math.sign(square.center)).not.toBe(Math.sign(square.right));
+    for (const point of square.expected) {
+      const nearest = Math.min(
+        ...square.actual.map((item) => Math.hypot(item.x - point.x, item.y - point.y)),
+      );
+      expect(nearest).toBeLessThanOrEqual(2);
+    }
+
+    await seek(4);
+    const boxes = await page.evaluate(() => {
+      const layer = [...document.querySelectorAll('.awb-layer')].find(
+        (el) => (el as HTMLElement).style.visibility !== 'hidden',
+      );
+      return ['la', 'lb', 'lc'].map((id) => {
+        const node = layer?.querySelector(`[data-awb-id="${id}"]`);
+        const rect = node?.getBoundingClientRect();
+        return { id, x: rect?.x ?? 0, y: rect?.y ?? 0, w: rect?.width ?? 0, h: rect?.height ?? 0 };
+      });
+    });
+    for (const box of boxes) {
+      expect(box.w).toBeGreaterThan(4);
+      const pad = 8;
+      const shot = await page.screenshot({
+        clip: {
+          x: Math.max(0, box.x - pad),
+          y: Math.max(0, box.y - pad),
+          width: box.w + pad * 2,
+          height: box.h + pad * 2,
+        },
+      });
+      const ink = await page.evaluate(
+        async (bytes) => {
+          const blob = new Blob([new Uint8Array(bytes)]);
+          const bmp = await createImageBitmap(blob);
+          const canvas = document.createElement('canvas');
+          canvas.width = bmp.width;
+          canvas.height = bmp.height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return { margin: -1, components: -1, topSpeck: true };
+          ctx.drawImage(bmp, 0, 0);
+          const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+          const w = canvas.width;
+          const h = canvas.height;
+          const bright = (x: number, y: number) => {
+            const i = (y * w + x) * 4;
+            return (data[i] ?? 0) + (data[i + 1] ?? 0) + (data[i + 2] ?? 0) > 80;
+          };
+          let margin = 0;
+          for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+              if (x >= 4 && y >= 4 && x < w - 4 && y < h - 4) continue;
+              if (bright(x, y)) margin += 1;
+            }
+          }
+          const seen = new Set<string>();
+          const cells: Array<[number, number]> = [];
+          for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+              if (bright(x, y)) cells.push([x, y]);
+            }
+          }
+          let components = 0;
+          for (const start of cells) {
+            const key = `${start[0]},${start[1]}`;
+            if (seen.has(key)) continue;
+            components += 1;
+            const stack = [start];
+            seen.add(key);
+            while (stack.length) {
+              const nextCell = stack.pop();
+              if (!nextCell) break;
+              const [cx, cy] = nextCell;
+              for (const dx of [-1, 0, 1]) {
+                for (const dy of [-1, 0, 1]) {
+                  const nx = cx + dx;
+                  const ny = cy + dy;
+                  const next = `${nx},${ny}`;
+                  if (nx < 0 || ny < 0 || nx >= w || ny >= h || seen.has(next) || !bright(nx, ny)) continue;
+                  seen.add(next);
+                  stack.push([nx, ny]);
+                }
+              }
+            }
+          }
+          const ys = cells.map((cell) => cell[1]);
+          const top = ys.length ? Math.min(...ys) : 0;
+          const bottom = ys.length ? Math.max(...ys) : 0;
+          const limit = top + Math.max(2, (bottom - top) * 0.15);
+          let topSpeck = false;
+          for (let y = top; y <= limit; y++) {
+            const runs: number[] = [];
+            let run = 0;
+            for (let x = 0; x < w; x++) {
+              if (bright(x, y)) run += 1;
+              else if (run) {
+                runs.push(run);
+                run = 0;
+              }
+            }
+            if (run) runs.push(run);
+            if (runs.length >= 2 && runs.some((item) => item <= 5)) topSpeck = true;
+          }
+          return { margin, components, topSpeck };
+        },
+        [...shot],
+      );
+      expect(ink.margin, box.id).toBe(0);
+      expect(ink.components, box.id).toBe(1);
+      expect(ink.topSpeck, box.id).toBe(false);
+    }
+  });
+});
