@@ -15,7 +15,7 @@ const samples = [
   },
   {
     id: 'psych',
-    mark: '未完成的更容易记住',
+    mark: '心理张力',
     code: readFileSync(join(root, '../../src/ai/agent/prompts/example-b.js'), 'utf8'),
   },
 ];

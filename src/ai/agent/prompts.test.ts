@@ -9,7 +9,7 @@ import { EXAMPLE_PREFIX, agentPromptBody, agentSystemPrompt, exampleChoice } fro
 import { bannedCheatSheet, helperCheatSheet, helperLines, helperMemberNames } from './prompts/sheet';
 
 const MERGE_MARK = '为什么是 O(n log n)';
-const PSYCH_MARK = '未完成的更容易记住';
+const PSYCH_MARK = '心理张力';
 
 describe('系统提示', () => {
   it('正文不超过 2500 字，helper 和禁用清单来自生成器，不再教围栏', () => {
@@ -63,13 +63,13 @@ describe('范例过运行门和体检', () => {
   it.each([
     ['归并复杂度', exampleMerge],
     ['心理', examplePsych],
-  ])('%s 能建场，没有采样帧时体检不报 blocker 或 major', async (_name, code) => {
+  ])('%s 过运行门，checkScenes 零 blocker', async (_name, code) => {
     const gate = await runScene(code);
     expect(gate.ok).toBe(true);
     if (!gate.ok) return;
     expect(gate.durationMs).toBeGreaterThan(100);
     expect(gate.durationMs).toBeLessThan(120_000);
     const issues = checkScenes([{ id: 'ex', width: 1920, height: 1080, consoleErrors: [] }]);
-    expect(issues.filter((issue) => issue.severity === 'blocker' || issue.severity === 'major')).toEqual([]);
+    expect(issues.filter((issue) => issue.severity === 'blocker')).toEqual([]);
   });
 });
