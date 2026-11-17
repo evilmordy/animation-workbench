@@ -1,8 +1,8 @@
 import { createPinia, setActivePinia } from 'pinia';
+import { nextTick } from 'vue';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { platform } from '../../platform';
-import { setMockLlm } from '../../platform/mock';
-import type { ToolCall } from '../../platform/types';
+import { resetMockFs, setMockLlm } from '../../platform/mock';
 import { messageText } from '../../platform/types';
 import { emptyStoryboard, newProjectFile } from '../../shared/project';
 import { parseStoryboard, type Storyboard } from '../../shared/schema';
@@ -60,25 +60,26 @@ afterEach(() => {
 });
 
 describe('预算', () => {
-  it('缺省 24 轮、不限 token；坏值收回范围内，默认引擎仍是 legacy', async () => {
+  it('缺省 24 轮、120 万 token、单次不传；坏值收回范围内，默认引擎仍是 legacy', async () => {
     expect(normalizeAgentBudget(undefined)).toEqual({
       maxTurns: 24,
-      maxTokens: null,
-      completionTokens: 65536,
+      maxTokens: 1_200_000,
+      completionTokens: null,
     });
     expect(normalizeAgentBudget({ maxTurns: 0, maxTokens: -3 })).toEqual({
       maxTurns: 1,
       maxTokens: null,
-      completionTokens: 65536,
+      completionTokens: null,
     });
     expect(normalizeAgentBudget({ maxTurns: 99, maxTokens: 50, completionTokens: 9_999_999 })).toEqual({
-      maxTurns: 32,
+      maxTurns: 99,
       maxTokens: 50,
       completionTokens: 393216,
     });
     expect(normalizeAgentBudget({ completionTokens: null })).toMatchObject({ completionTokens: null });
     expect(budgetFromSettings({ maxTurns: 4, maxTokens: null, completionTokens: 65536 })).toEqual({
       maxTurns: 4,
+      maxTokens: null,
       completionTokens: 65536,
     });
     expect(budgetFromSettings({ maxTurns: 4, maxTokens: 20, completionTokens: null })).toEqual({
@@ -90,16 +91,24 @@ describe('预算', () => {
     const settings = useSettingsStore();
     await settings.load();
     expect(settings.engine).toBe('legacy');
-    expect(settings.agentBudget).toEqual({ maxTurns: 24, maxTokens: null, completionTokens: 65536 });
-    expect(settings.runtime.codeRenderer).toBe('anime');
-    expect(settings.engine).toBe('legacy');
+    expect(settings.agentBudget).toEqual({ maxTurns: 24, maxTokens: 1_200_000, completionTokens: null });
+    expect(settings.runtime).toEqual({ codeScenes: false, codeRenderer: 'anime' });
     settings.setAgentBudget({ maxTurns: 2, maxTokens: 30 });
-    expect(settings.agentBudget).toEqual({ maxTurns: 2, maxTokens: 30, completionTokens: 65536 });
+    expect(settings.agentBudget).toEqual({ maxTurns: 2, maxTokens: 30, completionTokens: null });
     setActivePinia(createPinia());
     const reloaded = useSettingsStore();
     await reloaded.load();
     expect(reloaded.engine).toBe('legacy');
-    expect(reloaded.agentBudget).toEqual({ maxTurns: 2, maxTokens: 30, completionTokens: 65536 });
+    expect(reloaded.agentBudget).toEqual({ maxTurns: 2, maxTokens: 30, completionTokens: null });
+  });
+
+  it('读回设置时丢掉已经不存在的 agentTools', async () => {
+    await platform.storeSet('runtime', { codeScenes: true, agentTools: true });
+    const settings = useSettingsStore();
+    await settings.load();
+    expect(settings.runtime).toEqual({ codeScenes: true, codeRenderer: 'anime' });
+    await nextTick();
+    resetMockFs();
   });
 });
 
@@ -193,38 +202,41 @@ describe('日志', () => {
     const line = lineFromEvent(
       {
         type: 'tool',
-        name: 'check_layout',
-        arguments: '{"frame":"frames/s_ask-sequence-start.png"}',
-        result: 'frames/s_ask-sequence-start.png\n出界 1 处\ndata:image/png;base64,aaaa',
+        name: 'write_scene',
+        arguments: '{"scene_id":"s_ask"}',
+        result: '出界 1 处\ndata:image/png;base64,aaaa',
       },
       1,
     );
     expect(line).toMatchObject({
       kind: 'tool',
-      title: '版面 check_layout',
+      title: '写场 write_scene',
     });
     expect(line?.detail).toContain('出界 1 处');
-    expect(line?.detail).toContain('参数 {"frame":"frames/s_ask-sequence-start.png"}');
+    expect(line?.detail).toContain('参数 {"scene_id":"s_ask"}');
     expect(line?.detail).not.toContain('base64');
-    expect(formatToolLog({ name: 'render_frames', arguments: '', result: '已写出 2 张截帧' }).title).toBe(
-      '截帧 render_frames',
+    expect(formatToolLog({ name: 'capture_frames', arguments: '', result: '已写出 2 张截帧' }).title).toBe(
+      '截帧 capture_frames',
     );
   });
 });
 
 describe('runProjectAgent', () => {
-  it('面板入口把需求原文送进去，工具关着时不截帧', async () => {
+  it('面板入口把需求原文送进去，默认不传 max_tokens', async () => {
     const project = useProjectStore();
     await project.create('t', emptyStoryboard('t'), '/projects/panel-intent');
     const settings = useSettingsStore();
     await settings.load();
-    expect(settings.runtime.agentTools).toBe(false);
+    expect(settings.runtime).toEqual({ codeScenes: false, codeRenderer: 'anime' });
     const intent = '整段需求{{duration}}尾标';
     const seen: string[] = [];
     setMockLlm(async (req) => {
       seen.push(req.messages.map((m) => messageText(m.content)).join('\n'));
-      expect(req.tools).toBeUndefined();
-      expect(req.max_tokens).toBe(65536);
+      expect(req.tools?.map((tool) => tool.function.name)).toContain('write_plan');
+      expect(req.max_tokens).toBeUndefined();
+      expect(req.messages.every((message) => message.role === 'system' || message.role === 'user')).toBe(
+        true,
+      );
       return '没有文件';
     });
     const result = await runProjectAgent({ intent, source: '' }, { budget: { maxTurns: 1 } });
@@ -255,102 +267,5 @@ describe('runProjectAgent', () => {
     const stored = await platform.readText('/projects/panel-source/.awb/anim/source.md');
     expect(stored).toContain(`## [1]\n\n${long}`);
     expect(stored).toContain('## [2]\n\n第二段讲义');
-  });
-
-  it('闭环工具打开时，截帧检查结果写进同一条日志', async () => {
-    const project = useProjectStore();
-    await project.create('t', emptyStoryboard('t'), '/projects/panel-tools');
-    const settings = useSettingsStore();
-    await settings.load();
-    settings.runtime.agentTools = true;
-    const plan = [
-      '```file:anim/plan.md',
-      '# 计划',
-      '```',
-      '```file:anim/rubric.json',
-      '{"title":"圆","scenes":[{"id":"s_dot","title":"圆","description":"一个圆","hold":1,"enter":"fresh"}]}',
-      '```',
-    ].join('\n');
-    const scenes = ['```file:anim/scenes/s_dot.js', 'const dot = new M.Dot({ radius: 0.2 });', '```'].join(
-      '\n',
-    );
-    let n = 0;
-    setMockLlm(async (req) => {
-      n += 1;
-      if (n === 1) return plan;
-      if (n === 2) return scenes;
-      const asked = req.messages.some((m) => m.role === 'tool');
-      if (!asked) {
-        const tool: ToolCall = {
-          id: 'c1',
-          type: 'function',
-          function: { name: 'check_layout', arguments: '{}' },
-        };
-        return { text: '', toolCalls: [tool] };
-      }
-      return '看完了';
-    });
-    const events: AgentLogEvent[] = [];
-    const result = await runProjectAgent(
-      { intent: '画一个圆', source: '' },
-      {
-        budget: { maxTurns: 4 },
-        onLog: (event) => events.push(event),
-      },
-    );
-    expect(result.status).toBe('done');
-    const tool = events.find((event) => event.type === 'tool');
-    expect(tool?.type === 'tool' && tool.name).toBe('check_layout');
-    expect(tool?.type === 'tool' && tool.result).toContain('还没有截帧');
-    const line = tool && tool.type === 'tool' ? lineFromEvent(tool, 1) : null;
-    expect(line?.detail).toContain('还没有截帧');
-    expect(events.some((event) => event.type === 'phase' && event.phase === 'review')).toBe(true);
-  });
-
-  it('审查阶段看得到需求原文，并能改已写的场景', async () => {
-    const project = useProjectStore();
-    await project.create('t', emptyStoryboard('t'), '/projects/panel-revise');
-    const settings = useSettingsStore();
-    await settings.load();
-    settings.runtime.agentTools = true;
-    const plan = [
-      '```file:anim/plan.md',
-      '# 计划',
-      '```',
-      '```file:anim/rubric.json',
-      '{"title":"圆","scenes":[{"id":"s_dot","title":"圆","description":"一个圆","hold":1,"enter":"fresh"}]}',
-      '```',
-    ].join('\n');
-    const scenes = ['```file:anim/scenes/s_dot.js', 'const dot = 1;', '```'].join('\n');
-    const intent = '画一个圆，半径始终是 R';
-    let n = 0;
-    const seen: string[] = [];
-    setMockLlm(async (req) => {
-      n += 1;
-      seen.push(req.messages.map((m) => messageText(m.content)).join('\n'));
-      if (n === 1) return plan;
-      if (n === 2) return scenes;
-      const asked = req.messages.some((m) => m.role === 'tool');
-      if (!asked) {
-        const tool: ToolCall = {
-          id: 'w1',
-          type: 'function',
-          function: {
-            name: 'write_scene',
-            arguments: JSON.stringify({ sceneId: 's_dot', code: 'const fixed = true;' }),
-          },
-        };
-        return { text: '', toolCalls: [tool] };
-      }
-      return '改完了';
-    });
-    const result = await runProjectAgent(
-      { intent, source: '' },
-      { budget: { maxTurns: 4, completionTokens: null } },
-    );
-    expect(result.status).toBe('done');
-    expect(seen.some((text) => text.includes('这是指令，不是素材') && text.includes(intent))).toBe(true);
-    expect(seen.at(-1)).toContain('write_scene');
-    expect(project.storyboard?.scenes[0]?.code).toContain('const fixed = true');
   });
 });

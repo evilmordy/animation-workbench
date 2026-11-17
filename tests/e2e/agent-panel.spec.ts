@@ -43,7 +43,7 @@ test('默认引擎是旧大纲，设置里关掉 Agent 就回到大纲', async (
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('agent-intent')).toBeVisible();
   await expect(page.getByTestId('agent-budget')).toContainText('轮次 0/24');
-  await expect(page.getByTestId('agent-budget')).toContainText('单次 65536');
+  await expect(page.getByTestId('agent-budget')).toContainText('单次 不传');
 
   await page.getByTestId('open-settings').click();
   await page.getByTestId('generation-engine').getByText('旧大纲', { exact: true }).click();

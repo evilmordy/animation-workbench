@@ -194,10 +194,15 @@ export async function evaluateTopic(opts: {
   const host: AgentHost = {
     getStoryboard: () => sb,
     updateStoryboard(next) {
+      const before = new Set(
+        sb.scenes.filter((scene) => scene.kind === 'code' && scene.code?.trim()).map((scene) => scene.id),
+      );
+      for (const scene of next.scenes) {
+        if (scene.kind === 'code' && scene.code?.trim() && !before.has(scene.id)) writes += 1;
+      }
       sb = next;
     },
     async writeFile(name, text) {
-      if (name.startsWith('scenes/')) writes += 1;
       files.set(name, text);
     },
     async readFile(name) {

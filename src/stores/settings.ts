@@ -37,26 +37,18 @@ export type GenerationEngine = 'legacy' | 'agentic';
 /** 产品行为开关。全部默认关闭，关着的时候界面和导出走 v1。 */
 export interface RuntimeSettings {
   codeScenes: boolean;
-  /**
-   * 闭环截帧工具。默认关。
-   * 关着时不注册 render_frames 等工具，runAgent 仍是一次性写 code。
-   * 打开也不改变 generation.engine，也不打开代码场景预览。
-   */
-  agentTools: boolean;
   /** Agent 写新代码场时的默认。不改 legacy 引擎，也不改已经选过渲染的分镜。 */
   codeRenderer: CodeRenderer;
 }
 
 const RUNTIME_DEFAULTS: RuntimeSettings = {
   codeScenes: false,
-  agentTools: false,
   codeRenderer: 'anime',
 };
 
 function normalizeRuntime(saved: Partial<RuntimeSettings> | null | undefined): RuntimeSettings {
   return {
-    ...RUNTIME_DEFAULTS,
-    ...saved,
+    codeScenes: saved?.codeScenes === true,
     codeRenderer: saved?.codeRenderer === 'manim' ? 'manim' : 'anime',
   };
 }

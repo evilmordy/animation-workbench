@@ -1,40 +1,45 @@
-import type { ChatMessage } from '../../platform/types';
 import { newId } from '../../shared/id';
-import type { Storyboard } from '../../shared/schema';
+import { messageText, type LlmMessage, type ToolCall } from '../../platform/types';
 import type { Transport } from '../client';
-import { acceptStoryboard, applyAgentScenes, parseRubric, type PlannedScene } from './apply';
+import { projectContext } from './context';
 import { describeAgentStop, type AgentLogEvent } from './log';
-import { isAnimPath, parseAgentFiles, sceneIdFromName, unclosedFence } from './parse';
-import { fenceRetry, openingMessages, planRequest, scenesRequest } from './prompts';
+import {
+  appendLog,
+  applyInspection,
+  focusScene,
+  nextPhase,
+  openMemory,
+  redactCode,
+  syncStoryboard,
+  type AgentHost,
+  type Memory,
+} from './memory';
+import { agentSystemPrompt } from './prompts';
 import type { CodeRenderer } from './renderer';
-import { renderSourceMd, splitSource } from './source';
+import { toolDefs, type Phase } from './tools/defs';
+import { executeTool, localInspect, type Inspect, type ToolOutcome } from './tools/run';
+
+export type { AgentHost } from './memory';
+
+export const TOKEN_BUDGET = 1_200_000;
 
 export interface AgentBudget {
-  /** 最多调用模型几次。计划占一轮，场景接着写。 */
-  maxTurns: number;
-  /** 累计 prompt + completion。不传则只受 maxTurns 限制。 */
-  maxTokens?: number;
-  /** 单次补全上限。null 表示不传 max_tokens。产品入口由 run.ts 放进请求。 */
+  /** 面板上的轮次安全阀。不传则用 24。 */
+  maxTurns?: number;
+  /** 累计 prompt + completion。不传则用 120 万。null 表示不设。 */
+  maxTokens?: number | null;
+  /** 单次补全上限。null 或省略表示请求里不传 max_tokens。 */
   completionTokens?: number | null;
 }
 
-/**
- * 计划占 1 轮，之后一轮一场。8 轮写不完一场以上的片子。
- * 直接把默认加到 24，不再按场景数另算一笔。面板上限仍是 32。
- */
-export const DEFAULT_AGENT_BUDGET: AgentBudget = { maxTurns: 24 };
-
-/** 旁路文件写在项目的 .awb/anim/ 下。模型只能写 plan.md、rubric.json、shared.js、scenes/<id>.js。source.md 只由系统在生成开始时写入。 */
-export interface AgentHost {
-  getStoryboard(): Storyboard | null;
-  /** 唯一写分镜的入口。产品里就是 project.update，因此可以撤销。 */
-  updateStoryboard(next: Storyboard): void;
-  writeFile(name: string, text: string): Promise<void>;
-  readFile(name: string): Promise<string | null>;
-}
+export const DEFAULT_AGENT_BUDGET: AgentBudget = {
+  maxTurns: 24,
+  maxTokens: TOKEN_BUDGET,
+  completionTokens: null,
+};
 
 export interface AgentResult {
-  status: 'done' | 'cancelled' | 'budget' | 'error';
+  status: 'done' | 'done_with_issues' | 'stuck' | 'cancelled' | 'budget' | 'error';
   turns: number;
   usage: [number, number];
   sceneIds: string[];
@@ -43,67 +48,98 @@ export interface AgentResult {
 }
 
 export interface RunAgentOpts {
-  /** 用户需求原文。每一轮请求都会带上它，当作指令。 */
+  /** 用户需求原文。每一轮从状态重建时都会带上，当作指令，不截断。 */
   intent: string;
   /** 导入的讲义。生成开始时写成 source.md，提示里只放段落目录。 */
   source?: string;
   transport: Transport;
   host: AgentHost;
-  budget?: Partial<AgentBudget>;
-  /** 这一片用哪套代码契约。缺省 anime.js。 */
+  budget?: AgentBudget;
   renderer?: CodeRenderer;
+  /** 精确编辑。不传就是从 PLAN 开始。界面在 PR-11。 */
+  edit?: { sceneId: string; instruction: string };
+  /** 缺省用运行门之后的 checkScenes，不打开预览。产品入口传入应用内后端。 */
+  inspect?: Inspect;
+  /** 单轮上下文 token 估计上限。 */
+  contextBudget?: number;
   signal?: AbortSignal;
-  onPhase?: (phase: 'plan' | 'scenes') => void;
+  onPhase?: (phase: 'plan' | 'scene' | 'film' | 'edit') => void;
   onLog?: (event: AgentLogEvent) => void;
   onCancelRequest?: (requestId: string) => void;
 }
 
-function isCancelled(e: unknown): boolean {
-  return typeof e === 'object' && e !== null && 'code' in e && (e as { code?: unknown }).code === 'cancelled';
+const PHASE_LOG = { PLAN: 'plan', SCENE: 'scene', FILM: 'film', EDIT: 'edit' } as const;
+const PHASE_TITLE = { PLAN: '写 plan', SCENE: '写场景代码', FILM: '整片收尾', EDIT: '改一场' } as const;
+
+function isCancelled(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    (error as { code?: unknown }).code === 'cancelled'
+  );
 }
 
-function lockedIds(sb: Storyboard | null): string[] {
-  return sb?.scenes.filter((s) => s.locked).map((s) => s.id) ?? [];
-}
-
-function allSatisfied(
-  planned: PlannedScene[],
-  authored: ReadonlyMap<string, string>,
-  sb: Storyboard | null,
-): boolean {
-  if (!sb || !planned.length) return false;
-  return planned.every((p) => {
-    const existing = sb.scenes.find((s) => s.id === p.id);
-    if (existing?.locked) return true;
-    return Boolean(authored.get(p.id)?.trim()) && existing?.kind === 'code' && Boolean(existing.code?.trim());
+function argsOk(calls: ToolCall[]): boolean {
+  return calls.every((call) => {
+    try {
+      const value = JSON.parse(call.function.arguments || '{}') as unknown;
+      return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+    } catch {
+      return false;
+    }
   });
 }
 
-async function writeAnim(host: AgentHost, name: string, text: string) {
-  if (!isAnimPath(name)) throw new Error(`拒绝写入：${name}`);
-  await host.writeFile(name, text);
+type TurnKind = 'filtered' | 'truncated' | 'empty' | 'text-only' | 'tools';
+
+function classify(res: { text: string; finishReason?: string | null; toolCalls?: ToolCall[] }): TurnKind {
+  if (res.finishReason === 'content_filter') return 'filtered';
+  const calls = res.toolCalls ?? [];
+  if (res.finishReason === 'length') return calls.length > 0 && argsOk(calls) ? 'tools' : 'truncated';
+  if (!res.text.trim() && calls.length === 0) return 'empty';
+  if (calls.length === 0) return 'text-only';
+  return 'tools';
+}
+
+function messageChars(messages: LlmMessage[]): number {
+  return messages.reduce((sum, message) => {
+    const content = 'content' in message ? message.content : '';
+    return sum + messageText(content).length;
+  }, 0);
 }
 
 /**
- * 同一会话里先写 plan.md 和 rubric.json（共享常量可写 shared.js），再写每场 kind:code。
- * 场景代码在计划落盘之后才写入 scenes[]。没有 tool_calls，模型只按代码块交卷。
+ * 唯一的 agent 循环。每轮从分镜和记忆重建上下文，不累积历史。
+ * 不向传输层传 max_tokens；输出被截断时看 finishReason，不把同一请求原样重发。
  */
 export async function runAgent(opts: RunAgentOpts): Promise<AgentResult> {
-  const maxTurns = opts.budget?.maxTurns ?? DEFAULT_AGENT_BUDGET.maxTurns;
+  const maxTurns = opts.budget?.maxTurns ?? DEFAULT_AGENT_BUDGET.maxTurns ?? 24;
+  const maxTokens =
+    opts.budget && 'maxTokens' in opts.budget ? (opts.budget.maxTokens ?? null) : TOKEN_BUDGET;
   const renderer: CodeRenderer = opts.renderer === 'manim' ? 'manim' : 'anime';
-  const maxTokens = opts.budget?.maxTokens;
+  const inspect = opts.inspect ?? localInspect;
   const usage: [number, number] = [0, 0];
-  const sceneIds: string[] = [];
-  const skippedLocked = new Set<string>();
   let turns = 0;
+  let phase: Phase = opts.edit ? 'EDIT' : 'PLAN';
+  let textStreak = 0;
+  let emptyStreak = 0;
+  let idleStreak = 0;
+  let nudged = false;
 
   const finish = (status: AgentResult['status'], error?: string): AgentResult => {
+    const sb = opts.host.getStoryboard();
+    const sceneIds =
+      sb?.scenes
+        .filter((scene) => scene.kind === 'code' && Boolean(scene.code?.trim()))
+        .map((scene) => scene.id) ?? [];
+    const skippedLocked = sb?.scenes.filter((scene) => scene.locked).map((scene) => scene.id) ?? [];
     const result: AgentResult = {
       status,
       turns,
       usage,
       sceneIds,
-      skippedLocked: [...skippedLocked],
+      skippedLocked,
       ...(error ? { error } : {}),
     };
     opts.onLog?.({
@@ -113,235 +149,280 @@ export async function runAgent(opts: RunAgentOpts): Promise<AgentResult> {
         turns,
         maxTurns,
         tokens: usage[0] + usage[1],
-        ...(maxTokens !== undefined ? { maxTokens } : {}),
+        ...(typeof maxTokens === 'number' ? { maxTokens } : {}),
         ...(error ? { error } : {}),
         scenes: sceneIds.length,
-        skipped: skippedLocked.size,
+        skipped: skippedLocked.length,
       }),
     });
     return result;
   };
 
   if (!opts.intent.trim()) return finish('error', '需求是空的');
-  const source = opts.source ?? '';
   const initial = opts.host.getStoryboard();
   if (!initial) return finish('error', '没有打开的分镜');
-  await opts.host.writeFile('source.md', renderSourceMd(splitSource(source)));
+  const source = opts.source ?? '';
+  let mem: Memory;
+  try {
+    mem = await openMemory(opts.host, source, initial);
+  } catch (error) {
+    return finish('error', error instanceof Error ? error.message : String(error));
+  }
+  const system = agentSystemPrompt(renderer);
 
-  const startedEmpty = initial.scenes.length === 0;
-  let phase: 'plan' | 'scenes' = 'plan';
-  let plan = '';
-  let rubricText = '';
-  let shared = '';
-  let rubricTitle = '';
-  let planned: PlannedScene[] = [];
-  const authored = new Map<string, string>();
-  const messages: ChatMessage[] = openingMessages(opts.intent, renderer, source);
-  const overBudget = () => turns >= maxTurns || (maxTokens !== undefined && usage[0] + usage[1] >= maxTokens);
+  const overTokens = () => typeof maxTokens === 'number' && usage[0] + usage[1] >= maxTokens;
+
+  const noteIdle = (wrote: boolean) => {
+    if (wrote) {
+      idleStreak = 0;
+      nudged = false;
+      mem.shrink = false;
+      return null;
+    }
+    idleStreak += 1;
+    if (idleStreak === 3 && !nudged) {
+      nudged = true;
+      mem.turns.push({
+        turn: turns,
+        line: `T${turns} 请改代码或 finish`,
+        detail: '连续多轮没有写入。请改代码或 finish。',
+        images: [],
+      });
+    }
+    if (idleStreak >= 6) return finish('stuck', '连续多轮没有写入');
+    return null;
+  };
 
   while (true) {
     if (opts.signal?.aborted) return finish('cancelled');
-    if (phase === 'scenes' && allSatisfied(planned, authored, opts.host.getStoryboard()))
-      return finish('done');
-    if (overBudget()) return finish('budget');
+    if (turns >= maxTurns || overTokens()) return finish('budget');
 
+    const sb = opts.host.getStoryboard();
+    if (!sb) return finish('error', '没有打开的分镜');
+    syncStoryboard(mem, sb);
+    focusScene(mem, sb, opts.edit?.sceneId);
+
+    if (phase === 'FILM' && mem.pendingFilmCheck) {
+      mem.pendingFilmCheck = false;
+      try {
+        const report = await inspect(sb, { sceneIds: sb.scenes.map((scene) => scene.id), film: true });
+        applyInspection(
+          mem,
+          sb.scenes.map((scene) => scene.id),
+          report.issues,
+          turns,
+        );
+        const problems = mem.issues.some((issue) => {
+          if (issue.status !== 'open' && issue.status !== 'stuck') return false;
+          if (issue.severity !== 'blocker' && issue.severity !== 'major') return false;
+          return !sb.scenes.find((scene) => scene.id === issue.scene_id)?.locked;
+        });
+        if (problems) {
+          phase = 'SCENE';
+          mem.turns.push({
+            turn: turns,
+            line: '整片体检发现未关闭问题，回到场次',
+            detail: '整片体检还有 blocker 或 major，先回到有问题的场。',
+            images: [],
+          });
+        }
+      } catch (error) {
+        mem.turns.push({
+          turn: turns,
+          line: '整片体检失败',
+          detail: error instanceof Error ? error.message : String(error),
+          images: [],
+        });
+      }
+    }
+
+    const messages = projectContext({
+      phase,
+      mem,
+      storyboard: sb,
+      intent: opts.intent,
+      source,
+      system,
+      edit: opts.edit,
+      budgetTokens: opts.contextBudget,
+    });
     const requestId = newId('req');
     const onAbort = () => opts.onCancelRequest?.(requestId);
     opts.signal?.addEventListener('abort', onAbort);
-    opts.onPhase?.(phase);
-    opts.onLog?.({ type: 'phase', phase, turn: turns + 1 });
-    let text = '';
-    let finishReason: string | null = null;
+    const logged = PHASE_LOG[phase];
+    opts.onPhase?.(logged);
+    opts.onLog?.({ type: 'phase', phase: logged, turn: turns + 1 });
+    let res: Awaited<ReturnType<Transport>>;
     try {
-      const res = await opts.transport(messages, {
+      res = await opts.transport(messages, {
         requestId,
-        title: phase === 'plan' ? '写 plan' : '写场景代码',
+        title: PHASE_TITLE[phase],
         onDelta: () => {},
         jsonMode: null,
+        tools: toolDefs(phase),
+        toolChoice: 'auto',
       });
-      text = res.text;
-      finishReason = res.finishReason ?? null;
-      if (res.usage) {
-        usage[0] += res.usage[0];
-        usage[1] += res.usage[1];
-      } else {
-        usage[0] += Math.max(1, Math.ceil(messages.reduce((n, m) => n + m.content.length, 0) / 4));
-        usage[1] += Math.max(1, Math.ceil(text.length / 4));
-      }
-    } catch (e) {
-      if (opts.signal?.aborted || isCancelled(e)) return finish('cancelled');
-      return finish('error', e instanceof Error ? e.message : String(e));
-    } finally {
+    } catch (error) {
       opts.signal?.removeEventListener('abort', onAbort);
+      if (opts.signal?.aborted || isCancelled(error)) return finish('cancelled');
+      return finish('error', error instanceof Error ? error.message : String(error));
     }
+    opts.signal?.removeEventListener('abort', onAbort);
+    if (opts.signal?.aborted) return finish('cancelled');
+
     turns += 1;
+    if (res.usage) {
+      usage[0] += res.usage[0];
+      usage[1] += res.usage[1];
+    } else {
+      usage[0] += Math.max(1, Math.ceil(messageChars(messages) / 4));
+      usage[1] += Math.max(1, Math.ceil(res.text.length / 4));
+    }
     opts.onLog?.({
       type: 'usage',
       turns,
-      usage: [usage[0], usage[1]],
+      usage,
       maxTurns,
-      ...(maxTokens !== undefined ? { maxTokens } : {}),
+      ...(typeof maxTokens === 'number' ? { maxTokens } : {}),
     });
-    if (opts.signal?.aborted) return finish('cancelled');
-    if (!text.trim()) {
-      const reason = finishReason ?? '无';
-      opts.onLog?.({ type: 'note', message: `模型返回空正文（finish_reason=${reason}），已停止` });
-      return finish('error', `模型返回空正文（finish_reason=${reason}）`);
-    }
-    if (finishReason === 'length') {
-      opts.onLog?.({
-        type: 'note',
-        message: '输出被长度上限截断（finish_reason=length）。只收下已闭合的代码块，不会原样重发。',
-      });
-    }
-    messages.push({ role: 'assistant', content: text });
+    if (res.text.trim()) opts.onLog?.({ type: 'note', message: res.text.trim().slice(0, 500) });
 
+    const kind = classify(res);
+    const truncKey = mem.currentSceneId ?? 'plan';
     try {
-      const wrote = await absorb(text, finishReason);
-      if (wrote === 'cancelled') return finish('cancelled');
-      if (wrote === 'stop') return finish('error', '没有打开的分镜');
-      if (wrote === 'stalled') return finish('error', '输出不完整，继续请求会和上一轮一样，已停止');
-      if (wrote === 'to-scenes') phase = 'scenes';
-    } catch (e) {
-      if (opts.signal?.aborted || isCancelled(e)) return finish('cancelled');
-      return finish('error', e instanceof Error ? e.message : String(e));
-    }
-  }
-
-  /** 和上一轮用户消息相同时不再发送。截断后原样重发会把轮次烧完。 */
-  function pushUser(content: string): 'continue' | 'stalled' {
-    let prev = '';
-    for (let i = messages.length - 1; i >= 0; i--) {
-      const message = messages[i];
-      if (message?.role === 'user') {
-        prev = message.content;
-        break;
-      }
-    }
-    if (prev === content) {
-      opts.onLog?.({ type: 'note', message: '下一轮请求和上一轮相同，已停止' });
-      return 'stalled';
-    }
-    messages.push({ role: 'user', content });
-    return 'continue';
-  }
-
-  /** 消化一轮输出。cancelled：这一轮里被取消，调用方不要再请求模型。to-scenes：计划已落盘。 */
-  async function absorb(
-    text: string,
-    finishReason: string | null,
-  ): Promise<'continue' | 'cancelled' | 'stop' | 'to-scenes' | 'stalled'> {
-    const files = parseAgentFiles(text);
-    const open = unclosedFence(text);
-    const retryOpen = (): 'continue' | 'stalled' => {
-      opts.onLog?.({
-        type: 'note',
-        message: open?.name
-          ? `代码块未闭合（${open.name}），没有当完整文件，已要求重发`
-          : '代码块未闭合，认不出路径，已要求重发',
+      await appendLog(opts.host, {
+        turn: turns,
+        phase,
+        finishReason: res.finishReason ?? null,
+        kind,
+        tokens: usage[0] + usage[1],
       });
-      return pushUser(fenceRetry(opts.intent, open ?? { name: null, content: text }, source));
-    };
-    if (phase === 'plan') {
-      const planFile = files.find((f) => f.name === 'plan.md');
-      const rubricFile = files.find((f) => f.name === 'rubric.json');
-      const sharedFile = files.find((f) => f.name === 'shared.js');
-      const parsed = rubricFile ? parseRubric(rubricFile.content) : null;
-      if (!planFile?.content.trim() || !rubricFile || !parsed) {
-        if (open) return retryOpen();
-        const why =
-          finishReason === 'length' ? '上一轮输出被长度上限截断。' : '上一轮没有同时给出这两个文件。';
-        return pushUser(
-          `${planRequest(opts.intent, renderer, source)}\n\n${why}请只补 anim/plan.md 和带 scenes 的 anim/rubric.json，还不要写场景代码。`,
-        );
-      }
-      plan = planFile.content;
-      rubricText = rubricFile.content;
-      rubricTitle = parsed.title;
-      planned = parsed.scenes;
-      if (sharedFile) shared = sharedFile.content;
-      await writeAnim(opts.host, 'plan.md', plan);
-      if (opts.signal?.aborted) return 'cancelled';
-      await writeAnim(opts.host, 'rubric.json', rubricText);
-      if (opts.signal?.aborted) return 'cancelled';
-      if (sharedFile) {
-        await writeAnim(opts.host, 'shared.js', shared);
-        if (opts.signal?.aborted) return 'cancelled';
-      }
-      // 计划阶段即使模型提前丢了场景代码，也不写入 scenes[]。
-      if (opts.signal?.aborted) return 'cancelled';
-      opts.onLog?.({
-        type: 'note',
-        message: sharedFile ? '已写入 plan.md、rubric.json、shared.js' : '已写入 plan.md、rubric.json',
+    } catch {
+      // 日志写失败不打断生成。
+    }
+
+    if (kind === 'filtered') return finish('error', '服务商拦截了这次输出');
+    if (kind === 'empty') {
+      emptyStreak += 1;
+      textStreak = 0;
+      mem.turns.push({ turn: turns, line: `T${turns} 空输出`, detail: '上一轮没有输出。', images: [] });
+      if (emptyStreak >= 2) return finish('error', '连续两轮空输出');
+      const stopped = noteIdle(false);
+      if (stopped) return stopped;
+      if (overTokens()) return finish('budget');
+      continue;
+    }
+    emptyStreak = 0;
+    if (kind === 'truncated') {
+      textStreak = 0;
+      const calls = res.toolCalls ?? [];
+      const received = calls.reduce((sum, call) => sum + call.function.arguments.length, 0) + res.text.length;
+      mem.truncations[truncKey] = (mem.truncations[truncKey] ?? 0) + 1;
+      const count = mem.truncations[truncKey] ?? 1;
+      if (count >= 2) mem.shrink = true;
+      const detail = JSON.stringify({
+        ok: false,
+        error: {
+          code: 'TRUNCATED',
+          message: `输出被截断（收到 ${received} 字）`,
+          hint: '请改用 edit_range 或缩短，不要原样重发',
+        },
       });
-      const asked = pushUser(
-        scenesRequest({
-          intent: opts.intent,
-          plan,
-          rubric: rubricText,
-          shared,
-          planned,
-          authored,
-          lockedIds: lockedIds(opts.host.getStoryboard()),
-          renderer,
+      mem.turns.push({ turn: turns, line: `T${turns} TRUNCATED ${received} 字`, detail, images: [] });
+      opts.onLog?.({ type: 'note', message: `TRUNCATED：收到 ${received} 字` });
+      if (count >= 3) {
+        const scene = mem.currentSceneId ? mem.scenes[mem.currentSceneId] : undefined;
+        if (scene) scene.status = 'stuck';
+        else return finish('stuck', '规划输出连续截断');
+      }
+      const stopped = noteIdle(false);
+      if (stopped) return stopped;
+      if (overTokens()) return finish('budget');
+      continue;
+    }
+    if (kind === 'text-only') {
+      textStreak += 1;
+      const fence = res.text.includes('```') ? '代码只能通过 write_scene / edit_range 提交。' : '';
+      mem.turns.push({
+        turn: turns,
+        line: `T${turns} 只有正文`,
+        detail: `请用工具提交。${fence}`,
+        images: [],
+      });
+      if (textStreak >= 3) return finish('stuck', '连续三轮只有正文');
+      const stopped = noteIdle(false);
+      if (stopped) return stopped;
+      if (overTokens()) return finish('budget');
+      continue;
+    }
+
+    textStreak = 0;
+    if (res.finishReason === 'length') {
+      opts.onLog?.({ type: 'note', message: '输出被截断，但工具参数完整，已执行' });
+    }
+    let wrote = false;
+    const lines: string[] = [];
+    const details: string[] = [];
+    let images: { dataUrl: string; caption: string }[] = [];
+    for (const call of res.toolCalls ?? []) {
+      let outcome: ToolOutcome;
+      try {
+        outcome = await executeTool(call.function.name, call.function.arguments, {
+          phase,
+          turn: turns,
+          host: opts.host,
+          mem,
           source,
-        }),
-      );
-      return asked === 'stalled' ? 'stalled' : 'to-scenes';
-    }
-
-    const sharedFile = files.find((f) => f.name === 'shared.js');
-    if (sharedFile) {
-      shared = sharedFile.content;
-      await writeAnim(opts.host, 'shared.js', shared);
-      if (opts.signal?.aborted) return 'cancelled';
-    }
-    let gotScene = false;
-    for (const file of files) {
-      const id = sceneIdFromName(file.name);
-      if (!id || !file.content.trim()) continue;
-      authored.set(id, file.content);
-      await writeAnim(opts.host, file.name, file.content);
-      if (opts.signal?.aborted) return 'cancelled';
-      gotScene = true;
-    }
-    const current = opts.host.getStoryboard();
-    if (!current) return 'stop';
-    if ((gotScene || sharedFile) && !opts.signal?.aborted) {
-      const applied = applyAgentScenes({
-        storyboard: current,
-        planned,
-        codes: authored,
-        shared,
-        adoptTitle: startedEmpty && rubricTitle ? rubricTitle : null,
+          editSceneId: opts.edit?.sceneId,
+          inspect,
+        });
+      } catch (error) {
+        outcome = {
+          content: JSON.stringify({
+            ok: false,
+            error: {
+              code: 'RUNTIME_ERROR',
+              message: error instanceof Error ? error.message : String(error),
+              hint: '看这条错误',
+            },
+          }),
+        };
+      }
+      if (outcome.wrote) wrote = true;
+      if (outcome.images?.length) images = outcome.images.slice(0, 8);
+      const redactedArgs = redactCode(call.function.arguments || '{}');
+      const redacted = redactCode(outcome.content);
+      lines.push(`${call.function.name} ${redacted.slice(0, 160)}`);
+      details.push(`${call.function.name} ${redactedArgs}\n${redacted}`);
+      opts.onLog?.({
+        type: 'tool',
+        name: call.function.name,
+        arguments: redactedArgs,
+        result: redacted,
       });
-      for (const id of applied.skippedLocked) skippedLocked.add(id);
-      if (applied.changed) {
-        const accepted = acceptStoryboard(applied.storyboard);
-        if (!accepted) throw new Error('写回的分镜无法通过 schema');
-        if (opts.signal?.aborted) return 'cancelled';
-        opts.host.updateStoryboard(accepted);
-        for (const id of applied.written) if (!sceneIds.includes(id)) sceneIds.push(id);
-        if (applied.written.length) {
-          opts.onLog?.({ type: 'note', message: `已写入场景 ${applied.written.join('、')}` });
-        }
+      if (outcome.terminal) {
+        mem.turns.push({
+          turn: turns,
+          line: `T${turns} ${lines.join('；')}`,
+          detail: details.join('\n\n'),
+          images,
+        });
+        return finish(outcome.terminal);
       }
     }
-    if (opts.signal?.aborted) return 'cancelled';
-    if (allSatisfied(planned, authored, opts.host.getStoryboard())) return 'continue';
-    if (open) return retryOpen();
-    return pushUser(
-      scenesRequest({
-        intent: opts.intent,
-        plan,
-        rubric: rubricText,
-        shared,
-        planned,
-        authored,
-        lockedIds: lockedIds(opts.host.getStoryboard()),
-        renderer,
-        source,
-      }),
-    );
+    mem.turns.push({
+      turn: turns,
+      line: `T${turns} ${lines.join('；')}`.slice(0, 240),
+      detail: details.join('\n\n'),
+      images,
+    });
+    const stopped = noteIdle(wrote);
+    if (stopped) return stopped;
+    if (overTokens()) return finish('budget');
+
+    const prev = phase;
+    const latest = opts.host.getStoryboard() ?? sb;
+    phase = nextPhase(phase, latest, mem);
+    if (phase === 'FILM' && (prev !== 'FILM' || wrote)) mem.pendingFilmCheck = true;
   }
 }
