@@ -3,7 +3,7 @@ import type { Timeline } from 'animejs';
 /**
  * 代码场 helper。`player.ts` 编译每一场时把这段源码注入函数体，再把 `scene.code` 包进块作用域。
  *
- * 设计书 §4.2：合并 S8d 的 helpers 与 seek-guard，并补 `bind`。`three3d`（PR-10）和 `tex`（PR-9b）不在这里。
+ * 设计书 §4.2：合并 S8d 的 helpers 与 seek-guard，并补 `bind`。`tex` 在这里，`three3d` 留给 PR-10。
  * 仓库里没有 `prompts/helpers.js`、`helpers-safe.js`、`seek-guard.js`、`helpers.md`（复盘：S8d 原型没进仓库）。
  * 配色与产品里的 3b1b 预设对齐，并补上 §4.2 点名的其余颜色名。
  */
@@ -306,6 +306,18 @@ function head(html, at) {
   return node;
 }
 
+function tex(latex, x, y, size, color) {
+  const node = el('div', {
+    left: x,
+    top: y,
+    fontSize: size || 48,
+    color: color || C.text,
+    lineHeight: 1,
+  });
+  if (typeof ctx.renderTex === 'function') ctx.renderTex(node, String(latex));
+  return node;
+}
+
 function bind(state, draw) {
   if (!state || typeof draw !== 'function') return;
   _binds.push(() => draw(state));
@@ -362,9 +374,9 @@ export interface AwbFadeOpts {
  * `at`：数字是本场绝对毫秒；`+=n` 是时间线末尾之后 n 毫秒；`<<` 与上一个 helper 动画同时开始；`<<+=n` 再晚 n 毫秒。
  */
 export interface AwbSceneScope {
-  /** 舞台宽。来自 ctx.width，当前播放器传入 1920。 */
+  /** 舞台宽，来自 ctx.width。 */
   readonly W: number;
-  /** 舞台高。来自 ctx.height，当前播放器传入 1080。 */
+  /** 舞台高，来自 ctx.height。 */
   readonly H: number;
   /** 配色。蓝绿红字灰底与产品 3b1b 预设相同，其余名字用同一套色值。 */
   readonly C: AwbPalette;
@@ -428,4 +440,6 @@ export interface AwbSceneScope {
    * state 用 tw 补间。draw 在每次 seek / 每帧之后由播放器对可见场调用，必须是 state 的纯函数。
    */
   bind<T extends object>(state: T, draw: (state: T) => void): void;
+  /** 公式。KaTeX 在建场时渲染，不要放中文。 */
+  tex(latex: string, x: number, y: number, size?: number, color?: string): HTMLElement;
 }

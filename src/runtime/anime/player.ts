@@ -2,10 +2,26 @@ import { animate, createTimeline, stagger, utils, type Timeline } from 'animejs'
 import { resolveColor, resolvePalette } from '../../shared/palette';
 import type { Scene, Storyboard } from '../../shared/schema';
 import { AWB_BINDS, wrapSceneCode } from './awb';
+import { translateStoryboard } from './dsl';
+import { createDsl } from './dsl-lib';
+import { loadKatexFonts, renderTex } from './katex';
 
-/** 舞台坐标系。预览页按容器缩放，时间线仍按这组像素写。 */
+/** 16:9 舞台。其它宽高比用 stageSize。预览页按容器缩放，时间线仍按这组像素写。 */
 export const STAGE_WIDTH = 1920;
 export const STAGE_HEIGHT = 1080;
+
+/** 设计书 §4.7：帧高 8 单位，三种宽高比对应的像素舞台。 */
+export function stageSize(aspect: Storyboard['meta']['aspect']): { width: number; height: number } {
+  if (aspect === '9:16') return { width: 1080, height: 1920 };
+  if (aspect === '1:1') return { width: 1080, height: 1080 };
+  return { width: STAGE_WIDTH, height: STAGE_HEIGHT };
+}
+
+function stageRatioCss(aspect: Storyboard['meta']['aspect']): string {
+  if (aspect === '9:16') return '9 / 16';
+  if (aspect === '1:1') return '1 / 1';
+  return '16 / 9';
+}
 
 export const STAGE_FONT = '"Noto Sans CJK SC", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif';
 
@@ -16,6 +32,7 @@ export type AnimeApi = typeof animeApi;
 
 export interface HtmlSceneError {
   sceneId?: string;
+  elementId?: string;
   message: string;
 }
 
@@ -47,6 +64,8 @@ interface HtmlContext {
   enter: Scene['enter'];
   width: number;
   height: number;
+  renderTex?: (node: HTMLElement, latex: string) => void;
+  dsl?: ReturnType<typeof createDsl>;
 }
 
 type SceneFn = (root: HTMLElement, anime: AnimeApi, tl: Timeline, ctx: HtmlContext) => Promise<unknown>;
@@ -102,18 +121,22 @@ export async function playHtmlStoryboard(
   stage.style.position = 'relative';
   stage.style.overflow = 'hidden';
   stage.style.background = bg;
+  const box = stageSize(sb.meta.aspect);
+  const ratio = stageRatioCss(sb.meta.aspect);
   if (stage.clientWidth < 2 || stage.clientHeight < 2) {
-    stage.style.width = 'min(100vw, calc(100vh * 16 / 9))';
-    stage.style.height = 'min(100vh, calc(100vw * 9 / 16))';
+    stage.style.width = `min(100vw, calc(100vh * (${ratio})))`;
+    stage.style.height = `min(100vh, calc(100vw / (${ratio})))`;
   }
 
   const canvas = document.createElement('div');
   canvas.id = 'canvas';
+  canvas.dataset.stageWidth = String(box.width);
+  canvas.dataset.stageHeight = String(box.height);
   canvas.style.position = 'absolute';
   canvas.style.left = '0';
   canvas.style.top = '0';
-  canvas.style.width = `${STAGE_WIDTH}px`;
-  canvas.style.height = `${STAGE_HEIGHT}px`;
+  canvas.style.width = `${box.width}px`;
+  canvas.style.height = `${box.height}px`;
   canvas.style.transformOrigin = '0 0';
   canvas.style.background = bg;
   canvas.style.overflow = 'hidden';
@@ -124,22 +147,34 @@ export async function playHtmlStoryboard(
   const fit = () => {
     const w = stage.clientWidth;
     const h = stage.clientHeight;
-    const scale = w >= 2 && h >= 2 ? Math.min(w / STAGE_WIDTH, h / STAGE_HEIGHT) : 1;
+    const scale = w >= 2 && h >= 2 ? Math.min(w / box.width, h / box.height) : 1;
     canvas.style.transform = `scale(${scale})`;
   };
   fit();
   const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => fit());
   observer?.observe(stage);
 
+  await loadKatexFonts(stage.ownerDocument);
+
   const master = createTimeline({ autoplay: false, loop: opts.loop ? true : 0 });
   const errors: HtmlSceneError[] = [];
   const spans: Span[] = [];
   let cursor = 0;
   const list = sb.scenes;
+  const translated = translateStoryboard(sb);
 
   for (let i = 0; i < list.length; i++) {
     const scene = list[i]!;
-    const source = scene.kind === 'code' && typeof scene.code === 'string' ? scene.code.trim() : '';
+    let source = '';
+    if (scene.kind === 'dsl') {
+      const part = translated[i];
+      for (const issue of part?.errors ?? []) {
+        errors.push({ sceneId: scene.id, elementId: issue.elementId, message: issue.message });
+      }
+      source = part?.code.trim() ?? '';
+    } else if (scene.kind === 'code' && typeof scene.code === 'string') {
+      source = scene.code.trim();
+    }
     const holdMs = (Number.isFinite(scene.hold) ? Math.max(0, scene.hold) : 0) * 1000;
     if (!source) {
       errors.push({
@@ -171,8 +206,10 @@ export async function playHtmlStoryboard(
       title: scene.title,
       hold: Number.isFinite(scene.hold) ? Math.max(0, scene.hold) : 0,
       enter: scene.enter,
-      width: STAGE_WIDTH,
-      height: STAGE_HEIGHT,
+      width: box.width,
+      height: box.height,
+      renderTex,
+      dsl: createDsl({ root, tl, width: box.width, height: box.height }),
     };
     // 场代码会换掉 tl.add。hold 和最短时长仍走原来的 add，避免被场景里的包装改掉。
     const addTail = tl.add.bind(tl);
