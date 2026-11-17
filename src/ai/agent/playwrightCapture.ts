@@ -1,5 +1,5 @@
 /**
- * Playwright 截帧。复用 tests/runtime 的 code-harness 和 dist-runtime。
+ * Playwright 截帧。复用 dist-runtime 的 anime 预览页。
  * 不要从应用入口静态引入本文件：它依赖 Node 和 Playwright，失败时应由工具降级。
  */
 import { existsSync, readFileSync } from 'node:fs';
@@ -7,29 +7,18 @@ import { join } from 'node:path';
 import type { HarnessPage, HarnessRun } from './capture';
 import { LAYOUT_SCAN_LIMIT, pickLayoutBoxes, type RawLayoutElement } from './layoutBoxes';
 import type { Raster } from './check/pixels';
-import type { CodeRenderer } from './renderer';
 
 /** 与 tests/runtime/serve.ts 的预览 CSP 一致。 */
 const PREVIEW_CSP =
   "default-src 'none'; script-src http://awpreview.test 'unsafe-eval'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; worker-src blob:; connect-src 'none'; base-uri 'none'; form-action 'none'";
-
-const MANIM_FILES: Record<string, [string, string]> = {
-  'http://awpreview.test/code-harness.html': ['tests/runtime/code-harness.html', 'text/html'],
-  'http://awpreview.test/code-harness.js': ['tests/runtime/code-harness.js', 'text/javascript'],
-  'http://awpreview.test/runtime.js': ['dist-runtime/runtime.js', 'text/javascript'],
-};
 
 const ANIME_FILES: Record<string, [string, string]> = {
   'http://awpreview.test/anime.html': ['dist-runtime/anime.html', 'text/html'],
   'http://awpreview.test/anime-runtime.js': ['dist-runtime/anime-runtime.js', 'text/javascript'],
 };
 
-function previewFiles(renderer: CodeRenderer): Record<string, [string, string]> {
-  return renderer === 'anime' ? ANIME_FILES : MANIM_FILES;
-}
-
-function requirePreviewFiles(root: string, renderer: CodeRenderer) {
-  for (const [rel] of Object.values(previewFiles(renderer))) {
+function requirePreviewFiles(root: string) {
+  for (const [rel] of Object.values(ANIME_FILES)) {
     if (!existsSync(join(root, rel))) {
       throw new Error(`预览文件不存在：${rel}。先构建 runtime，或继续走降级，不阻塞改代码。`);
     }
@@ -47,14 +36,10 @@ interface Grabbed {
  * 打开无头浏览器里的代码场景预览。文件缺失或浏览器起不来时抛错，调用方降级。
  * 不读取模型 API key。
  */
-export async function launchPlaywrightHarness(
-  root = process.cwd(),
-  renderer: CodeRenderer = 'manim',
-): Promise<HarnessPage> {
-  requirePreviewFiles(root, renderer);
-  const files = previewFiles(renderer);
-  const pageUrl =
-    renderer === 'anime' ? 'http://awpreview.test/anime.html' : 'http://awpreview.test/code-harness.html';
+export async function launchPlaywrightHarness(root = process.cwd()): Promise<HarnessPage> {
+  requirePreviewFiles(root);
+  const files = ANIME_FILES;
+  const pageUrl = 'http://awpreview.test/anime.html';
   let chromium: typeof import('@playwright/test').chromium;
   try {
     ({ chromium } = await import('@playwright/test'));
@@ -100,17 +85,14 @@ export async function launchPlaywrightHarness(
         await page.waitForFunction(() => Boolean((globalThis as { __ready?: boolean }).__ready));
         await page.addStyleTag({ content: '[data-player-bar]{display:none!important}' });
       },
-      async run(storyboard, enableCodeScenes) {
-        return page.evaluate(
-          ({ storyboard, enableCodeScenes }) => {
-            const win = globalThis as {
-              __run?: (sb: unknown, enable?: boolean) => Promise<HarnessRun>;
-            };
-            if (!win.__run) throw new Error('预览页没有 __run');
-            return win.__run(storyboard, enableCodeScenes);
-          },
-          { storyboard, enableCodeScenes },
-        );
+      async run(storyboard) {
+        return page.evaluate((board) => {
+          const win = globalThis as {
+            __run?: (sb: unknown) => Promise<HarnessRun>;
+          };
+          if (!win.__run) throw new Error('预览页没有 __run');
+          return win.__run(board);
+        }, storyboard);
       },
       async seek(t) {
         await page.evaluate((time) => {

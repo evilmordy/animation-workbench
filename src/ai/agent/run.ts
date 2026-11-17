@@ -8,7 +8,7 @@ import { budgetFromSettings } from './log';
 import type { AgentBudget, AgentHost, AgentResult, RunAgentOpts } from './loop';
 import { runAgent } from './loop';
 import { isAnimPath } from './paths';
-import { previewPageUrl, readRendererFile, resolveAgentRenderer, writeRendererFile } from './renderer';
+import { previewPageUrl } from './renderer';
 import type { InspectReport, ObservedFrame } from './tools/run';
 
 /** 系统文件和工具白名单。场景代码在分镜里，不另写 scenes/*.js。 */
@@ -44,7 +44,7 @@ export function projectAgentHost(): AgentHost {
 /** 写入之后的体检走应用内隐藏预览。失败时把原因交回循环，不抛出。 */
 export function appInspect(): RunAgentOpts['inspect'] {
   return async (sb, req): Promise<InspectReport> => {
-    const src = previewPageUrl(platform.previewSrc(), 'anime', true);
+    const src = previewPageUrl(platform.previewSrc(), true);
     try {
       const report = await checkStoryboardInApp(sb, { previewSrc: src });
       const wanted = req.sceneIds?.length ? new Set(req.sceneIds) : null;
@@ -97,7 +97,6 @@ export async function runProjectAgent(
 ): Promise<AgentResult> {
   const session = aiSession();
   const settings = useSettingsStore();
-  const project = useProjectStore();
   const budget = { ...budgetFromSettings(settings.agentBudget), ...opts.budget };
   const completion = budget.completionTokens;
   const transport: RunAgentOpts['transport'] = (messages, call) =>
@@ -106,22 +105,11 @@ export async function runProjectAgent(
       jsonMode: null,
       ...(typeof completion === 'number' && completion > 0 ? { maxTokens: completion } : {}),
     });
-  const sidecar = project.dir ? await readRendererFile(project.dir) : null;
-  const hasCodeScenes = (project.storyboard?.scenes ?? []).some(
-    (scene) => scene.kind === 'code' && !!scene.code?.trim(),
-  );
-  const renderer = resolveAgentRenderer({
-    sidecar,
-    fallback: settings.runtime.codeRenderer === 'manim' ? 'manim' : 'anime',
-    hasCodeScenes,
-  });
-  if (project.dir && sidecar !== renderer) await writeRendererFile(project.dir, renderer);
   return runAgent({
     intent: task.intent,
     source: task.source,
     host: projectAgentHost(),
     budget,
-    renderer,
     inspect: appInspect(),
     signal: opts.signal,
     onPhase: opts.onPhase,

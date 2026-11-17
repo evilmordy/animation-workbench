@@ -215,7 +215,6 @@ export async function evaluateTopic(opts: {
     intent: opts.topic.intent,
     transport: opts.transport,
     host,
-    renderer: 'anime',
     budget: { maxTurns: opts.maxTurns ?? 24 },
   });
   const elapsedMs = Date.now() - started;

@@ -1,6 +1,7 @@
 import { animate, createTimeline, stagger, utils, type Timeline } from 'animejs';
 import { resolveColor, resolvePalette } from '../../shared/palette';
 import type { Scene, Storyboard } from '../../shared/schema';
+import { MANIM_CODE_UNSUPPORTED, isManimSceneCode } from '../manimCode';
 import { AWB_BINDS, wrapSceneCode } from './awb';
 
 /** 舞台坐标系。预览页按容器缩放，时间线仍按这组像素写。 */
@@ -141,10 +142,15 @@ export async function playHtmlStoryboard(
     const scene = list[i]!;
     const source = scene.kind === 'code' && typeof scene.code === 'string' ? scene.code.trim() : '';
     const holdMs = (Number.isFinite(scene.hold) ? Math.max(0, scene.hold) : 0) * 1000;
-    if (!source) {
+    const manim = source.length > 0 && isManimSceneCode(source);
+    if (!source || manim) {
       errors.push({
         sceneId: scene.id,
-        message: scene.kind === 'code' ? '代码场景缺少 code' : 'HTML 播放只跑代码场景，这一场已跳过',
+        message: manim
+          ? MANIM_CODE_UNSUPPORTED
+          : scene.kind === 'code'
+            ? '代码场景缺少 code'
+            : 'HTML 播放只跑代码场景，这一场已跳过',
       });
       const dur = Math.max(100, holdMs);
       master.add({ duration: dur }, cursor);

@@ -10,8 +10,9 @@ defineProps<{
   lines: AgentLogLine[];
   turns: number;
   tokens: number;
+  canRewrite: boolean;
 }>();
-defineEmits<{ cancel: []; check: [] }>();
+defineEmits<{ cancel: []; check: []; rewrite: [] }>();
 
 const settings = useSettingsStore();
 const tokenLabel = (max: number | null) => (max == null ? '不限' : String(max));
@@ -74,6 +75,15 @@ const completionLabel = (max: number | null) => (max == null ? '不传' : String
       </p>
     </div>
     <div class="check">
+      <NButton
+        v-if="canRewrite"
+        size="small"
+        data-testid="rewrite-manim"
+        :disabled="busy"
+        @click="$emit('rewrite')"
+      >
+        按场景描述让 agent 重写
+      </NButton>
       <NButton
         size="small"
         data-testid="agent-check"

@@ -5,7 +5,6 @@ import {
   normalizeAgentBudget,
   type AgentBudgetSettings,
 } from '../ai/agent/log';
-import type { CodeRenderer } from '../ai/agent/renderer';
 import { providerById } from '../ai/providers';
 import { platform } from '../platform';
 
@@ -34,22 +33,18 @@ const DEFAULTS: AiSettings = {
 /** 生成引擎。legacy 走原来的大纲管线；agentic 还要同时打开 runtime.codeScenes 才生效。 */
 export type GenerationEngine = 'legacy' | 'agentic';
 
-/** 产品行为开关。全部默认关闭，关着的时候界面和导出走 v1。 */
+/** 产品行为开关。codeScenes 默认关闭，关着的时候界面和导出走 v1。 */
 export interface RuntimeSettings {
   codeScenes: boolean;
-  /** Agent 写新代码场时的默认。不改 legacy 引擎，也不改已经选过渲染的分镜。 */
-  codeRenderer: CodeRenderer;
 }
 
 const RUNTIME_DEFAULTS: RuntimeSettings = {
   codeScenes: false,
-  codeRenderer: 'anime',
 };
 
 function normalizeRuntime(saved: Partial<RuntimeSettings> | null | undefined): RuntimeSettings {
   return {
     codeScenes: saved?.codeScenes === true,
-    codeRenderer: saved?.codeRenderer === 'manim' ? 'manim' : 'anime',
   };
 }
 

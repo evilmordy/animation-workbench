@@ -1,4 +1,3 @@
-import type { CodeRenderer } from './renderer';
 import { sourceCatalog, splitSource } from './source';
 import exampleMerge from './prompts/example-a.js?raw';
 import examplePsych from './prompts/example-b.js?raw';
@@ -13,15 +12,6 @@ import { bannedCheatSheet, helperCheatSheet } from './prompts/sheet';
 export const EXAMPLE_PREFIX =
   '下面是另一道题里写得好的一场，只学结构、节奏和版面（标题、正文区、底部字幕、逐步出现、停顿），不要照抄内容。';
 
-const MANIM_PROMPT = [
-  '你是动画作者，这一片用 manim-web，函数签名是 (scene, M, ctx)。',
-  '需求原文是指令。素材是讲解依据，全文在 source.md，需要时用 read_source。',
-  '代码只能通过 write_scene / edit_range 提交。正文里的 markdown 代码块不会执行。',
-  '先 write_plan，再逐场写。写入后看工具结果里的运行门和体检。锁定场跳过。改已有代码带 base_hash。',
-  '每轮正文不超过 200 字，按【看到】【判断】【这一步】写。',
-  '未锁定场都写完且没有未关闭的 blocker 或 major，才调用 finish。系统会复核。',
-].join('\n');
-
 export function exampleChoice(intent: string): 'psych' | 'mergesort' {
   return intent.includes('归并') ? 'psych' : 'mergesort';
 }
@@ -34,13 +24,12 @@ function fillTemplate(template: string): string {
 }
 
 /** 不含范例的系统提示，用来卡 ≤ 2500 字。 */
-export function agentPromptBody(renderer: CodeRenderer = 'anime'): string {
-  return renderer === 'manim' ? MANIM_PROMPT : fillTemplate(systemTpl);
+export function agentPromptBody(): string {
+  return fillTemplate(systemTpl);
 }
 
-export function agentSystemPrompt(renderer: CodeRenderer = 'anime', intent = ''): string {
-  const body = agentPromptBody(renderer);
-  if (renderer === 'manim') return body;
+export function agentSystemPrompt(intent = ''): string {
+  const body = agentPromptBody();
   const example = (exampleChoice(intent) === 'psych' ? examplePsych : exampleMerge).trim();
   return `${body}\n\n${EXAMPLE_PREFIX}\n\n${example}\n`;
 }

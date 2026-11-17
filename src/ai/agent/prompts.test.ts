@@ -13,7 +13,7 @@ const PSYCH_MARK = '心理张力';
 
 describe('系统提示', () => {
   it('正文不超过 2500 字，helper 和禁用清单来自生成器，不再教围栏', () => {
-    const body = agentPromptBody('anime');
+    const body = agentPromptBody();
     expect(body.length).toBeLessThanOrEqual(2500);
     expect(body).toContain(helperCheatSheet());
     expect(body).toContain(bannedCheatSheet());
@@ -43,7 +43,7 @@ describe('系统提示', () => {
     expect(exampleChoice('归并排序：分治与合并过程')).toBe('psych');
     expect(exampleChoice('线性代数')).toBe('mergesort');
     for (const topic of TOPICS) {
-      const prompt = agentSystemPrompt('anime', topic.intent);
+      const prompt = agentSystemPrompt(topic.intent);
       const psych = prompt.includes(PSYCH_MARK);
       const merge = prompt.includes(MERGE_MARK);
       expect(psych && merge).toBe(false);
@@ -52,10 +52,6 @@ describe('系统提示', () => {
       if (topic.id === 'mergesort') expect(psych).toBe(true);
       else expect(merge).toBe(true);
     }
-    const manim = agentSystemPrompt('manim', '归并排序');
-    expect(manim).not.toContain(EXAMPLE_PREFIX);
-    expect(manim).not.toContain('file:anim');
-    expect(manim).toContain('(scene, M, ctx)');
   });
 });
 

@@ -5,8 +5,8 @@ export interface ExportOptions {
   slides: boolean;
   loop: boolean;
   /**
-   * 宿主的 runtime.codeScenes。只有为 true 且分镜里真有 kind:code 时，
-   * 导出页才会执行 scene.code。纯 dsl 项目忽略此字段，输出与不传时逐字节一致。
+   * 为 true 且分镜里真有 kind:code 时，导出页多一个 data-code-scenes="1"。
+   * manim 运行时不读它，不会执行 scene.code。纯 dsl 项目忽略此字段，输出与不传时逐字节一致。
    */
   codeScenes?: boolean;
 }
@@ -19,16 +19,15 @@ async function sha256(text: string): Promise<string> {
 const escapeHtml = (s: string) =>
   s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
-/** 含 code 场景且宿主开关打开时，导出页才被允许执行 scene.code。 */
+/** 含 code 场景且调用方打开时，导出页多写 data-code-scenes。manim 运行时不据此执行代码。 */
 export function exportRunsCode(sb: Storyboard, opts: ExportOptions): boolean {
   return opts.codeScenes === true && sb.scenes.some((s) => s.kind === 'code');
 }
 
 /**
  * 把运行时脚本体嵌进单文件 HTML。
- * 不执行 code 时，模板与 S2a 逐字节一致（同一份 runtime 字符串）。
- * 执行 code 时只多一个 data-code-scenes="1"：CSP 指令不增不改，
- * new AsyncFunction 复用原本就有的 'unsafe-eval'。
+ * 不带这个属性时，模板与 S2a 逐字节一致（同一份 runtime 字符串）。
+ * 带上时只多一个 data-code-scenes="1"：CSP 指令不增不改。
  */
 export async function assembleExportHtml(
   runtimeSource: string,

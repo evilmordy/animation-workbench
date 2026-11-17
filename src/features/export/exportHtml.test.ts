@@ -1,13 +1,28 @@
 import { describe, expect, it } from 'vitest';
 import pythagoras from '../../../tests/fixtures/pythagoras.json';
 import { legacyExportHtml } from '../../../tests/fixtures/legacyExportHtml';
-import { zugeng } from '../../../tests/fixtures/zugeng';
 import type { Storyboard } from '../../shared/schema';
 import { assembleExportHtml } from './exportHtml';
 
 const runtime = '/* runtime */\nconsole.log(1);\n';
 const opts = { slides: false, loop: false };
 const dsl = pythagoras as Storyboard;
+const codeBoard: Storyboard = {
+  ...dsl,
+  scenes: [
+    {
+      id: 's_code',
+      title: '代码',
+      description: '',
+      kind: 'code',
+      enter: 'fresh',
+      hold: 0.4,
+      elements: [],
+      steps: [],
+      code: 'const el = document.createElement("div");\nroot.appendChild(el);\n',
+    },
+  ],
+};
 
 const cspOf = (html: string) => html.match(/Content-Security-Policy" content="([^"]*)"/)?.[1];
 
@@ -22,14 +37,14 @@ describe('导出 HTML', () => {
   });
 
   it('含 code 且 flag 关时仍是 S2a 模板', async () => {
-    const html = await assembleExportHtml(runtime, zugeng, opts);
-    expect(html).toBe(await legacyExportHtml(runtime, zugeng, opts));
+    const html = await assembleExportHtml(runtime, codeBoard, opts);
+    expect(html).toBe(await legacyExportHtml(runtime, codeBoard, opts));
     expect(html).not.toContain('data-code-scenes');
   });
 
   it('含 code 且 flag 开时只多 data-code-scenes，CSP 一个指令都不改', async () => {
-    const enabled = await assembleExportHtml(runtime, zugeng, { ...opts, codeScenes: true });
-    const legacy = await legacyExportHtml(runtime, zugeng, opts);
+    const enabled = await assembleExportHtml(runtime, codeBoard, { ...opts, codeScenes: true });
+    const legacy = await legacyExportHtml(runtime, codeBoard, opts);
     expect(enabled.replace(' data-code-scenes="1"', '')).toBe(legacy);
     expect(cspOf(enabled)).toBe(cspOf(legacy));
     expect(cspOf(enabled)).toContain("'unsafe-eval'");

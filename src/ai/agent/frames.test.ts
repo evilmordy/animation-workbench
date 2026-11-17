@@ -4,7 +4,6 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { platform } from '../../platform';
 import { resetMockFs } from '../../platform/mock';
 import { parseStoryboard, type Scene, type Storyboard } from '../../shared/schema';
-import { runtimeFlags } from '../../runtime/codeScene';
 import { captureWithHarness, isolateScene, sceneWindow, type HarnessPage } from './capture';
 import { diskFrameStore, frameName, planCapture } from './frames';
 import { isAnimPath, isFramePath } from './paths';
@@ -60,10 +59,8 @@ function fakeHarness() {
     async gotoHarness() {
       log.push('goto');
     },
-    async run(sb, enable) {
-      log.push(
-        `run:${sb.scenes.map((item) => `${item.id}:${item.enter}`).join('+')}:${enable}:${sb.scenes.length}`,
-      );
+    async run(sb) {
+      log.push(`run:${sb.scenes.map((item) => `${item.id}:${item.enter}`).join('+')}:${sb.scenes.length}`);
       return {
         errors: [],
         scenes: sb.scenes.map((item, index) => ({ id: item.id, start: index, end: index + 1 })),
@@ -98,7 +95,6 @@ function fakeHarness() {
 beforeEach(() => {
   resetMockFs();
   setActivePinia(createPinia());
-  runtimeFlags.codeScenes = false;
 });
 
 describe('截帧路径与像素', () => {
@@ -241,20 +237,19 @@ describe('Playwright 预览页协议', () => {
       async () => harness.page,
       'fake-harness',
     );
-    expect(runtimeFlags.codeScenes).toBe(false);
     expect(sb.scenes[0]!.enter).toBe('keep');
     expect(harness.closed).toBe(true);
     expect(harness.log).toEqual([
       'goto',
-      'run:s_code:keep:true:1',
+      'run:s_code:keep:1',
       'seek:0',
       'wait',
       'grab',
-      'run:s_code:fresh:true:1',
+      'run:s_code:fresh:1',
       'seek:0',
       'wait',
       'grab',
-      'run:s_code:keep:true:1',
+      'run:s_code:keep:1',
       'close',
     ]);
     expect(batch.backend).toBe('fake-harness');
@@ -301,7 +296,6 @@ describe('Playwright 预览页协议', () => {
       ),
     ).rejects.toThrow('预览崩了');
     expect(broken.closed).toBe(true);
-    expect(runtimeFlags.codeScenes).toBe(false);
   });
 
   it('预览文件缺失时不启动浏览器', async () => {

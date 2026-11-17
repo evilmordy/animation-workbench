@@ -15,7 +15,6 @@ import {
   type Memory,
 } from './memory';
 import { agentSystemPrompt } from './prompts';
-import type { CodeRenderer } from './renderer';
 import { toolDefs, type Phase } from './tools/defs';
 import { executeTool, localInspect, type Inspect, type ToolOutcome } from './tools/run';
 
@@ -55,7 +54,6 @@ export interface RunAgentOpts {
   transport: Transport;
   host: AgentHost;
   budget?: AgentBudget;
-  renderer?: CodeRenderer;
   /** 精确编辑。不传就是从 PLAN 开始。界面在 PR-11。 */
   edit?: { sceneId: string; instruction: string };
   /** 缺省用运行门之后的 checkScenes，不打开预览。产品入口传入应用内后端。 */
@@ -117,7 +115,6 @@ export async function runAgent(opts: RunAgentOpts): Promise<AgentResult> {
   const maxTurns = opts.budget?.maxTurns ?? DEFAULT_AGENT_BUDGET.maxTurns ?? 24;
   const maxTokens =
     opts.budget && 'maxTokens' in opts.budget ? (opts.budget.maxTokens ?? null) : TOKEN_BUDGET;
-  const renderer: CodeRenderer = opts.renderer === 'manim' ? 'manim' : 'anime';
   const inspect = opts.inspect ?? localInspect;
   const usage: [number, number] = [0, 0];
   let turns = 0;
@@ -168,7 +165,7 @@ export async function runAgent(opts: RunAgentOpts): Promise<AgentResult> {
   } catch (error) {
     return finish('error', error instanceof Error ? error.message : String(error));
   }
-  const system = agentSystemPrompt(renderer, opts.intent);
+  const system = agentSystemPrompt(opts.intent);
 
   const overTokens = () => typeof maxTokens === 'number' && usage[0] + usage[1] >= maxTokens;
 
