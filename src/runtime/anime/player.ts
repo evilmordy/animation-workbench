@@ -124,8 +124,8 @@ export async function playHtmlStoryboard(
   const box = stageSize(sb.meta.aspect);
   const ratio = stageRatioCss(sb.meta.aspect);
   if (stage.clientWidth < 2 || stage.clientHeight < 2) {
-    stage.style.width = `min(100vw, calc(100vh * ${ratio}))`;
-    stage.style.height = `min(100vh, calc(100vw / ${ratio}))`;
+    stage.style.width = `min(100vw, calc(100vh * (${ratio})))`;
+    stage.style.height = `min(100vh, calc(100vw / (${ratio})))`;
   }
 
   const canvas = document.createElement('div');

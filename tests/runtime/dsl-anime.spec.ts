@@ -159,3 +159,43 @@ test('9:16 和 1:1 舞台尺寸', async ({ page }) => {
   }
   expect(external).toEqual([]);
 });
+
+test('没尺寸时三种宽高比的舞台比例正确', async ({ page }) => {
+  await serveRuntime(page);
+  await page.goto('http://awpreview.test/anime.html');
+  await page.waitForFunction(() => (window as unknown as { __ready?: boolean }).__ready);
+  const ratios = { '16:9': 16 / 9, '9:16': 9 / 16, '1:1': 1 } as const;
+  for (const aspect of ['16:9', '9:16', '1:1'] as const) {
+    const box = await page.evaluate(async (name) => {
+      const stage = document.getElementById('stage') as HTMLElement;
+      stage.style.width = '0px';
+      stage.style.height = '0px';
+      const storyboard = {
+        schemaVersion: 1,
+        meta: { title: name, mode: '2d', aspect: name, background: '#000000', stylePreset: '3b1b' },
+        scenes: [
+          {
+            id: 's',
+            title: 's',
+            description: '',
+            kind: 'dsl',
+            enter: 'fresh',
+            hold: 0.2,
+            elements: [{ id: 'd', type: 'Dot', props: {} }],
+            steps: [{ id: 'p', kind: 'play', anims: [{ type: 'FadeIn', target: 'd' }], duration: 0.3 }],
+          },
+        ],
+      };
+      const win = window as unknown as {
+        __run?: (sb: unknown) => Promise<{ errors: { message: string }[] }>;
+      };
+      const result = await win.__run!(storyboard);
+      const rect = stage.getBoundingClientRect();
+      return { errors: result.errors, w: rect.width, h: rect.height };
+    }, aspect);
+    expect(box.errors).toEqual([]);
+    expect(box.w).toBeGreaterThan(2);
+    expect(box.h).toBeGreaterThan(2);
+    expect(box.w / box.h).toBeCloseTo(ratios[aspect], 2);
+  }
+});
