@@ -92,7 +92,7 @@ describe('预算', () => {
     await settings.load();
     expect(settings.engine).toBe('legacy');
     expect(settings.agentBudget).toEqual({ maxTurns: 24, maxTokens: 1_200_000, completionTokens: null });
-    expect(settings.runtime).toEqual({ codeScenes: false, codeRenderer: 'anime' });
+    expect(settings.runtime).toEqual({ codeScenes: false });
     settings.setAgentBudget({ maxTurns: 2, maxTokens: 30 });
     expect(settings.agentBudget).toEqual({ maxTurns: 2, maxTokens: 30, completionTokens: null });
     setActivePinia(createPinia());
@@ -106,7 +106,7 @@ describe('预算', () => {
     await platform.storeSet('runtime', { codeScenes: true, agentTools: true });
     const settings = useSettingsStore();
     await settings.load();
-    expect(settings.runtime).toEqual({ codeScenes: true, codeRenderer: 'anime' });
+    expect(settings.runtime).toEqual({ codeScenes: true });
     await nextTick();
     resetMockFs();
   });
@@ -227,7 +227,7 @@ describe('runProjectAgent', () => {
     await project.create('t', emptyStoryboard('t'), '/projects/panel-intent');
     const settings = useSettingsStore();
     await settings.load();
-    expect(settings.runtime).toEqual({ codeScenes: false, codeRenderer: 'anime' });
+    expect(settings.runtime).toEqual({ codeScenes: false });
     const intent = '整段需求{{duration}}尾标';
     const seen: string[] = [];
     setMockLlm(async (req) => {

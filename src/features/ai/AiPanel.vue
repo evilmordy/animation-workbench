@@ -16,8 +16,8 @@ import {
 import { computed, ref, watch } from 'vue';
 import { checkStoryboardInApp } from '../../ai/agent/check/backend-app';
 import { dispatchGenerate, usesAgenticEngine } from '../../ai/agent/engine';
-import { previewPageUrl } from '../../ai/agent/renderer';
 import { budgetFromSettings, lineFromEvent, type AgentLogLine } from '../../ai/agent/log';
+import { previewPageUrl } from '../../ai/agent/renderer';
 import { runProjectAgent } from '../../ai/agent/run';
 import type { Outline } from '../../ai/prompts';
 import { checkScene } from '../../ai/validators';
@@ -151,7 +151,7 @@ async function runCheck() {
   checkText.value = '';
   try {
     const report = await checkStoryboardInApp(sb, {
-      previewSrc: previewPageUrl(platform.previewSrc(), 'anime', true),
+      previewSrc: previewPageUrl(platform.previewSrc(), true),
     });
     checkText.value = report.text;
   } catch (error) {

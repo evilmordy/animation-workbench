@@ -24,7 +24,6 @@ test('旧 dsl 项目打开后改坐标，导出 HTML 仍可播放', async ({ pag
   const html = await page.evaluate((p) => (window as any).__awbMock.platform.readText(p), path);
   expect(html).toContain('-0.2');
   expect(html).toContain("connect-src 'none'");
-  expect(html).not.toContain('data-code-scenes="1"');
 
   const file = join(tmpdir(), 'awb-dsl-coord-export.html');
   writeFileSync(file, html);

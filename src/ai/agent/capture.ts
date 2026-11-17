@@ -48,7 +48,7 @@ export interface HarnessRun {
 export interface HarnessPage {
   onConsoleError(listener: (message: string) => void): void;
   gotoHarness(): Promise<void>;
-  run(storyboard: Storyboard, enableCodeScenes: boolean): Promise<HarnessRun>;
+  run(storyboard: Storyboard): Promise<HarnessRun>;
   seek(t: number): Promise<void>;
   wait(ms: number): Promise<void>;
   grab(): Promise<{ png: Uint8Array; raster: Raster; boxes: LayoutBox[]; boxesTruncated?: boolean }>;
@@ -87,10 +87,7 @@ export function isolateScene(storyboard: Storyboard, sceneId: string): Storyboar
   return { ...storyboard, scenes: [{ ...scene, enter: 'fresh' }] };
 }
 
-/**
- * 先整片跑，再按场 seek。需要残留对比时再单独渲染这一场。
- * enableCodeScenes 只传给这个预览页，不改产品里的 runtimeFlags。
- */
+/** 先整片跑，再按场 seek。需要残留对比时再单独渲染这一场。 */
 export async function captureWithHarness(
   request: CaptureRequest,
   open: () => Promise<HarnessPage>,
@@ -103,7 +100,7 @@ export async function captureWithHarness(
       if (message && !errors.includes(message)) errors.push(message);
     });
     await page.gotoHarness();
-    const full = await page.run(request.storyboard, true);
+    const full = await page.run(request.storyboard);
     for (const error of full.errors) {
       const line = error.sceneId ? `${error.sceneId}: ${error.message}` : error.message;
       if (!errors.includes(line)) errors.push(line);
@@ -125,7 +122,7 @@ export async function captureWithHarness(
         consoleErrors: [...errors],
       });
       if (!shot.isolated) continue;
-      const isolatedRun = await page.run(isolateScene(request.storyboard, shot.sceneId), true);
+      const isolatedRun = await page.run(isolateScene(request.storyboard, shot.sceneId));
       const isolatedT = resolveTime(sceneWindow(isolatedRun, shot.sceneId), shot.at);
       await page.seek(isolatedT);
       await page.wait(200);
@@ -145,7 +142,7 @@ export async function captureWithHarness(
         ...(isolated.boxesTruncated ? { boxesTruncated: true } : {}),
         consoleErrors: isolatedErrors,
       });
-      await page.run(request.storyboard, true);
+      await page.run(request.storyboard);
     }
     return { backend, frames };
   } finally {

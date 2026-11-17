@@ -18,8 +18,8 @@ import { useEditorStore } from '../../stores/editor';
 import { useProjectStore } from '../../stores/project';
 import { useSettingsStore } from '../../stores/settings';
 import { safeFileName } from '../../shared/project';
-import { playbackRenderer, readRendererFile } from '../../ai/agent/renderer';
-import { buildExportHtml, exportRunsCode } from './exportHtml';
+import { filmUsesAnime } from '../../ai/agent/renderer';
+import { buildExportHtml } from './exportHtml';
 import { buildAnimeExportHtml } from './exportAnimeHtml';
 
 const props = defineProps<{ show: boolean }>();
@@ -48,20 +48,20 @@ const errors = computed(() => project.issues.filter((i) => i.level === 'error'))
 const exportOpts = computed(() => ({
   slides: slides.value,
   loop: loop.value,
-  codeScenes: settings.runtime.codeScenes,
 }));
-const runsCode = computed(() => !!project.storyboard && exportRunsCode(project.storyboard, exportOpts.value));
-const skipsCode = computed(
-  () => !!project.storyboard && project.storyboard.scenes.some((s) => s.kind === 'code') && !runsCode.value,
+const animeExport = computed(
+  () => !!project.storyboard && filmUsesAnime(settings.runtime.codeScenes, project.storyboard.scenes),
 );
+const skipsCode = computed(() => {
+  const sb = project.storyboard;
+  return !!sb && sb.scenes.some((scene) => scene.kind === 'code') && !animeExport.value;
+});
 
 async function doExport() {
   busy.value = true;
   try {
     const sb = project.storyboard!;
-    const sidecar = project.dir ? await readRendererFile(project.dir) : null;
-    const anime = settings.runtime.codeScenes && playbackRenderer(sidecar, sb.scenes) === 'anime';
-    const html = anime
+    const html = animeExport.value
       ? await buildAnimeExportHtml(sb, exportOpts.value)
       : await buildExportHtml(sb, exportOpts.value);
     const dir = await platform.join(project.dir!, 'exports');
@@ -94,12 +94,12 @@ function showIssues() {
   >
     <h3>单文件 HTML</h3>
     <p class="hint">一个文件包含动画和播放器，离线可用，用任何浏览器打开即可播放、拖进度、全屏。</p>
-    <p v-if="runsCode" class="hint">
-      这份导出含代码场景，页面会执行场景代码。脚本白名单仍只有运行时的哈希；unsafe-eval
+    <p v-if="animeExport" class="hint">
+      整片都是代码场景，这份导出用 anime.js 播放。脚本白名单仍只有运行时的哈希；unsafe-eval
       是导出自带的（播放器本身需要），没有新增其他来源。
     </p>
     <p v-if="skipsCode" class="hint">
-      代码场景开关是关的，这些场景会按原来的方式跳过，不会在导出的页面里执行。
+      这些代码场景不会在这份导出里执行。整片都是代码场景并且打开代码场景开关之后，才导出 anime.js 播放器。
     </p>
     <NAlert v-if="errors.length" type="error" :show-icon="false" class="gap">
       还有 {{ errors.length }} 个错误，修复后才能导出。

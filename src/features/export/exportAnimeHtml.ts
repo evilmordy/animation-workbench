@@ -7,5 +7,5 @@ import { assembleExportHtml, type ExportOptions } from './exportHtml';
  */
 export async function buildAnimeExportHtml(sb: Storyboard, opts: ExportOptions): Promise<string> {
   const runtime = (await import('../../../dist-runtime/anime-runtime.js?raw')).default as string;
-  return assembleExportHtml(runtime, sb, { ...opts, codeScenes: true });
+  return assembleExportHtml(runtime, sb, opts);
 }

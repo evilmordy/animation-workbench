@@ -100,14 +100,11 @@ test('导出的 HTML 代码场内联 anime.js，CSP 不改指令', async () => {
   const runtime = readFileSync('dist-runtime/anime-runtime.js', 'utf8');
   expect(runtime).toContain('animejs@4.5.0');
   expect(runtime).not.toMatch(/cdn\.jsdelivr|unpkg\.com/);
-  const html = await assembleExportHtml(runtime, sb, { slides: false, loop: false, codeScenes: true });
+  const html = await assembleExportHtml(runtime, sb, { slides: false, loop: false });
   expect(html).toContain(runtime.slice(0, 80));
   expect(html).not.toMatch(/src="https?:/);
-  expect(html).toContain('data-code-scenes="1"');
   const csp = html.match(/Content-Security-Policy" content="([^"]*)"/)?.[1] ?? '';
   expect(csp).toContain("connect-src 'none'");
   expect(csp).toContain("style-src 'unsafe-inline'");
   expect(csp).toMatch(/script-src 'sha256-[^']+' 'unsafe-eval'/);
-  const legacy = await assembleExportHtml('/* runtime */\n', sb, { slides: false, loop: false });
-  expect(legacy).not.toContain('data-code-scenes');
 });

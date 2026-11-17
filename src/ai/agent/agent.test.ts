@@ -6,7 +6,6 @@ import { resetMockFs, setMockLlm } from '../../platform/mock';
 import { messageText, type ChatReq } from '../../platform/types';
 import { emptyStoryboard, newProjectFile } from '../../shared/project';
 import { parseStoryboard, type Scene, type Storyboard } from '../../shared/schema';
-import { runtimeFlags } from '../../runtime/codeScene';
 import { mockLlm } from '../mockLlm';
 import { outlineMessages } from '../prompts';
 import { aiSession } from '../session';
@@ -90,11 +89,9 @@ function planCall(hold = 4) {
 beforeEach(() => {
   resetMockFs();
   setActivePinia(createPinia());
-  runtimeFlags.codeScenes = false;
 });
 
 afterEach(() => {
-  runtimeFlags.codeScenes = false;
   setMockLlm(async () => {
     throw { code: 'no_key', message: '浏览器模式没有配置假 LLM' };
   });

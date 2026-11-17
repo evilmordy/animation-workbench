@@ -4,11 +4,6 @@ export interface ExportOptions {
   /** 在场景边界暂停，用方向键翻页 */
   slides: boolean;
   loop: boolean;
-  /**
-   * 宿主的 runtime.codeScenes。只有为 true 且分镜里真有 kind:code 时，
-   * 导出页才会执行 scene.code。纯 dsl 项目忽略此字段，输出与不传时逐字节一致。
-   */
-  codeScenes?: boolean;
 }
 
 async function sha256(text: string): Promise<string> {
@@ -19,16 +14,9 @@ async function sha256(text: string): Promise<string> {
 const escapeHtml = (s: string) =>
   s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
-/** 含 code 场景且宿主开关打开时，导出页才被允许执行 scene.code。 */
-export function exportRunsCode(sb: Storyboard, opts: ExportOptions): boolean {
-  return opts.codeScenes === true && sb.scenes.some((s) => s.kind === 'code');
-}
-
 /**
  * 把运行时脚本体嵌进单文件 HTML。
- * 不执行 code 时，模板与 S2a 逐字节一致（同一份 runtime 字符串）。
- * 执行 code 时只多一个 data-code-scenes="1"：CSP 指令不增不改，
- * new AsyncFunction 复用原本就有的 'unsafe-eval'。
+ * 模板与 S2a 逐字节一致（同一份 runtime 字符串）。CSP 指令不增不改。
  */
 export async function assembleExportHtml(
   runtimeSource: string,
@@ -49,7 +37,6 @@ export async function assembleExportHtml(
     "form-action 'none'",
   ].join('; ');
   const bg = sb.meta.background.startsWith('#') ? sb.meta.background : '#000000';
-  const codeAttr = exportRunsCode(sb, opts) ? ' data-code-scenes="1"' : '';
   return `<!doctype html>
 <html lang="zh-CN">
 <head>
@@ -62,7 +49,7 @@ export async function assembleExportHtml(
 </head>
 <body>
 <div id="stage"></div>
-<script type="application/json" id="awb-storyboard" data-slides="${opts.slides}" data-loop="${opts.loop}"${codeAttr}>${data}</script>
+<script type="application/json" id="awb-storyboard" data-slides="${opts.slides}" data-loop="${opts.loop}">${data}</script>
 <script type="module">${runtime}</script>
 </body>
 </html>

@@ -82,11 +82,10 @@ const FAILED_SCREEN: ScreenFlags = {
   layoutTruncated: false,
 };
 
-/** 导出 HTML：运行时内联、没有外链脚本、代码场标记打开。 */
+/** 导出 HTML：运行时内联、没有外链脚本。 */
 export function exportPasses(html: string, runtimeSource: string): boolean {
   const runtime = runtimeSource.replace(/<\/script/gi, '<\\/script');
   if (!runtime || !html.includes(runtime)) return false;
-  if (!html.includes('data-code-scenes="1"')) return false;
   return !/<script\b[^>]*\bsrc\s*=\s*["']https?:/i.test(html);
 }
 
@@ -215,7 +214,6 @@ export async function evaluateTopic(opts: {
     intent: opts.topic.intent,
     transport: opts.transport,
     host,
-    renderer: 'anime',
     budget: { maxTurns: opts.maxTurns ?? 24 },
   });
   const elapsedMs = Date.now() - started;

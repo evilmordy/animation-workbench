@@ -1,12 +1,10 @@
-import { build, runtimeFlags } from './runtime.js';
+import { build } from './runtime.js';
 
 let player = null;
 
 window.__ready = true;
 
-/** enable 省略时保持包内默认（false）。 */
-window.__run = async (storyboard, enable) => {
-  if (enable !== undefined) runtimeFlags.codeScenes = !!enable;
+window.__run = async (storyboard) => {
   const errors = [];
   const built = await build(storyboard, document.getElementById('stage'), {
     controls: false,

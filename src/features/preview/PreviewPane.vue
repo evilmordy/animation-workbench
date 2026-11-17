@@ -9,13 +9,7 @@ import { usePreviewStore } from '../../stores/preview';
 import { useGenerationStore } from '../../stores/generation';
 import { useSettingsStore } from '../../stores/settings';
 import { formatTime } from '../../shared/format';
-import {
-  playbackRenderer,
-  previewPageUrl,
-  readRendererFile,
-  subscribeRenderer,
-  type CodeRenderer,
-} from '../../ai/agent/renderer';
+import { filmUsesAnime, previewPageUrl } from '../../ai/agent/renderer';
 
 /** 两次重建之间至少间隔 300ms：单次编辑立即重建，连续编辑合并，最后一次一定会加载 */
 const LOAD_INTERVAL_MS = 300;
@@ -25,21 +19,17 @@ const project = useProjectStore();
 const preview = usePreviewStore();
 const gen = useGenerationStore();
 const settings = useSettingsStore();
-const playback = ref<CodeRenderer>('manim');
 /** 有待确认的 AI 修改时，可以切换预览修改后的版本 */
 const shown = computed(() =>
   gen.pending && gen.previewProposed ? gen.pending.result.storyboard : project.storyboard,
 );
-async function refreshPlayback() {
-  const sidecar = project.dir ? await readRendererFile(project.dir) : null;
-  playback.value = playbackRenderer(sidecar, shown.value?.scenes ?? []);
-}
-/** flag 关时地址与原来完全一样，预览页不会执行 scene.code。 */
-const previewSrc = computed(() => {
-  const base = previewPageUrl(platform.previewSrc(), playback.value, settings.runtime.codeScenes);
-  if (!settings.runtime.codeScenes) return base;
-  return `${base}${base.includes('?') ? '&' : '?'}codeScenes=1`;
-});
+/** 开关关掉、空片、或还夹着分镜场时，地址与原来一样。整片都是代码场才换成 anime.html。 */
+const previewSrc = computed(() =>
+  previewPageUrl(
+    platform.previewSrc(),
+    filmUsesAnime(settings.runtime.codeScenes, shown.value?.scenes ?? []),
+  ),
+);
 const frame = ref<HTMLIFrameElement | null>(null);
 const frameKey = ref(0);
 let lastBeat = 0;
@@ -98,12 +88,7 @@ function reload() {
   frameKey.value++;
 }
 
-let unsubscribeRenderer = () => {};
 onMounted(() => {
-  unsubscribeRenderer = subscribeRenderer(() => {
-    void refreshPlayback();
-  });
-  void refreshPlayback();
   window.addEventListener('message', onMessage);
   preview.setSender((m) => post(m));
   watchdog = setInterval(() => {
@@ -111,7 +96,6 @@ onMounted(() => {
   }, 1000);
 });
 onBeforeUnmount(() => {
-  unsubscribeRenderer();
   window.removeEventListener('message', onMessage);
   preview.setSender(null);
   preview.ready = false;
@@ -130,7 +114,7 @@ function scheduleLoad() {
 }
 
 watch(shown, () => {
-  void refreshPlayback().then(() => scheduleLoad());
+  scheduleLoad();
 });
 watch(previewSrc, (next, prev) => {
   if (!prev || next === prev) return;
