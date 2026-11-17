@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import vue from '@vitejs/plugin-vue';
 import type { Plugin } from 'vite';
 import { defineConfig } from 'vitest/config';
+import { katexInline } from './vite.katex';
 
 const DEV_ORIGIN = 'http://localhost:1420';
 
@@ -57,7 +58,7 @@ function devPreview(): Plugin {
 
 // 端口固定为 1420，与 src-tauri/tauri.conf.json 的 devUrl 一致
 export default defineConfig({
-  plugins: [vue(), pdfCmaps(), devPreview()],
+  plugins: [vue(), pdfCmaps(), katexInline(), devPreview()],
   clearScreen: false,
   server: { port: 1420, strictPort: true, watch: { ignored: ['**/src-tauri/**', '**/spike/**'] } },
   build: { target: 'es2022' },
