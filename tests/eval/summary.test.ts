@@ -17,19 +17,42 @@ const SCENE = [
 ].join('\n');
 
 function scripted(): Transport {
-  const plan = [
-    '```file:anim/plan.md',
-    '# 现象',
-    '```',
-    '```file:anim/rubric.json',
-    '{"title":"蔡格尼克效应","scenes":[{"id":"s_effect","title":"现象","description":"未完成的任务更容易被记住","hold":1,"enter":"fresh"}]}',
-    '```',
-  ].join('\n');
-  const scene = ['```file:anim/scenes/s_effect.js', SCENE, '```'].join('\n');
   let n = 0;
   return async () => {
     n += 1;
-    return { text: n === 1 ? plan : scene, usage: [10, 20] as [number, number] };
+    const call =
+      n === 1
+        ? {
+            name: 'write_plan',
+            arguments: {
+              title: '蔡格尼克效应',
+              plan_md: '# 现象\n未完成的任务更容易被记住',
+              scenes: [
+                {
+                  id: 's_effect',
+                  title: '现象',
+                  description: '未完成的任务更容易被记住',
+                  hold: 1,
+                  enter: 'fresh',
+                },
+              ],
+            },
+          }
+        : n === 2
+          ? { name: 'write_scene', arguments: { scene_id: 's_effect', code: SCENE, summary: '未完成的任务' } }
+          : { name: 'finish', arguments: { summary: '一场完成' } };
+    return {
+      text: '',
+      usage: [10, 20] as [number, number],
+      finishReason: 'tool_calls',
+      toolCalls: [
+        {
+          id: call.name,
+          type: 'function',
+          function: { name: call.name, arguments: JSON.stringify(call.arguments) },
+        },
+      ],
+    };
   };
 }
 
@@ -111,8 +134,8 @@ describe('五题评测', () => {
     expect(row.id).toBe('psych');
     expect(row.status).toBe('done');
     expect(row.scenes).toBe(1);
-    expect(row.turns).toBe(2);
-    expect(row.tokens).toBe(60);
+    expect(row.turns).toBe(3);
+    expect(row.tokens).toBe(90);
     expect(row.writes).toBe(1);
     expect(row.stuck).toEqual([]);
     expect(row.gate).toBe(true);

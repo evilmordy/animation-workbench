@@ -30,7 +30,7 @@ const completionLabel = (max: number | null) => (max == null ? '不传' : String
           :disabled="busy"
           :value="settings.agentBudget.maxTurns"
           :min="1"
-          :max="32"
+          :max="128"
           :input-props="{ 'aria-label': '轮次上限' }"
           data-testid="agent-max-turns"
           @update:value="(v: number | null) => settings.setAgentBudget({ maxTurns: v ?? 1 })"

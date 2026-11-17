@@ -125,11 +125,11 @@ async function runAgentEntry() {
       if (!agentNote.value) agentNote.value = '已取消';
       return;
     }
-    if (result.status === 'done') {
+    if (result.status === 'done' || result.status === 'done_with_issues') {
       message.success(agentNote.value);
       return;
     }
-    if (result.status === 'budget') {
+    if (result.status === 'budget' || result.status === 'stuck') {
       message.warning(agentNote.value);
       return;
     }

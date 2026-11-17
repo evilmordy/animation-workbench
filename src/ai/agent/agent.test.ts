@@ -1,12 +1,12 @@
+// @vitest-environment happy-dom
 import { createPinia, setActivePinia } from 'pinia';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { platform } from '../../platform';
-import { mockPlatform as p, resetMockFs, setMockLlm } from '../../platform/mock';
-import { messageText, type ChatReq, type LlmMessage } from '../../platform/types';
+import { resetMockFs, setMockLlm } from '../../platform/mock';
+import { messageText, type ChatReq } from '../../platform/types';
 import { emptyStoryboard, newProjectFile } from '../../shared/project';
 import { parseStoryboard, type Scene, type Storyboard } from '../../shared/schema';
 import { runtimeFlags } from '../../runtime/codeScene';
-import { interpret } from '../../runtime/interpret';
 import { mockLlm } from '../mockLlm';
 import { outlineMessages } from '../prompts';
 import { aiSession } from '../session';
@@ -14,16 +14,19 @@ import type { Transport } from '../client';
 import { useGenerationStore } from '../../stores/generation';
 import { useProjectStore } from '../../stores/project';
 import { useSettingsStore } from '../../stores/settings';
-import { parseRubric } from './apply';
 import { dispatchGenerate, usesAgenticEngine } from './engine';
+import { contentHash } from './hash';
 import { runAgent, type AgentHost } from './loop';
-import { parseAgentFiles, unclosedFence } from './parse';
-import { agentSystemPrompt, planRequest } from './prompts';
 import { projectAgentHost } from './run';
+import { PHASE_TOOLS } from './tools/defs';
 
-const INTENT = '祖暅原理：全片只用同一个半径 R';
-const PLAN_MARK = '# 祖暅计划';
-const MARKER_ASK = 'MARKER_ASK';
+const PASS = [
+  "const box = el('div', { left: 80, top: 80, width: 200, height: 80, background: C.blue }, 'ok');",
+  'fadeIn(box, 0);',
+  'wait(1000);',
+].join('\n');
+
+const LOOP = "const box = el('div');\ntw(box, { x: [0, 40], duration: 800, loop: true }, 0);\nwait(500);";
 
 const meta = {
   title: 't',
@@ -33,98 +36,55 @@ const meta = {
   stylePreset: '3b1b' as const,
 };
 
+function scene(over: Partial<Scene> & Pick<Scene, 'id'>): Scene {
+  return {
+    title: over.title ?? over.id,
+    description: over.description ?? '',
+    kind: 'code',
+    enter: 'fresh',
+    hold: 1,
+    elements: [],
+    steps: [],
+    ...over,
+  };
+}
+
 function board(scenes: Scene[]): Storyboard {
   const parsed = parseStoryboard({ schemaVersion: 1, meta, scenes });
-  if (!parsed.ok) throw new Error(parsed.issues.map((i) => `${i.path} ${i.message}`).join('; '));
+  if (!parsed.ok) throw new Error(parsed.issues.map((issue) => issue.message).join('; '));
   return parsed.value;
 }
 
-const planPack = `先想清楚：两场，共用一个 R。
-\`\`\`file:anim/plan.md
-${PLAN_MARK}
-1. 提出原理
-2. 截面
-\`\`\`
-\`\`\`file:anim/rubric.json
-{"title":"祖暅原理","scenes":[{"id":"s_ask","title":"提出原理","description":"说出等高截面","hold":1,"enter":"fresh"},{"id":"s_slice","title":"截面","description":"同一 R","hold":1,"enter":"fresh"}]}
-\`\`\`
-\`\`\`file:anim/shared.js
-const R = 1.2;
-\`\`\`
-\`\`\`file:anim/scenes/s_ask.js
-const decoy = true;
-\`\`\``;
-
-const askCode = `const ball = new M.Circle({ radius: R, color: ctx.theme.primary });
-await scene.play(new M.Create(ball, { duration: 0.4 }));
-// ${MARKER_ASK}`;
-
-const sliceCode = `const lingering = ctx.present();
-if (lingering.length) await scene.play(...lingering.map((m) => new M.FadeOut(m, { duration: 0.2 })));
-const disk = new M.Circle({ radius: R, color: '#FFFFFF' });
-await scene.play(new M.Create(disk, { duration: 0.3 }));`;
-
-const scenesPack = `\`\`\`file:anim/scenes/s_ask.js
-${askCode}
-\`\`\`
-\`\`\`file:anim/scenes/s_slice.js
-${sliceCode}
-\`\`\``;
-
-function memoryHost(initial: Storyboard) {
+function memoryHost(initial: Storyboard): AgentHost & { sb: () => Storyboard | null } {
   let sb: Storyboard | null = initial;
-  const files = new Map<string, string>();
-  const log: string[] = [];
-  const host: AgentHost = {
+  return {
+    sb: () => sb,
     getStoryboard: () => sb,
     updateStoryboard(next) {
-      log.push('update');
       sb = next;
     },
-    async writeFile(name, text) {
-      log.push(`file:${name}`);
-      files.set(name, text);
-    },
-    async readFile(name) {
-      return files.get(name) ?? null;
+    async writeFile() {},
+    async readFile() {
+      return null;
     },
   };
+}
+
+function call(name: string, args: unknown) {
   return {
-    host,
-    files,
-    log,
-    get sb() {
-      return sb;
-    },
+    text: '',
+    usage: [1, 1] as [number, number],
+    finishReason: 'tool_calls' as const,
+    toolCalls: [{ id: name, type: 'function' as const, function: { name, arguments: JSON.stringify(args) } }],
   };
 }
 
-function scripted(answers: string[]) {
-  const calls: { messages: LlmMessage[]; jsonMode: boolean | null | undefined }[] = [];
-  const log: string[] = [];
-  const transport: Transport = async (messages, opts) => {
-    log.push('llm');
-    calls.push({ messages: messages.slice(), jsonMode: opts.jsonMode });
-    const text = answers.shift();
-    if (text === undefined) throw new Error('mock 回答用完了');
-    return { text, usage: [10, 10] as [number, number] };
-  };
-  return { transport, calls, log };
-}
-
-function recorder() {
-  const waits: number[] = [];
-  const plays: unknown[][] = [];
-  const rec = {
-    async nextSlide() {},
-    async wait(duration = 0) {
-      waits.push(duration);
-    },
-    async play(...anims: unknown[]) {
-      plays.push(anims);
-    },
-  };
-  return { rec: rec as never, waits, plays };
+function planCall(hold = 4) {
+  return call('write_plan', {
+    title: '演示',
+    plan_md: '# 计划\n放一块蓝色。',
+    scenes: [{ id: 's_box', title: '色块', description: '蓝色', hold, enter: 'fresh' }],
+  });
 }
 
 beforeEach(() => {
@@ -140,410 +100,154 @@ afterEach(() => {
   });
 });
 
-describe('解析', () => {
-  it('认分文件代码块、首行注释和裸 JSON', () => {
-    const files = parseAgentFiles(
-      ['```file:anim/plan.md', '# 计划', '```', '```js', '// anim/shared.js', 'const R = 1.2;', '```'].join(
-        '\n',
-      ),
-    );
-    expect(files).toEqual([
-      { name: 'plan.md', content: '# 计划' },
-      { name: 'shared.js', content: 'const R = 1.2;' },
-    ]);
-    expect(parseAgentFiles('{"title":"t","scenes":[]}')[0]?.name).toBe('rubric.json');
-    const cut = '```file:anim/scenes/s_ask.js\nconst cut = 1;\n';
-    expect(parseAgentFiles(cut)).toEqual([]);
-    expect(unclosedFence(cut)).toEqual({ name: 'scenes/s_ask.js', content: 'const cut = 1;' });
-    expect(unclosedFence('```\n不是文件\n')).toEqual({ name: null, content: '不是文件' });
-    expect(parseRubric('{"title":"t","scenes":[{"id":"s_a","title":"A","hold":4,"enter":"keep"}]}')).toEqual({
-      title: 't',
-      scenes: [{ id: 's_a', title: 'A', description: '', hold: 4, enter: 'keep' }],
-    });
-  });
-
-  it('没有围栏时认独立成行的 file: 路径，后写覆盖先写', () => {
-    const rubric =
-      '{"title":"祖暅","scenes":[{"id":"s_intro","title":"引入","description":"问","hold":3,"enter":"fresh"}]}';
-    const files = parseAgentFiles(
-      [
-        '先想清楚。句子里的 file:anim/plan.md 不是文件。',
-        'file:anim/notes.md',
-        '不要',
-        'file:anim/plan.md',
-        '# 旧计划',
-        'file:anim/plan.md',
-        '# 新计划',
-        '',
-        '第二段',
-        'file:anim/rubric.json',
-        rubric,
-        'file:anim/shared.js',
-        'const R = 1;',
-        'file:anim/scenes/s_intro.js',
-        'const intro = 1;',
-      ].join('\n'),
-    );
-    expect(files.map((f) => f.name)).toEqual(['plan.md', 'rubric.json', 'shared.js', 'scenes/s_intro.js']);
-    expect(files.find((f) => f.name === 'plan.md')?.content).toBe('# 新计划\n\n第二段');
-    expect(files.find((f) => f.name === 'shared.js')?.content).toBe('const R = 1;');
-    expect(files.find((f) => f.name === 'scenes/s_intro.js')?.content).toBe('const intro = 1;');
-    expect(
-      parseRubric(files.find((f) => f.name === 'rubric.json')?.content ?? '')?.scenes.map((s) => s.id),
-    ).toEqual(['s_intro']);
-
-    const fenced = [
-      'file:anim/shared.js',
-      'const ignored = 1;',
-      '```file:anim/plan.md',
-      '# 计划',
-      '```',
-    ].join('\n');
-    expect(parseAgentFiles(fenced)).toEqual([{ name: 'plan.md', content: '# 计划' }]);
-    expect(parseAgentFiles('```file:anim/scenes/s_ask.js\nfile:anim/plan.md\n# 半截\n')).toEqual([]);
-    expect(parseAgentFiles('例如 file:anim/plan.md、file:anim/rubric.json。')).toEqual([]);
-    expect(parseAgentFiles('file:anim/plan.md.bak\n# 不是\n')).toEqual([]);
-    expect(parseAgentFiles('file:../plan.md\n# 越界\n')).toEqual([]);
-    expect(parseAgentFiles('file:anim/frames/s_a-sequence-start.png\nabc\n')).toEqual([]);
-  });
-});
-
-describe('agent 提示词', () => {
-  it('默认是 anime.js 4 的契约；manim 只在选中时出现', () => {
-    const sys = agentSystemPrompt();
-    expect(sys).toContain('async (root, anime, tl, ctx)');
-    expect(sys).toContain('tl.add');
-    expect(sys).toContain('毫秒');
-    expect(sys).toContain('anime.timeline');
-    expect(sys).toContain('1920');
-    expect(sys).toContain('浅色字');
-    expect(sys).toContain('anim/shared.js');
-    expect(sys).not.toContain('只是素材');
-    expect(sys).not.toContain('不超过 120');
-    expect(sys).not.toContain('maxElements');
-    expect(sys).not.toContain('scene.add');
-    expect(planRequest(INTENT)).toContain(INTENT);
-    expect(planRequest(INTENT)).toContain('1920×1080');
-
-    const manim = agentSystemPrompt('manim');
-    expect(manim).toContain('async (scene, M, ctx)');
-    expect(manim).toContain('scene.add');
-    expect(manim).not.toContain('async (root, anime, tl, ctx)');
-    expect(planRequest(INTENT, 'manim')).not.toContain('1920×1080');
-  });
-});
-
-describe('agent loop', () => {
-  it('讲义按空行分段写入 source.md，提示里只有目录', async () => {
-    const mem = memoryHost(board([]));
-    const long = '甲'.repeat(80);
-    const source = `${long}\n\n乙段原文`;
-    const script = scripted(['没有文件']);
-    await runAgent({
-      intent: INTENT,
-      source,
-      transport: script.transport,
-      host: mem.host,
-      budget: { maxTurns: 1 },
-    });
-    const prompt = script.calls[0]!.messages.map((m) => m.content).join('\n');
-    expect(prompt).toContain(`[1] ${'甲'.repeat(40)}…`);
-    expect(prompt).toContain('[2] 乙段原文');
-    expect(prompt).not.toContain(long);
-    expect(prompt).not.toContain('<source>');
-    const stored = mem.files.get('source.md') ?? '';
-    expect(stored).toContain('## [1]');
-    expect(stored).toContain(long);
-    expect(stored).toContain('## [2]');
-    expect(stored).toContain('乙段原文');
-  });
-
-  it('需求原文在每轮请求里，plan 先于场景，写入后可 interpret', async () => {
-    const mem = memoryHost(board([]));
-    const script = scripted([planPack, scenesPack]);
-    const result = await runAgent({
-      intent: INTENT,
-      transport: (messages, opts) => {
-        mem.log.push('llm');
-        return script.transport(messages, opts);
-      },
-      host: mem.host,
-    });
-    expect(result.status).toBe('done');
-    expect(result.sceneIds).toEqual(['s_ask', 's_slice']);
-    expect(script.calls.length).toBe(2);
-    for (const call of script.calls) {
-      expect(call.messages.map((m) => m.content).join('\n')).toContain(INTENT);
-      expect(call.jsonMode).toBeNull();
-    }
-    expect(script.calls[0]!.messages.map((m) => m.content).join('\n')).not.toContain(PLAN_MARK);
-    expect(script.calls[1]!.messages.map((m) => m.content).join('\n')).toContain(PLAN_MARK);
-    const planAt = mem.log.indexOf('file:plan.md');
-    const updateAt = mem.log.indexOf('update');
-    const llms = mem.log.flatMap((e, i) => (e === 'llm' ? [i] : []));
-    expect(llms[0]).toBeLessThan(planAt);
-    expect(planAt).toBeLessThan(llms[1]!);
-    expect(llms[1]).toBeLessThan(updateAt);
-    expect(mem.files.get('source.md')).toContain('没有导入素材');
-    expect(mem.files.get('plan.md')).toContain(PLAN_MARK);
-    expect(mem.files.get('shared.js')).toContain('const R = 1.2');
-    const scenes = mem.sb!.scenes;
-    expect(scenes.map((s) => s.kind)).toEqual(['code', 'code']);
-    expect(scenes[0]!.code).toContain('const R = 1.2');
-    expect(scenes[1]!.code).toContain('const R = 1.2');
-    expect(scenes[0]!.code!.split('const R').length - 1).toBe(1);
-    expect(scenes[0]!.code).toContain(MARKER_ASK);
-    expect(scenes[0]!.code).not.toContain('decoy');
-    expect(mem.sb!.meta.title).toBe('祖暅原理');
-
-    runtimeFlags.codeScenes = true;
-    const { rec, plays } = recorder();
-    const errors: { message: string }[] = [];
-    await interpret(mem.sb!, rec, (e) => errors.push(e));
-    expect(errors).toEqual([]);
-    expect(plays).toHaveLength(2);
-  });
-
-  it('后一轮能看见 plan 和已经写好的场景', async () => {
-    const mem = memoryHost(board([]));
-    const script = scripted([
-      planPack,
-      `\`\`\`file:anim/scenes/s_ask.js\n${askCode}\n\`\`\``,
-      `\`\`\`file:anim/scenes/s_slice.js\n${sliceCode}\n\`\`\``,
-    ]);
-    const result = await runAgent({ intent: INTENT, transport: script.transport, host: mem.host });
-    expect(result.status).toBe('done');
-    expect(script.calls).toHaveLength(3);
-    const third = script.calls[2]!.messages.map((m) => m.content).join('\n');
-    expect(third).toContain(INTENT);
-    expect(third).toContain(PLAN_MARK);
-    expect(third).toContain(MARKER_ASK);
-    const second = script.calls[1]!.messages.map((m) => messageText(m.content)).join('\n');
-    expect(second).not.toContain(MARKER_ASK);
-    expect(second).toContain('只写 s_ask');
-    expect(third).toContain('只写 s_slice');
-  });
-
-  it('不覆盖 locked，也不删掉计划外的场景', async () => {
-    const locked = 'await scene.wait(0.2);';
-    const mem = memoryHost(
-      board([
-        {
-          id: 's_ask',
-          title: '不要动',
-          description: 'locked',
-          kind: 'code',
-          enter: 'fresh',
-          hold: 1,
-          locked: true,
-          elements: [],
-          steps: [],
-          code: locked,
-        },
-        {
-          id: 's_other',
-          title: '别删',
-          description: '留下',
-          kind: 'dsl',
-          enter: 'fresh',
-          hold: 1,
-          elements: [{ id: 'c', type: 'Circle', props: { radius: 1 } }],
-          steps: [{ id: 'p', kind: 'play', anims: [{ type: 'Create', target: 'c' }], duration: 1 }],
-        },
-      ]),
-    );
-    const script = scripted([planPack, scenesPack]);
-    const result = await runAgent({ intent: INTENT, transport: script.transport, host: mem.host });
-    expect(result.status).toBe('done');
-    expect(result.skippedLocked).toEqual(['s_ask']);
-    expect(result.sceneIds).toEqual(['s_slice']);
-    const scenes = mem.sb!.scenes;
-    expect(scenes.map((s) => s.id)).toEqual(['s_ask', 's_other', 's_slice']);
-    expect(scenes[0]).toMatchObject({ locked: true, kind: 'code', code: locked, title: '不要动' });
-    expect(scenes[1]).toMatchObject({ kind: 'dsl', title: '别删' });
-    expect(scenes[1]!.elements).toHaveLength(1);
-    expect(scenes[2]).toMatchObject({ kind: 'code', id: 's_slice' });
-    expect(scenes[2]!.code).toContain('const R = 1.2');
-  });
-
-  it('取消和预算会停住，且不再写场景', async () => {
-    const early = new AbortController();
-    early.abort();
-    const skipped = memoryHost(board([]));
-    const skippedScript = scripted([planPack, scenesPack]);
-    const skippedRun = await runAgent({
-      intent: INTENT,
-      transport: skippedScript.transport,
-      host: skipped.host,
-      signal: early.signal,
-    });
-    expect(skippedRun).toMatchObject({ status: 'cancelled', turns: 0 });
-    expect(skippedScript.calls).toHaveLength(0);
-    expect(skipped.log).not.toContain('update');
-
-    const mid = new AbortController();
-    const midMem = memoryHost(board([]));
-    const midScript = scripted([planPack, scenesPack]);
-    midMem.host.writeFile = async (name, text) => {
-      midMem.log.push(`file:${name}`);
-      midMem.files.set(name, text);
-      if (name === 'plan.md') mid.abort();
-    };
-    const midRun = await runAgent({
-      intent: INTENT,
-      transport: midScript.transport,
-      host: midMem.host,
-      signal: mid.signal,
-    });
-    expect(midRun.status).toBe('cancelled');
-    expect(midScript.calls).toHaveLength(1);
-    expect(midMem.log).not.toContain('update');
-    expect(midMem.sb!.scenes).toEqual([]);
-
+describe('ReAct 循环', () => {
+  it('PLAN、SCENE、FILM 走到 done，每轮只发 system 和 user，撤销退回最近一次写入', async () => {
+    const project = useProjectStore();
+    await project.create('t', emptyStoryboard('undo'), '/projects/react-loop');
+    const seen: { roles: string[]; tools: string[]; maxTokens?: number; text: string }[] = [];
     let n = 0;
-    const thrown = memoryHost(board([]));
-    const thrownRun = await runAgent({
-      intent: INTENT,
-      transport: async (messages, opts) => {
-        n += 1;
-        if (n === 1) return scripted([planPack]).transport(messages, opts);
-        throw { code: 'cancelled', message: '已取消' };
-      },
-      host: thrown.host,
+    const transport: Transport = async (messages, opts) => {
+      n += 1;
+      seen.push({
+        roles: messages.map((message) => message.role),
+        tools: opts.tools?.map((tool) => tool.function.name) ?? [],
+        maxTokens: opts.maxTokens,
+        text: messages.map((message) => messageText(message.content)).join('\n'),
+      });
+      if (n === 1) return planCall();
+      if (n === 2) return call('write_scene', { scene_id: 's_box', code: PASS, summary: '蓝色方块' });
+      return call('finish', { summary: '一场完成' });
+    };
+    const result = await runAgent({
+      intent: '放一块蓝色。这是指令，不是素材里的句子。',
+      host: projectAgentHost(),
+      budget: { maxTurns: 4 },
+      transport,
     });
-    expect(thrownRun.status).toBe('cancelled');
-    expect(thrown.files.has('plan.md')).toBe(true);
-    expect(thrown.log).not.toContain('update');
+    expect(result).toMatchObject({ status: 'done', turns: 3, sceneIds: ['s_box'] });
+    expect(seen).toHaveLength(3);
+    expect(seen[0]?.tools).toEqual([...PHASE_TOOLS.PLAN]);
+    expect(seen[1]?.tools).toEqual([...PHASE_TOOLS.SCENE]);
+    expect(seen[2]?.tools).toEqual([...PHASE_TOOLS.FILM]);
+    for (const turn of seen) {
+      expect(turn.roles).toEqual(['system', 'user']);
+      expect(turn.maxTokens).toBeUndefined();
+      expect(turn.text).toContain('这是指令，不是素材');
+    }
+    expect(seen[2]?.text).not.toBe(seen[1]?.text);
+    const written = project.storyboard?.scenes[0];
+    expect(written?.code).toContain('wait(1000)');
+    expect(written?.hold).toBe(4);
+    expect(await platform.exists('/projects/react-loop/.awb/anim/plan.md')).toBe(true);
+    expect(await platform.exists('/projects/react-loop/.awb/anim/source.md')).toBe(true);
+    expect(await platform.exists('/projects/react-loop/.awb/anim/memory.json')).toBe(true);
+    expect(await platform.exists('/projects/react-loop/.awb/anim/scenes/s_box.js')).toBe(false);
+    project.undo();
+    expect(project.storyboard?.scenes[0]?.code ?? '').not.toContain('wait(1000)');
+    expect(project.storyboard?.scenes[0]?.hold).toBe(4);
+  });
 
-    const turnMem = memoryHost(board([]));
-    const turnScript = scripted([planPack, scenesPack]);
-    const turnRun = await runAgent({
-      intent: INTENT,
-      transport: turnScript.transport,
-      host: turnMem.host,
-      budget: { maxTurns: 1 },
-    });
-    expect(turnRun.status).toBe('budget');
-    expect(turnScript.calls).toHaveLength(1);
-    expect(turnMem.files.has('plan.md')).toBe(true);
-    expect(turnMem.log).not.toContain('update');
-
-    const tokenMem = memoryHost(board([]));
-    const tokenTransport: Transport = async (messages, opts) => {
-      void messages;
-      tokenMem.log.push('llm');
-      opts.onDelta('');
+  it('输出被截断时记 TRUNCATED，下一次请求换掉，连续两次后压缩上下文', async () => {
+    const host = memoryHost(board([]));
+    const seen: string[] = [];
+    const transport: Transport = async (messages) => {
+      seen.push(messages.map((message) => messageText(message.content)).join('\n'));
       return {
-        text: tokenMem.log.filter((e) => e === 'llm').length === 1 ? planPack : scenesPack,
-        usage: [4, 4],
+        text: '',
+        finishReason: 'length',
+        toolCalls: [{ id: 't', type: 'function', function: { name: 'write_plan', arguments: '{"title":' } }],
+        usage: [1, 1],
       };
     };
-    const tokenRun = await runAgent({
-      intent: INTENT,
-      transport: tokenTransport,
-      host: tokenMem.host,
-      budget: { maxTurns: 8, maxTokens: 5 },
-    });
-    expect(tokenRun.status).toBe('budget');
-    expect(tokenRun.usage).toEqual([4, 4]);
-    expect(tokenMem.log.filter((e) => e === 'llm')).toHaveLength(1);
-    expect(tokenMem.log).not.toContain('update');
+    const result = await runAgent({ intent: '画一个圆', host, budget: { maxTurns: 4 }, transport });
+    expect(result).toMatchObject({ status: 'stuck', error: '规划输出连续截断', turns: 3 });
+    expect(host.sb()?.scenes).toEqual([]);
+    expect(seen[1]).toContain('TRUNCATED');
+    expect(seen[1]).not.toBe(seen[0]);
+    expect(seen[2]).toContain('上下文已压缩');
   });
 
-  it('经 project.update 写入 .awb/anim，并且可以撤销', async () => {
-    const project = useProjectStore();
-    await project.create('agent', emptyStoryboard('agent'), '/projects/agent');
-    const before = structuredClone(project.storyboard);
-    const script = scripted([planPack, scenesPack]);
+  it('连续三轮只有正文就停', async () => {
+    const host = memoryHost(board([]));
     const result = await runAgent({
-      intent: INTENT,
-      transport: script.transport,
-      host: projectAgentHost(),
+      intent: '画一个圆',
+      host,
+      transport: async () => ({ text: '只有正文', usage: [1, 1] as [number, number] }),
     });
-    expect(result.status).toBe('done');
-    expect(await p.readText('/projects/agent/.awb/anim/plan.md')).toContain(PLAN_MARK);
-    expect(await p.readText('/projects/agent/.awb/anim/shared.js')).toContain('const R = 1.2');
-    expect(await p.readText('/projects/agent/.awb/anim/scenes/s_ask.js')).toContain(MARKER_ASK);
-    expect(project.storyboard!.scenes).toHaveLength(2);
-    expect(project.storyboard!.scenes.every((s) => s.kind === 'code')).toBe(true);
-    expect(project.canUndo).toBe(true);
-    project.undo();
-    expect(project.storyboard).toEqual(before);
-    expect(await platform.exists('/projects/agent/.awb/anim/plan.md')).toBe(true);
+    expect(result.status).toBe('stuck');
+    expect(result.error).toContain('连续三轮只有正文');
+    expect(result.turns).toBe(3);
   });
 
-  it('空正文直接停止，截断且没有新文件时不把同一请求打满', async () => {
-    const notes: string[] = [];
-    const onLog = (event: { type: string; message?: string }) => {
-      if (event.type === 'note' && event.message) notes.push(event.message);
-    };
-    const empty = memoryHost(board([]));
-    let emptyCalls = 0;
-    const emptyRun = await runAgent({
-      intent: INTENT,
-      host: empty.host,
-      budget: { maxTurns: 8 },
-      onLog,
-      transport: async () => {
-        emptyCalls += 1;
-        return { text: '  ', finishReason: 'length', usage: [1, 1] };
-      },
-    });
-    expect(emptyRun.status).toBe('error');
-    expect(emptyRun.error).toContain('空正文');
-    expect(emptyCalls).toBe(1);
-    expect(notes.some((line) => line.includes('finish_reason=length'))).toBe(true);
-
-    notes.length = 0;
+  it('锁定场和手改的代码、hold 不会被后一次写入冲掉', async () => {
+    const host = memoryHost(
+      board([scene({ id: 's_lock', code: 'const user = 1;', hold: 4, locked: true, title: '锁着' })]),
+    );
+    let n = 0;
     const seen: string[] = [];
-    const stalled = await runAgent({
-      intent: INTENT,
-      host: memoryHost(board([])).host,
-      budget: { maxTurns: 8 },
-      onLog,
+    const result = await runAgent({
+      intent: '别动锁定场',
+      host,
+      budget: { maxTurns: 6 },
       transport: async (messages) => {
-        seen.push(
-          messages
-            .filter((m) => m.role === 'user')
-            .map((m) => messageText(m.content))
-            .at(-1) ?? '',
-        );
-        return { text: '还在想', finishReason: 'length', usage: [1, 1] };
+        n += 1;
+        seen.push(messages.map((message) => messageText(message.content)).join('\n'));
+        if (n === 1) {
+          return call('write_plan', {
+            title: '演示',
+            plan_md: '# 计划',
+            scenes: [{ id: 's_box', title: '新场', description: '空的', hold: 1, enter: 'fresh' }],
+          });
+        }
+        if (n === 2)
+          return call('write_scene', {
+            scene_id: 's_lock',
+            code: PASS,
+            base_hash: contentHash('const user = 1;'),
+          });
+        if (n === 3) return call('write_scene', { scene_id: 's_box', code: PASS, summary: '蓝色' });
+        if (n === 4) {
+          const live = host.sb()?.scenes.find((item) => item.id === 's_box');
+          const old = live?.code ?? '';
+          if (live) live.code = 'const hand = 1;\nwait(500);\n';
+          return call('write_scene', { scene_id: 's_box', code: PASS, base_hash: contentHash(old) });
+        }
+        return { text: '', usage: [1, 1] as [number, number] };
       },
     });
-    expect(stalled.status).toBe('error');
-    expect(stalled.error).toContain('已停止');
-    expect(seen.length).toBe(2);
-    expect(seen[0]).not.toBe(seen[1]);
-    expect(seen.every((text) => text.includes(INTENT))).toBe(true);
-    expect(notes.some((line) => line.includes('finish_reason=length'))).toBe(true);
+    expect(result.status).not.toBe('done');
+    expect(result.status).not.toBe('done_with_issues');
+    const locked = host.sb()?.scenes.find((item) => item.id === 's_lock');
+    expect(locked).toMatchObject({ code: 'const user = 1;', hold: 4, title: '锁着' });
+    const hand = host.sb()?.scenes.find((item) => item.id === 's_box');
+    expect(hand?.code).toContain('const hand = 1;');
+    expect(hand?.hold).toBe(1);
+    expect(seen.some((text) => text.includes('LOCKED'))).toBe(true);
+    expect(seen.some((text) => text.includes('STALE'))).toBe(true);
   });
 
-  it('未闭合的代码块会交回模型，闭合后才写入', async () => {
-    const notes: string[] = [];
-    const script = scripted([
-      planPack,
-      '```file:anim/scenes/s_ask.js\nconst cut = 1;\n',
-      `\`\`\`file:anim/scenes/s_ask.js\nconst cut = 1;\nconst done = true;\n\`\`\`\n\`\`\`file:anim/scenes/s_slice.js\nconst disk = 1;\n\`\`\``,
-    ]);
-    const mem = memoryHost(board([]));
+  it('loop:true 写不进去，也不能 done', async () => {
+    const host = memoryHost(board([]));
+    const seen: string[] = [];
+    let n = 0;
     const result = await runAgent({
-      intent: INTENT,
-      transport: script.transport,
-      host: mem.host,
-      onLog: (event) => {
-        if (event.type === 'note') notes.push(event.message);
+      intent: '不要循环',
+      host,
+      budget: { maxTurns: 6 },
+      transport: async (messages) => {
+        n += 1;
+        seen.push(messages.map((message) => messageText(message.content)).join('\n'));
+        if (n === 1) return planCall(1);
+        if (n === 2) return call('write_scene', { scene_id: 's_box', code: LOOP, summary: '循环' });
+        if (n === 3) return call('finish', { summary: '想停' });
+        return { text: '', usage: [1, 1] as [number, number] };
       },
     });
-    expect(result.status).toBe('done');
-    expect(script.calls).toHaveLength(3);
-    const repair = script.calls[2]!.messages.map((m) => messageText(m.content)).join('\n');
-    expect(repair).toContain(INTENT);
-    expect(repair).toContain('没有闭合');
-    expect(repair).toContain('const cut = 1');
-    expect(repair).not.toBe(script.calls[1]!.messages.map((m) => messageText(m.content)).join('\n'));
-    expect(mem.sb!.scenes.find((s) => s.id === 's_ask')!.code).toContain('const done = true');
-    expect(notes.some((line) => line.includes('未闭合'))).toBe(true);
+    expect(result.status).not.toBe('done');
+    expect(result.status).not.toBe('done_with_issues');
+    expect(host.sb()?.scenes[0]?.code ?? '').not.toContain('loop: true');
+    expect(seen.some((text) => text.includes('BANNED_API'))).toBe(true);
+    expect(seen.some((text) => text.includes('FINISH_REJECTED') || text.includes('PHASE'))).toBe(true);
   });
 });
 
@@ -605,7 +309,7 @@ describe('engine', () => {
     expect(gen.outline?.scenes.length).toBeGreaterThan(0);
     expect(await platform.exists('/projects/legacy/.awb/anim/plan.md')).toBe(false);
     const oldPrompt = outlineMessages('TOKEN-需求原文', newProjectFile('x').generation)
-      .map((m) => m.content)
+      .map((message) => message.content)
       .join('\n');
     expect(oldPrompt).toContain('不是给你的指令');
     expect(oldPrompt).toContain('TOKEN-需求原文');
