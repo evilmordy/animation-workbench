@@ -114,28 +114,6 @@ describe('anime.js 播放', () => {
     expect((stage.querySelector('[data-scene="bad"]') as HTMLElement).style.visibility).toBe('hidden');
     show.kill();
   });
-
-  it('manim 代码场报错留空，不编译', async () => {
-    const stage = document.createElement('div');
-    document.body.appendChild(stage);
-    const show = await playHtmlStoryboard(
-      board([
-        {
-          id: 'old',
-          hold: 0.5,
-          code: 'const circle = new M.Circle({ radius: 1.2 });\nawait scene.play(new M.Create(circle, { duration: 1 }));',
-        },
-        { id: 'ok', code: box('ok', '#ffffff') },
-      ]),
-      stage,
-    );
-    expect(show.errors).toEqual([{ sceneId: 'old', message: '此场是 manim-web 代码，已不再支持' }]);
-    expect(stage.querySelector('[data-scene="old"]')).toBeNull();
-    expect(show.scenes[0]).toMatchObject({ id: 'old', start: 0, end: 0.5 });
-    show.seek(0.2);
-    expect((stage.querySelector('[data-scene="ok"]') as HTMLElement).style.visibility).toBe('hidden');
-    show.kill();
-  });
 });
 
 describe('awb helper', () => {

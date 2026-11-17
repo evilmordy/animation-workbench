@@ -158,7 +158,7 @@ export async function screenStoryboard(sb: Storyboard, root = process.cwd()): Pr
   const runtimePath = join(root, 'dist-runtime/anime-runtime.js');
   const runtimeSource = existsSync(runtimePath) ? readFileSync(runtimePath, 'utf8') : '';
   const html = runtimeSource
-    ? await assembleExportHtml(runtimeSource, sb, { slides: false, loop: false, codeScenes: true })
+    ? await assembleExportHtml(runtimeSource, sb, { slides: false, loop: false })
     : '';
   const exportOk = runtimeSource ? exportPasses(html, runtimeSource) : false;
   const preview = await openPreview(root);

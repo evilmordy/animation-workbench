@@ -18,9 +18,7 @@ import { checkStoryboardInApp } from '../../ai/agent/check/backend-app';
 import { dispatchGenerate, usesAgenticEngine } from '../../ai/agent/engine';
 import { budgetFromSettings, lineFromEvent, type AgentLogLine } from '../../ai/agent/log';
 import { previewPageUrl } from '../../ai/agent/renderer';
-import { rewriteIntent } from '../../ai/agent/rewrite';
 import { runProjectAgent } from '../../ai/agent/run';
-import { isManimSceneCode } from '../../runtime/manimCode';
 import type { Outline } from '../../ai/prompts';
 import { checkScene } from '../../ai/validators';
 import { describeError, LLM_ERRORS } from '../../shared/errors';
@@ -76,11 +74,6 @@ let agentAbort: AbortController | null = null;
 
 /** 只有 engine=agentic 且代码场景打开时才离开旧大纲管线。 */
 const agentic = computed(() => usesAgenticEngine(settings.engine, settings.runtime.codeScenes));
-const manimScenes = computed(() =>
-  (project.storyboard?.scenes ?? []).filter(
-    (scene) => scene.kind === 'code' && isManimSceneCode(scene.code ?? ''),
-  ),
-);
 const sourcePlaceholder = '粘贴要讲解的内容：教材段落、题目、代码、文案……（也可以在"素材"页导入文件）';
 
 const gp = computed(() => project.project!.generation);
@@ -149,13 +142,6 @@ async function runAgentEntry() {
 
 function cancelAgent() {
   agentAbort?.abort();
-}
-
-async function rewriteManim() {
-  const scenes = manimScenes.value;
-  if (!scenes.length) return;
-  gen.intent = rewriteIntent(scenes);
-  await runAgentEntry();
 }
 
 async function runCheck() {
@@ -353,10 +339,8 @@ function applyFix(scene: Scene) {
       :lines="agentLog"
       :turns="agentTurns"
       :tokens="agentTokens"
-      :can-rewrite="manimScenes.length > 0"
       @cancel="cancelAgent"
       @check="runCheck"
-      @rewrite="rewriteManim"
     />
     <p v-if="agentNote" class="muted" data-testid="agent-note">{{ agentNote }}</p>
 

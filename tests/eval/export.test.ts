@@ -26,7 +26,6 @@ describe('导出检查', () => {
     const html = await assembleExportHtml('runtime-body-marker', parsed.value, {
       slides: false,
       loop: false,
-      codeScenes: true,
     });
     expect(exportPasses(html, 'runtime-body-marker')).toBe(true);
     expect(

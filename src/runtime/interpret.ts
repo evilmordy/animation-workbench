@@ -4,7 +4,6 @@ import { ANIMS } from '../shared/registry';
 import type { Scene, Storyboard } from '../shared/schema';
 import { FRESH_FADE } from '../shared/timing';
 import { BuildError, buildAnim, buildElement, type BuildCtx } from './builders';
-import { MANIM_RUNTIME_SKIPS_CODE } from './manimCode';
 
 type RecordingScene = Parameters<Parameters<Player['sequence']>[0]>[0];
 
@@ -28,7 +27,7 @@ export async function interpret(sb: Storyboard, rec: RecordingScene, onError: (e
     if (si > 0) await rec.nextSlide();
     // 代码场不归这份 manim 运行时。报错并按 hold 留空，后面的分镜场照常录。
     if (scene.kind === 'code') {
-      onError({ sceneId: scene.id, message: MANIM_RUNTIME_SKIPS_CODE });
+      onError({ sceneId: scene.id, message: '代码场不归 manim 运行时播' });
       await rec.wait(Math.max(0.1, scene.hold));
       continue;
     }

@@ -4,7 +4,6 @@ import circleFixture from '../../tests/fixtures/code-circle.json';
 import { parseStoryboard, type Scene, type Storyboard } from '../shared/schema';
 import { validate } from '../shared/validate';
 import { interpret } from './interpret';
-import { MANIM_RUNTIME_SKIPS_CODE } from './manimCode';
 
 function board(scenes: Scene[]): Storyboard {
   const parsed = parseStoryboard({
@@ -73,7 +72,7 @@ describe('manim 代码场报错不崩', () => {
         errors.push(error),
       ),
     ).resolves.toBeUndefined();
-    expect(errors).toEqual([{ sceneId: 's_code', message: MANIM_RUNTIME_SKIPS_CODE }]);
+    expect(errors).toEqual([{ sceneId: 's_code', message: '代码场不归 manim 运行时播' }]);
     expect(waits[0]).toBe(0.5);
     expect(plays).toHaveLength(1);
     expect(plays[0]?.[0]).toBeInstanceOf(Create);
@@ -87,7 +86,7 @@ describe('manim 代码场报错不崩', () => {
         errors.push(error),
       ),
     ).resolves.toBeUndefined();
-    expect(errors).toEqual([{ sceneId: 's_code', message: MANIM_RUNTIME_SKIPS_CODE }]);
+    expect(errors).toEqual([{ sceneId: 's_code', message: '代码场不归 manim 运行时播' }]);
     expect(plays).toHaveLength(1);
     expect(plays[0]?.[0]).toBeInstanceOf(Create);
   });
