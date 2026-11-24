@@ -3,7 +3,7 @@ import type { Timeline } from 'animejs';
 /**
  * 代码场 helper。`player.ts` 编译每一场时把这段源码注入函数体，再把 `scene.code` 包进块作用域。
  *
- * 设计书 §4.2：合并 S8d 的 helpers 与 seek-guard，并补 `bind`。`tex` 在这里，`three3d` 留给 PR-10。
+ * 设计书 §4.2：合并 S8d 的 helpers 与 seek-guard，并补 `bind`。`tex` 和 `three3d` 都在这里。
  * 仓库里没有 `prompts/helpers.js`、`helpers-safe.js`、`seek-guard.js`、`helpers.md`（复盘：S8d 原型没进仓库）。
  * 配色与产品里的 3b1b 预设对齐，并补上 §4.2 点名的其余颜色名。
  */
@@ -322,6 +322,11 @@ function bind(state, draw) {
   if (!state || typeof draw !== 'function') return;
   _binds.push(() => draw(state));
 }
+
+function three3d(opts) {
+  if (typeof ctx.three3d !== 'function') throw new Error('three3d 不可用');
+  return ctx.three3d(opts || {});
+}
 `;
 
 export const AWB_HELPER_SOURCE = HELPER_BODY.replaceAll('__awbBinds', AWB_BINDS);
@@ -442,4 +447,12 @@ export interface AwbSceneScope {
   bind<T extends object>(state: T, draw: (state: T) => void): void;
   /** 公式。KaTeX 在建场时渲染，不要放中文。 */
   tex(latex: string, x: number, y: number, size?: number, color?: string): HTMLElement;
+  /** 本场 WebGL。canvas 按舞台尺寸挂进 root，返回 THREE、scene、camera、renderer、canvas。 */
+  three3d(opts?: { fov?: number; camera?: [number, number, number]; target?: [number, number, number] }): {
+    THREE: object;
+    scene: object;
+    camera: object;
+    renderer: object;
+    canvas: HTMLCanvasElement;
+  };
 }

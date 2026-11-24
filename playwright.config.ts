@@ -18,12 +18,27 @@ export default defineConfig({
     {
       name: 'e2e',
       testMatch: ['runtime/**/*.spec.ts', 'e2e/**/*.spec.ts'],
-      testIgnore: '**/perf.spec.ts',
+      testIgnore: ['**/perf.spec.ts', '**/three.spec.ts'],
+    },
+    {
+      name: 'three',
+      testMatch: '**/three.spec.ts',
+      // §4.4：3D 夹具在 CI 里走 SwiftShader，截帧才稳定、读得到。
+      use: {
+        launchOptions: {
+          args: [
+            '--use-gl=angle',
+            '--use-angle=swiftshader',
+            '--enable-unsafe-swiftshader',
+            '--ignore-gpu-blocklist',
+          ],
+        },
+      },
     },
     {
       name: 'perf',
       testMatch: '**/perf.spec.ts',
-      dependencies: ['e2e'],
+      dependencies: ['e2e', 'three'],
       workers: 1,
     },
   ],
