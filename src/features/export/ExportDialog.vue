@@ -93,7 +93,7 @@ function showIssues() {
       </NFormItem>
       <NFormItem label="幻灯片模式">
         <NSwitch v-model:value="slides" aria-label="幻灯片模式" />
-        <span class="hint inline">写入导出文件的 data-slides。播放器目前整片连续播放</span>
+        <span class="hint inline">在每个场景结束时暂停，用 → 键翻到下一个场景</span>
       </NFormItem>
       <NFormItem label="循环播放">
         <NSwitch v-model:value="loop" aria-label="循环播放" />

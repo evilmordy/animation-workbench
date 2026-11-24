@@ -36,6 +36,39 @@ test('M4：导出单文件 HTML，file:// 打开能播放且网络请求为 0', 
   expect(errors).toEqual([]);
 });
 
+test('M4：幻灯片模式在场景结束处暂停，→ 进入下一场', async ({ page, context }) => {
+  await openSample(page);
+  await page.keyboard.press('Control+e');
+  await page.getByRole('switch', { name: '幻灯片模式' }).click();
+  await page.getByTestId('do-export').click();
+  await expect(page.getByTestId('export-done')).toBeVisible({ timeout: 30_000 });
+  const path = await page.getByTestId('export-done').locator('.path').innerText();
+  const html = await page.evaluate((p) => (window as any).__awbMock.platform.readText(p), path);
+  expect(html).toContain('data-slides="true"');
+  const file = join(tmpdir(), 'awb-export-slides.html');
+  writeFileSync(file, html);
+
+  const viewer = await context.newPage();
+  await viewer.goto(`file://${file}`);
+  await viewer.waitForFunction(() => (window as any).__awbExport, null, { timeout: 30_000 });
+  const heldNear = async (target: number) => {
+    await viewer.waitForFunction(
+      (end) => {
+        const t = (window as any).__awbExport.time() as number;
+        return t > end - 0.1 && t < end + 0.05;
+      },
+      target,
+      { timeout: 15_000 },
+    );
+    await viewer.waitForTimeout(400);
+    expect(await viewer.evaluate(() => (window as any).__awbExport.time() as number)).toBeCloseTo(target, 1);
+  };
+  await heldNear(4.5);
+  await viewer.locator('#stage').click();
+  await viewer.keyboard.press('ArrowRight');
+  await heldNear(10);
+});
+
 test('M4：有错误时不能导出', async ({ page }) => {
   await openSample(page);
   await page.getByTestId('scene-card').first().click();
