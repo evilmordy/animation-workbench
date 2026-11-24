@@ -1,7 +1,9 @@
 import { defineConfig } from 'vite';
+import { katexInline } from './vite.katex';
 
 // 和 manim 的 runtime.js 分开打包。纯 dsl 导出仍内联原来的 runtime.js。
 export default defineConfig({
+  plugins: [katexInline()],
   build: {
     outDir: 'dist-runtime',
     emptyOutDir: false,
