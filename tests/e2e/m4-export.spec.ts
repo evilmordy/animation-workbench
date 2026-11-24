@@ -13,7 +13,7 @@ test('M4：导出单文件 HTML，file:// 打开能播放且网络请求为 0', 
   await expect(page.getByTestId('export-done')).toBeVisible({ timeout: 30_000 });
   const path = await page.getByTestId('export-done').locator('.path').innerText();
   const html = await page.evaluate((p) => (window as any).__awbMock.platform.readText(p), path);
-  expect(html.length).toBeGreaterThan(1_000_000);
+  expect(html.length).toBeGreaterThan(800_000);
   expect(html).toContain("connect-src 'none'");
   const file = join(tmpdir(), 'awb-export-test.html');
   writeFileSync(file, html);
@@ -29,10 +29,11 @@ test('M4：导出单文件 HTML，file:// 打开能播放且网络请求为 0', 
   await viewer.waitForFunction(() => (window as any).__awbExport, null, { timeout: 30_000 });
   const r = await viewer.evaluate(() => (window as any).__awbExport);
   expect(r.scenes.map((s: any) => s.end)).toEqual([4.5, 10, 17]);
+  await viewer.evaluate(() => (window as any).__awbExport.seek(3));
+  await expect(viewer.locator('#stage')).toHaveCount(1);
+  await expect(viewer.locator('[data-player-bar]')).toHaveCount(0);
   expect(requests).toEqual([]);
   expect(errors).toEqual([]);
-  // Player 自带控件（含导出按钮）在导出文件里保留
-  await expect(viewer.locator('[data-player-bar]')).toHaveCount(1);
 });
 
 test('M4：有错误时不能导出', async ({ page }) => {

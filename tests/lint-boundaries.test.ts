@@ -15,9 +15,12 @@ describe('PLAN §0.3 边界规则', () => {
     );
   });
 
-  it('src/runtime 之外禁止 manim-web', async () => {
-    expect(await ruleIds("import 'manim-web';\n", 'src/features/x.ts')).toContain('no-restricted-imports');
-    expect(await ruleIds("import 'manim-web';\n", 'src/runtime/x.ts')).not.toContain('no-restricted-imports');
+  it('只有 src/runtime 可以依赖 animejs、three、katex', async () => {
+    for (const spec of ["import 'animejs';\n", "import 'three';\n", "import 'katex';\n"]) {
+      expect(await ruleIds(spec, 'src/features/x.ts')).toContain('no-restricted-imports');
+      expect(await ruleIds(spec, 'src/ai/agent/x.ts')).toContain('no-restricted-imports');
+      expect(await ruleIds(spec, 'src/runtime/x.ts')).not.toContain('no-restricted-imports');
+    }
   });
 
   it('src/shared 禁止 UI 库和 DOM 全局对象', async () => {

@@ -1,6 +1,7 @@
-import { createTimeline, type Timeline } from 'animejs';
 import { AWB_HELPER_SOURCE, wrapSceneCode } from '../../../runtime/anime/awb';
 import { animeApi, STAGE_HEIGHT, STAGE_WIDTH, type AnimeApi } from '../../../runtime/anime/player';
+
+type Timeline = ReturnType<AnimeApi['createTimeline']>;
 
 /**
  * 运行门。设计书 §7.1：禁用扫描、编译、执行、时长。
@@ -325,7 +326,7 @@ let stackBias: number | undefined;
 async function runtimeStackBias(ctx: object): Promise<number> {
   if (stackBias != null) return stackBias;
   const root = document.createElement('div');
-  const tl = createTimeline({ autoplay: false });
+  const tl = animeApi.createTimeline({ autoplay: false });
   try {
     await compileBody('throw new Error("awb-gate-probe")')(root, animeApi, tl, ctx);
     stackBias = 2;
@@ -446,7 +447,7 @@ export async function runScene(code: string, ctx: GateContext = {}): Promise<Gat
   }
 
   const root = document.createElement('div');
-  const tl = createTimeline({ autoplay: false });
+  const tl = animeApi.createTimeline({ autoplay: false });
   const sceneCtx = sceneContext(ctx);
   let durationMs = 0;
   let thrown: unknown;

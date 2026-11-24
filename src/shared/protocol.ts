@@ -25,7 +25,6 @@ export const PreviewMessage = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('ready'),
     runtimeVersion: z.string(),
-    manimWebVersion: z.string(),
     caps: z.object({ webcodecs: z.boolean() }),
   }),
   z.object({

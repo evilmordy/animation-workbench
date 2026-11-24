@@ -3,9 +3,9 @@ import vue from 'eslint-plugin-vue';
 import tseslint from 'typescript-eslint';
 
 const TAURI = { group: ['@tauri-apps/*'], message: '只有 src/platform/ 可以使用 Tauri（PLAN §0.3）' };
-const MANIM = {
-  group: ['manim-web', 'manim-web/*'],
-  message: '只有 src/runtime/ 可以使用 manim-web（PLAN §0.3）',
+const GFX = {
+  group: ['animejs', 'animejs/*', 'three', 'three/*', 'katex', 'katex/*'],
+  message: '只有 src/runtime/ 可以使用 animejs、three、katex',
 };
 const UI = { group: ['vue', 'pinia', 'naive-ui', 'vue-draggable-plus'], message: 'src/shared/ 必须是纯 TS' };
 const restrict = (...patterns) => ['error', { patterns }];
@@ -50,14 +50,14 @@ export default defineConfig(
   {
     files: ['src/**'],
     ignores: ['src/platform/**', 'src/runtime/**', 'src/shared/**'],
-    rules: { 'no-restricted-imports': restrict(TAURI, MANIM) },
+    rules: { 'no-restricted-imports': restrict(TAURI, GFX) },
   },
-  { files: ['src/platform/**'], rules: { 'no-restricted-imports': restrict(MANIM) } },
+  { files: ['src/platform/**'], rules: { 'no-restricted-imports': restrict(GFX) } },
   { files: ['src/runtime/**'], rules: { 'no-restricted-imports': restrict(TAURI) } },
   {
     files: ['src/shared/**'],
     rules: {
-      'no-restricted-imports': restrict(TAURI, MANIM, UI),
+      'no-restricted-imports': restrict(TAURI, GFX, UI),
       'no-restricted-globals': ['error', 'window', 'document', 'navigator', 'localStorage', 'fetch'],
     },
   },

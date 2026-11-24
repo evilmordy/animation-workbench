@@ -83,7 +83,6 @@ export async function launchPlaywrightHarness(root = process.cwd()): Promise<Har
       async gotoHarness() {
         await page.goto(pageUrl);
         await page.waitForFunction(() => Boolean((globalThis as { __ready?: boolean }).__ready));
-        await page.addStyleTag({ content: '[data-player-bar]{display:none!important}' });
       },
       async run(storyboard) {
         return page.evaluate((board) => {

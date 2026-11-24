@@ -179,7 +179,6 @@ function startPreview(stageEl: HTMLElement) {
   post({
     type: 'ready',
     runtimeVersion: RUNTIME_VERSION,
-    manimWebVersion: 'animejs@4.5.0',
     caps: { webcodecs: typeof VideoEncoder !== 'undefined' },
   });
 }

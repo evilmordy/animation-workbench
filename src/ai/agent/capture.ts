@@ -44,7 +44,7 @@ export interface HarnessRun {
   duration: number;
 }
 
-/** 与 tests/runtime/code-harness 对齐的预览页。Playwright 和单测假页面都实现它。 */
+/** 预览页契约。Playwright 和单测假页面都实现它。 */
 export interface HarnessPage {
   onConsoleError(listener: (message: string) => void): void;
   gotoHarness(): Promise<void>;

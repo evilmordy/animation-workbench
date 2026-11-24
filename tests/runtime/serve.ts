@@ -6,10 +6,6 @@ export const PREVIEW_CSP =
   "default-src 'none'; script-src http://awpreview.test 'unsafe-eval'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; worker-src blob:; connect-src 'none'; base-uri 'none'; form-action 'none'";
 
 const FILES: Record<string, [string, string]> = {
-  'http://awpreview.test/index.html': ['dist-runtime/index.html', 'text/html'],
-  'http://awpreview.test/runtime.js': ['dist-runtime/runtime.js', 'text/javascript'],
-  'http://awpreview.test/code-harness.html': ['tests/runtime/code-harness.html', 'text/html'],
-  'http://awpreview.test/code-harness.js': ['tests/runtime/code-harness.js', 'text/javascript'],
   'http://awpreview.test/anime.html': ['dist-runtime/anime.html', 'text/html'],
   'http://awpreview.test/anime-runtime.js': ['dist-runtime/anime-runtime.js', 'text/javascript'],
   'http://host.test/harness.html': ['tests/runtime/harness.html', 'text/html'],
