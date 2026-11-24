@@ -170,6 +170,9 @@ describe('read_scene', () => {
     expect(parsed.hash).toBe(contentHash(PASS));
     expect(String(parsed.code_numbered)).toContain('1|');
     expect(String(parsed.code_numbered)).toContain('fadeIn');
+    const index = parsed.index as { line: number; start_ms: number | null; n?: number }[];
+    expect(index.find((item) => item.n === 1)?.line).toBe(1);
+    expect(index.find((item) => item.line === 2)?.start_ms).toBe(0);
   });
 
   it('没有这场', async () => {

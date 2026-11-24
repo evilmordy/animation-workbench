@@ -322,6 +322,17 @@ export async function checkStoryboardInApp(
   }
 }
 
+/**
+ * 体检仍用 rejectBlankRaster，避免把一小块字当成「有画面」去判空屏。
+ * 精确编辑的并排帧要看见这块字，所以像素数够就留下。
+ */
+function captureShot(shot: ProbeShot, boxes: LayoutBox[]): ProbeShot {
+  const kept = rejectBlankRaster(shot, boxes);
+  if (kept.raster || !shot.raster || !shot.png?.byteLength) return kept;
+  const count = contentRatio(shot.raster) * shot.raster.width * shot.raster.height;
+  return count >= 80 ? shot : kept;
+}
+
 function toCaptured(
   sceneId: string,
   source: FrameSource,
@@ -330,7 +341,7 @@ function toCaptured(
   errors: string[],
 ): CapturedFrame {
   const picked = pickLayoutBoxes(shot.elements);
-  const usable = rejectBlankRaster(shot, picked.boxes);
+  const usable = captureShot(shot, picked.boxes);
   const pixels = Boolean(usable.raster && usable.png && usable.png.byteLength > 0);
   return {
     sceneId,

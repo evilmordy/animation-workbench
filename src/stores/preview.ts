@@ -8,6 +8,18 @@ export interface PreviewError {
   message: string;
 }
 
+export interface PreciseElement {
+  tag: string;
+  text: string;
+  bbox: [number, number, number, number];
+  awb_n: number;
+}
+
+export interface PreciseHit {
+  point: { x: number; y: number } | null;
+  element: PreciseElement | null;
+}
+
 /** 预览 iframe 的状态；发送消息由 PreviewPane 注册的 sender 完成 */
 export const usePreviewStore = defineStore('preview', () => {
   const ready = ref(false);
@@ -20,6 +32,8 @@ export const usePreviewStore = defineStore('preview', () => {
   const errors = shallowRef<PreviewError[]>([]);
   const buildMs = ref(0);
   const runtimeVersion = ref('');
+  const hit = shallowRef<PreciseHit | null>(null);
+  const range = ref<[number, number] | null>(null);
   let sender: ((m: HostMessage) => void) | null = null;
 
   const send = (m: HostMessage) => sender?.(m);
@@ -36,7 +50,11 @@ export const usePreviewStore = defineStore('preview', () => {
     errors,
     buildMs,
     runtimeVersion,
+    hit,
+    range,
     setSender,
+    setHit: (next: PreciseHit | null) => (hit.value = next),
+    setRange: (next: [number, number] | null) => (range.value = next),
     play: () => send({ type: 'play' }),
     pause: () => send({ type: 'pause' }),
     toggle: () => send({ type: playing.value ? 'pause' : 'play' }),

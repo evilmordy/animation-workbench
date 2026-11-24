@@ -1,13 +1,15 @@
 import type { Issue } from '../check';
 import { checkScenes } from '../check';
-import { runScene, type GateError } from '../check/gate';
-import { pngDataUrl } from '../check/pixels';
+import { runScene, sceneTrace, type GateError } from '../check/gate';
+import { pngDataUrl, type Raster } from '../check/pixels';
+import type { EditRequest } from '../precise';
+import { durationNote, indexCalls, outsideNote } from '../precise';
 import { acceptStoryboard, clampHold } from '../apply';
 import { contentHash } from '../hash';
 import { applyInspection, saveMemory, type AgentHost, type IssueDelta, type Memory } from '../memory';
 import { previewParagraph, splitSource } from '../source';
 import type { Scene, Storyboard } from '../../../shared/schema';
-import { applyRange, formatNumbered, joinShared, numberedLines, replaceShared, splitShared } from './code';
+import { applyRange, formatNumbered, joinShared, replaceShared, splitShared } from './code';
 import { isToolName, PHASE_TOOLS, type Phase } from './defs';
 
 export const SCENE_WRITE_LIMIT = 8;
@@ -19,6 +21,7 @@ export interface ObservedFrame {
   tMs: number;
   caption: string;
   png?: Uint8Array;
+  raster?: Raster;
   boxes: number;
 }
 
@@ -43,6 +46,13 @@ export interface ToolEnv {
   mem: Memory;
   source: string;
   editSceneId?: string;
+  editRequest?: EditRequest;
+  /** 写入前拍的帧，顺序是区间帧然后区间外帧。 */
+  beforeFrames?: ObservedFrame[];
+  editTimes?: number[];
+  outsideTimes?: number[];
+  /** 写入前量到的本场时长。记忆里还没有时用它比较。 */
+  editDurationMs?: number;
   inspect: Inspect;
 }
 
@@ -408,6 +418,34 @@ async function writePlan(env: ToolEnv, args: Record<string, unknown>): Promise<T
   };
 }
 
+async function sceneIndex(scene: Scene): Promise<
+  {
+    line: number;
+    start_ms: number | null;
+    end_ms: number | null;
+    targets: string[];
+    props: string[];
+    n?: number;
+  }[]
+> {
+  const code = scene.code ?? '';
+  if (scene.kind !== 'code' || !code.trim()) return [];
+  const traced = await sceneTrace(code, {
+    hold: scene.hold,
+    sceneId: scene.id,
+    title: scene.title,
+    enter: scene.enter,
+  });
+  return indexCalls(code, traced.trace).map((call) => ({
+    line: call.line,
+    start_ms: call.start,
+    end_ms: call.end,
+    targets: [],
+    props: [],
+    ...(call.n != null ? { n: call.n } : {}),
+  }));
+}
+
 async function readScene(env: ToolEnv, args: Record<string, unknown>): Promise<ToolOutcome> {
   const sceneId = typeof args.scene_id === 'string' ? args.scene_id : '';
   if (outOfScope(env, sceneId))
@@ -416,14 +454,7 @@ async function readScene(env: ToolEnv, args: Record<string, unknown>): Promise<T
   const scene = sb && findScene(sb, sceneId);
   if (!scene) return fail(toolFail('NOT_FOUND', `没有场 ${sceneId || '？'}`, '先 read_storyboard'));
   const state = env.mem.scenes[scene.id];
-  const index =
-    args.with_index === false
-      ? []
-      : numberedLines(scene.code ?? '')
-          .filter(
-            (line) => !line.shared && /\b(tw|wait|fadeIn|fadeOut|head|say|tl\.add)\s*\(/.test(line.text),
-          )
-          .map((line) => ({ line: line.n, start_ms: null, end_ms: null, targets: [], props: [] }));
+  const index = args.with_index === false ? [] : await sceneIndex(scene);
   return {
     content: toolOk({
       scene_id: scene.id,
@@ -545,6 +576,7 @@ async function commitCode(
     lastReport: '',
     sourceParagraphs: [],
   };
+  const previousMs = prev.durationMs > 0 ? prev.durationMs : (env.editDurationMs ?? 0);
   prev.attempts += 1;
   prev.writes += 1;
   prev.hash = hash;
@@ -554,14 +586,21 @@ async function commitCode(
   env.mem.scenes[scene.id] = prev;
   env.mem.currentSceneId = scene.id;
   env.mem.truncations[scene.id] = 0;
-  const report = await observe(env, accepted, [scene.id], defaultTimes(gated.durationMs));
+  const compared = env.editRequest
+    ? await compareEdit(env, accepted, scene.id, previousMs, gated.durationMs)
+    : null;
+  const report = compared
+    ? compared.report
+    : await observe(env, accepted, [scene.id], defaultTimes(gated.durationMs));
   prev.lastReport = `gate pass，新问题 ${report.delta.added.length}，关掉 ${report.delta.fixed.length}`;
   if (report.delta.stalled) prev.status = 'stuck';
   await saveMemory(env.host, env.mem);
+  const note = [report.note, compared?.note].filter((item) => item && item.trim()).join('\n');
   return {
     content: toolOk({
       hash,
       duration_ms: gated.durationMs,
+      ...(previousMs > 0 ? { duration_was_ms: previousMs } : {}),
       gate: 'pass',
       report: {
         issues: report.delta.issues.map(briefIssue),
@@ -569,11 +608,47 @@ async function commitCode(
         new: report.delta.added,
         ...(report.delta.stalled ? { stalled: true } : {}),
       },
-      ...(report.note ? { note: report.note } : {}),
+      ...(note ? { note } : {}),
     }),
-    images: imagesOf(report.frames),
+    images: compared?.images ?? imagesOf(report.frames),
     wrote: true,
   };
+}
+
+async function compareEdit(
+  env: ToolEnv,
+  sb: Storyboard,
+  sceneId: string,
+  previousMs: number,
+  nextMs: number,
+): Promise<{
+  report: { delta: IssueDelta; frames: ObservedFrame[]; note?: string };
+  images: { dataUrl: string; caption: string }[];
+  note: string;
+}> {
+  const shown = env.editTimes ?? [];
+  const outside = env.outsideTimes ?? [];
+  const times = [...shown, ...outside];
+  const report = await observe(env, sb, [sceneId], times.length ? times : defaultTimes(nextMs));
+  const before = env.beforeFrames ?? [];
+  const images: { dataUrl: string; caption: string }[] = [];
+  for (let i = 0; i < shown.length && images.length < 8; i++) {
+    const tMs = shown[i] ?? 0;
+    const old = before[i];
+    const now = report.frames[i];
+    if (old?.png?.byteLength) images.push({ dataUrl: pngDataUrl(old.png), caption: `改前 ${tMs}ms` });
+    if (images.length >= 8) break;
+    if (now?.png?.byteLength) images.push({ dataUrl: pngDataUrl(now.png), caption: `改后 ${tMs}ms` });
+  }
+  const samples = outside.map((tMs, index) => ({
+    tMs,
+    before: before[shown.length + index]?.raster,
+    after: report.frames[shown.length + index]?.raster,
+  }));
+  const note = [durationNote(previousMs, nextMs), samples.length ? outsideNote(samples) : '']
+    .filter((item) => item.trim())
+    .join('\n');
+  return { report, images, note };
 }
 
 function otherDuration(sb: Storyboard, sceneId: string, mem: Memory): number {

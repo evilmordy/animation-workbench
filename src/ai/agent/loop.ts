@@ -1,7 +1,10 @@
 import { newId } from '../../shared/id';
 import { messageText, type LlmMessage, type ToolCall } from '../../platform/types';
 import type { Transport } from '../client';
-import { projectContext } from './context';
+import { projectContext, type EditContext } from './context';
+import { sceneTrace } from './check/gate';
+import { pngDataUrl } from './check/pixels';
+import { frameTimes, indexCalls, outsideTimes, overlaps } from './precise';
 import { describeAgentStop, type AgentLogEvent } from './log';
 import {
   appendLog,
@@ -16,7 +19,7 @@ import {
 } from './memory';
 import { agentSystemPrompt } from './prompts';
 import { toolDefs, type Phase } from './tools/defs';
-import { executeTool, localInspect, type Inspect, type ToolOutcome } from './tools/run';
+import { executeTool, localInspect, type Inspect, type ObservedFrame, type ToolOutcome } from './tools/run';
 
 export type { AgentHost } from './memory';
 
@@ -54,8 +57,8 @@ export interface RunAgentOpts {
   transport: Transport;
   host: AgentHost;
   budget?: AgentBudget;
-  /** 精确编辑。不传就是从 PLAN 开始。界面在 PR-11。 */
-  edit?: { sceneId: string; instruction: string };
+  /** 精确编辑。不传就是从 PLAN 开始。 */
+  edit?: EditContext;
   /** 缺省用运行门之后的 checkScenes，不打开预览。产品入口传入应用内后端。 */
   inspect?: Inspect;
   /** 单轮上下文 token 估计上限。 */
@@ -155,7 +158,7 @@ export async function runAgent(opts: RunAgentOpts): Promise<AgentResult> {
     return result;
   };
 
-  if (!opts.intent.trim()) return finish('error', '需求是空的');
+  if (!opts.intent.trim() && !opts.edit?.request) return finish('error', '需求是空的');
   const initial = opts.host.getStoryboard();
   if (!initial) return finish('error', '没有打开的分镜');
   const source = opts.source ?? '';
@@ -166,6 +169,20 @@ export async function runAgent(opts: RunAgentOpts): Promise<AgentResult> {
     return finish('error', error instanceof Error ? error.message : String(error));
   }
   const system = agentSystemPrompt(opts.intent);
+  if (opts.edit?.request) {
+    const target = initial.scenes.find((scene) => scene.id === opts.edit?.request?.scene_id);
+    if (!target) return finish('error', '没有这一场');
+    if (target.locked) return finish('error', '这一场锁着');
+    if (target.kind !== 'code' || !target.code?.trim()) {
+      return finish('error', '这一场还是分镜，精确编辑只改代码场');
+    }
+  }
+  let editView: EditContext | undefined = opts.edit;
+  let beforeFrames: ObservedFrame[] = [];
+  let editTimes: number[] = [];
+  let outside: number[] = [];
+  let editDurationMs = 0;
+  let editPrepared = false;
 
   const overTokens = () => typeof maxTokens === 'number' && usage[0] + usage[1] >= maxTokens;
 
@@ -233,6 +250,66 @@ export async function runAgent(opts: RunAgentOpts): Promise<AgentResult> {
       }
     }
 
+    if (opts.edit?.request && !editPrepared) {
+      editPrepared = true;
+      const request = opts.edit.request;
+      const scene = sb.scenes.find((item) => item.id === request.scene_id);
+      if (scene?.kind === 'code' && scene.code?.trim()) {
+        try {
+          const traced = await sceneTrace(scene.code, {
+            hold: scene.hold,
+            sceneId: scene.id,
+            title: scene.title,
+            enter: scene.enter,
+          });
+          const indexed = indexCalls(scene.code, traced.trace);
+          const highlight = indexed
+            .filter((call) => overlaps(call, request.range_ms))
+            .map(
+              (call) =>
+                `${String(call.line).padStart(4, ' ')}| ${call.text}  ${call.start ?? '?'}–${call.end ?? '?'}ms`,
+            )
+            .join('\n');
+          const created = request.element
+            ? indexed.find((call) => call.n === request.element?.awb_n)
+            : undefined;
+          editDurationMs = traced.durationMs ?? 0;
+          editTimes = frameTimes(request.range_ms, editDurationMs || 1000);
+          outside = outsideTimes(request.range_ms, editDurationMs || 1000, editTimes);
+          const wanted = [...editTimes, ...outside];
+          const report = await inspect(sb, {
+            sceneIds: [scene.id],
+            frames: [{ sceneId: scene.id, timesMs: wanted, isolated: false }],
+          });
+          applyInspection(mem, [scene.id], report.issues, turns);
+          beforeFrames = wanted.map((tMs, index) => ({
+            ...(report.frames[index] ?? { caption: '', boxes: 0 }),
+            tMs,
+          }));
+          editView = {
+            ...opts.edit,
+            highlight,
+            ...(created
+              ? {
+                  createLine: `${String(created.line).padStart(4, ' ')}| ${created.text}  awb_n=${created.n}`,
+                }
+              : {}),
+            frames: beforeFrames
+              .slice(0, editTimes.length)
+              .filter((frame) => frame.png?.byteLength)
+              .map((frame) => ({ dataUrl: pngDataUrl(frame.png!), caption: `目标区间 ${frame.tMs}ms` })),
+          };
+        } catch (error) {
+          mem.turns.push({
+            turn: turns,
+            line: '精确编辑的改前帧没拍到',
+            detail: error instanceof Error ? error.message : String(error),
+            images: [],
+          });
+        }
+      }
+    }
+
     const messages = projectContext({
       phase,
       mem,
@@ -240,7 +317,7 @@ export async function runAgent(opts: RunAgentOpts): Promise<AgentResult> {
       intent: opts.intent,
       source,
       system,
-      edit: opts.edit,
+      edit: editView,
       budgetTokens: opts.contextBudget,
     });
     const requestId = newId('req');
@@ -371,6 +448,11 @@ export async function runAgent(opts: RunAgentOpts): Promise<AgentResult> {
           mem,
           source,
           editSceneId: opts.edit?.sceneId,
+          editRequest: opts.edit?.request,
+          beforeFrames,
+          editTimes,
+          outsideTimes: outside,
+          editDurationMs,
           inspect,
         });
       } catch (error) {
@@ -396,6 +478,7 @@ export async function runAgent(opts: RunAgentOpts): Promise<AgentResult> {
         name: call.function.name,
         arguments: redactedArgs,
         result: redacted,
+        ...(outcome.images?.length ? { images: outcome.images } : {}),
       });
       if (outcome.terminal) {
         mem.turns.push({

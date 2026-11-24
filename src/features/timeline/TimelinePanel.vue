@@ -81,10 +81,52 @@ function select(s: Scene, i: number) {
   preview.seek(starts.value[i]! + 0.001);
 }
 
-function seekAt(e: MouseEvent) {
+function timeAt(e: { clientX: number }) {
   const rect = scroller.value!.getBoundingClientRect();
-  preview.seek((e.clientX - rect.left + scroller.value!.scrollLeft - PAD) / pxPerSec.value);
+  const t = (e.clientX - rect.left + scroller.value!.scrollLeft - PAD) / pxPerSec.value;
+  return Math.max(0, Math.min(total.value, t));
 }
+
+const rangeDrag = ref<{ startT: number; t: number; moved: boolean } | null>(null);
+function onRulerDown(e: PointerEvent) {
+  (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  const t = timeAt(e);
+  rangeDrag.value = { startT: t, t, moved: false };
+}
+function onRulerMove(e: PointerEvent) {
+  if (!rangeDrag.value) return;
+  const t = timeAt(e);
+  const moved = rangeDrag.value.moved || Math.abs(t - rangeDrag.value.startT) > 0.08;
+  rangeDrag.value = { startT: rangeDrag.value.startT, t, moved };
+}
+function onRulerUp() {
+  const drag = rangeDrag.value;
+  rangeDrag.value = null;
+  if (!drag) return;
+  if (!drag.moved) {
+    preview.seek(drag.startT);
+    return;
+  }
+  const a = Math.min(drag.startT, drag.t);
+  const b = Math.max(drag.startT, drag.t);
+  preview.setRange([a, b]);
+}
+const shownRange = computed<[number, number] | null>(() => {
+  if (rangeDrag.value?.moved) {
+    return [
+      Math.min(rangeDrag.value.startT, rangeDrag.value.t),
+      Math.max(rangeDrag.value.startT, rangeDrag.value.t),
+    ];
+  }
+  return preview.range;
+});
+const rangeStyle = computed(() => {
+  const range = shownRange.value;
+  if (!range) return null;
+  const left = PAD + range[0] * pxPerSec.value;
+  const width = Math.max(2, (range[1] - range[0]) * pxPerSec.value);
+  return { left: `${left}px`, width: `${width}px` };
+});
 
 function badges(s: Scene, i: number) {
   const prefix = `scenes[${i}]`;
@@ -148,7 +190,7 @@ const ticks = computed(() => {
   <section class="timeline" aria-label="时间线">
     <header>
       <strong>时间线</strong>
-      <span class="hint">拖动排序 · 拖右边缘调时长 · 右键更多操作 · 选中后 Alt+←/→ 移动、[ ] 调时长</span>
+      <span class="hint">拖动排序 · 拖标尺框选区间 · 拖右边缘调时长 · 右键更多操作</span>
       <span class="spacer" />
       <span class="total">共 {{ scenes.length }} 个场景，{{ formatTime(total) }}</span>
       <NButton size="tiny" data-testid="insert-scene" @click="actions.insertAfter(editor.sceneId)"
@@ -163,7 +205,14 @@ const ticks = computed(() => {
       @pointercancel="endResize"
     >
       <div class="inner" :style="{ width: `${total * pxPerSec + PAD * 2}px` }">
-        <div class="ruler" @click="seekAt">
+        <div
+          class="ruler"
+          data-testid="timeline-ruler"
+          @pointerdown="onRulerDown"
+          @pointermove="onRulerMove"
+          @pointerup="onRulerUp"
+          @pointercancel="onRulerUp"
+        >
           <span v-for="t in ticks" :key="t" class="tick" :style="{ left: `${PAD + t * pxPerSec}px` }"
             >{{ t }}s</span
           >
@@ -221,6 +270,13 @@ const ticks = computed(() => {
             />
           </div>
         </VueDraggable>
+        <div
+          v-if="rangeStyle"
+          class="range"
+          data-testid="timeline-range"
+          :style="rangeStyle"
+          aria-hidden="true"
+        />
         <div class="playhead" :style="{ left: `${PAD + preview.time * pxPerSec}px` }" aria-hidden="true" />
       </div>
     </div>
@@ -275,6 +331,15 @@ header {
   height: 20px;
   cursor: pointer;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  touch-action: none;
+}
+.range {
+  position: absolute;
+  top: 20px;
+  bottom: 8px;
+  background: rgba(88, 196, 221, 0.28);
+  border: 1px solid rgba(88, 196, 221, 0.9);
+  pointer-events: none;
 }
 .tick {
   position: absolute;

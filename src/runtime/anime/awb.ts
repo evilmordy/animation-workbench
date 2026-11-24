@@ -73,7 +73,33 @@ const _seen = new WeakMap();
 const _binds = [];
 let _lastStart = 0;
 let _line = null;
+let _awbN = 0;
+let _depth = 0;
+const _awbTrace = [];
 root.__awbBinds = _binds;
+root.__awbTrace = _awbTrace;
+
+function stamp(node) {
+  if (_depth || !node || !node.setAttribute) return node;
+  _awbN += 1;
+  node.setAttribute('data-awb-n', String(_awbN));
+  _awbTrace.push({ kind: 'node', n: _awbN, t: endMs() });
+  return node;
+}
+
+function note(name, start, end) {
+  if (_depth) return;
+  _awbTrace.push({ kind: 'call', name: name, start: start, end: end });
+}
+
+function guard(fn) {
+  _depth += 1;
+  try {
+    return fn();
+  } finally {
+    _depth -= 1;
+  }
+}
 
 function owns(obj, key) {
   return Object.prototype.hasOwnProperty.call(obj, key);
@@ -109,6 +135,7 @@ function el(tag, style, html, parent) {
   css(node, style);
   if (html != null && html !== '') setHtml(node, html);
   (parent || root).appendChild(node);
+  stamp(node);
   return node;
 }
 
@@ -153,6 +180,7 @@ function sv(parent, tag, attrs) {
     for (const key in attrs) if (owns(attrs, key) && attrs[key] != null) node.setAttribute(key, String(attrs[key]));
   }
   if (parent) parent.appendChild(node);
+  stamp(node);
   return node;
 }
 
@@ -263,38 +291,64 @@ function abs(at) {
   return Number.isFinite(numeric) ? numeric : endMs();
 }
 
+function spanOf(at, fallback) {
+  const start = abs(at);
+  const n = Number(fallback);
+  return [start, start + (Number.isFinite(n) && n > 0 ? n : 0)];
+}
+
 function tw(targets, params, at) {
   const ms = abs(at);
+  const duration = params && params.duration != null ? params.duration : 800;
+  const span = spanOf(at, duration);
+  note('tw', span[0], span[1]);
   _lastStart = ms;
-  tl.add(targets, params || {}, ms);
+  guard(function () { tl.add(targets, params || {}, ms); });
   return targets;
 }
 
 function fadeIn(target, at, opts) {
-  hid(target);
-  tw(target, copyInto({ opacity: [0, 1], duration: 500 }, opts), at);
+  const duration = opts && opts.duration != null ? opts.duration : 500;
+  const span = spanOf(at, duration);
+  note('fadeIn', span[0], span[1]);
+  guard(function () {
+    hid(target);
+    tw(target, copyInto({ opacity: [0, 1], duration: 500 }, opts), at);
+  });
 }
 
 function rise(target, at, opts) {
-  fadeIn(target, at, copyInto({ y: [24, 0] }, opts));
+  const duration = opts && opts.duration != null ? opts.duration : 500;
+  const span = spanOf(at, duration);
+  note('rise', span[0], span[1]);
+  guard(function () { fadeIn(target, at, copyInto({ y: [24, 0] }, opts)); });
 }
 
 function fadeOut(target, at, opts) {
-  tw(target, copyInto({ opacity: 0, duration: 400 }, opts), at);
+  const duration = opts && opts.duration != null ? opts.duration : 400;
+  const span = spanOf(at, duration);
+  note('fadeOut', span[0], span[1]);
+  guard(function () { tw(target, copyInto({ opacity: 0, duration: 400 }, opts), at); });
 }
 
 function wait(ms) {
   const n = Number(ms);
   if (!Number.isFinite(n) || n <= 0) return;
-  tl.add({ duration: n });
+  const start = endMs();
+  note('wait', start, start + n);
+  guard(function () { tl.add({ duration: n }); });
 }
 
 function say(html, at, color) {
   const prev = _line;
   const node = txt(html, 48, 952, 32, color || C.text, { width: W - 96, textAlign: 'center' });
   fit(node, W - 96, 18);
-  if (prev) fadeOut(prev, at);
-  fadeIn(node, prev ? '<<' : at);
+  const span = spanOf(at, 500);
+  note('say', span[0], span[1]);
+  guard(function () {
+    if (prev) fadeOut(prev, at);
+    fadeIn(node, prev ? '<<' : at);
+  });
   _line = node;
   return node;
 }
@@ -302,7 +356,9 @@ function say(html, at, color) {
 function head(html, at) {
   const node = txt(html, 48, 52, 44, C.text, { width: W - 96, textAlign: 'center', fontWeight: 700 });
   fit(node, W - 96, 18);
-  fadeIn(node, at);
+  const span = spanOf(at, 500);
+  note('head', span[0], span[1]);
+  guard(function () { fadeIn(node, at); });
   return node;
 }
 
