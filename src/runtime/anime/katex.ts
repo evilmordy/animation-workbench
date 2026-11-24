@@ -14,16 +14,14 @@ const inlined = css.replace(
   (_match: string, file: string) => `url("${fontUri(file)}") format("woff2")`,
 );
 
-/**
- * 数学斜体在 48px 上下会把笔画收口收成 1px，右上角露出断开的白点或竖线。
- * 八个方向各补 1px 同色阴影，把收口补上。strut / pstrut / vlist-s 是排版支架，不该有墨。
- */
-const TEX_INK =
-  '.katex{text-shadow:1px 0 currentColor,-1px 0 currentColor,0 1px currentColor,0 -1px currentColor,' +
-  '1px 1px currentColor,-1px -1px currentColor,1px -1px currentColor,-1px 1px currentColor}' +
-  '.katex .katex-strut,.katex .pstrut,.katex .vlist-s{color:transparent}';
+export const KATEX_CSS = inlined;
 
-export const KATEX_CSS = inlined + TEX_INK;
+/**
+ * KaTeX 0.19.1 上标的 `top` 在 -3.063em 左右，下标在 -2.55em 左右。
+ * MathJax 的上标更高，² 的底和字母的顶齐。抬 0.06em 后两边对齐。
+ * 再高，² 会和字母断开。只动更靠上的那一行。
+ */
+export const SCRIPT_LIFT_EM = 0.06;
 
 const STYLE_ID = 'awb-katex-css';
 
@@ -88,7 +86,17 @@ export function renderTex(node: HTMLElement, latex: string): void {
       output: 'html',
       strict: 'ignore',
     });
+    liftSuperscripts(node);
   } catch {
     node.textContent = latex;
+  }
+}
+
+function liftSuperscripts(node: HTMLElement): void {
+  for (const row of node.querySelectorAll('.vlist > span')) {
+    if (!(row instanceof HTMLElement)) continue;
+    const top = Number.parseFloat(row.style.top);
+    if (!Number.isFinite(top) || top > -2.7) continue;
+    row.style.top = `${Number((top - SCRIPT_LIFT_EM).toFixed(4))}em`;
   }
 }

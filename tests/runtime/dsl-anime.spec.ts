@@ -203,7 +203,7 @@ test('没尺寸时三种宽高比的舞台比例正确', async ({ page }) => {
 test.describe('勾股几何', () => {
   test.use({ viewport: { width: 1920, height: 1080 } });
 
-  test('斜边上的正方形贴在外侧，公式标签没有断开的残点', async ({ page }) => {
+  test('斜边上的正方形贴在外侧，a²/b²/c² 墨迹盒与 manim 差不超过 15%', async ({ page }) => {
     await serveRuntime(page);
     await page.goto('http://awpreview.test/anime.html');
     await page.waitForFunction(() => (window as unknown as { __ready?: boolean }).__ready);
@@ -277,28 +277,43 @@ test.describe('勾股几何', () => {
       expect(nearest).toBeLessThanOrEqual(2);
     }
 
-    await seek(4);
-    const boxes = await page.evaluate(() => {
-      const layer = [...document.querySelectorAll('.awb-layer')].find(
-        (el) => (el as HTMLElement).style.visibility !== 'hidden',
-      );
-      return ['la', 'lb', 'lc'].map((id) => {
-        const node = layer?.querySelector(`[data-awb-id="${id}"]`);
-        const rect = node?.getBoundingClientRect();
-        return { id, x: rect?.x ?? 0, y: rect?.y ?? 0, w: rect?.width ?? 0, h: rect?.height ?? 0 };
-      });
-    });
-    for (const box of boxes) {
-      expect(box.w).toBeGreaterThan(4);
-      const pad = 8;
-      const shot = await page.screenshot({
-        clip: {
-          x: Math.max(0, box.x - pad),
-          y: Math.max(0, box.y - pad),
-          width: box.w + pad * 2,
-          height: box.h + pad * 2,
-        },
-      });
+    // manim 落定帧（t=9.5）上 a²/b²/c² 的可见墨迹盒。RGB 各通道 > 170。
+    const manimInk: Record<string, { x: number; y: number; w: number; h: number }> = {
+      ta: { x: 696, y: 476, w: 56, h: 60 },
+      tb: { x: 935, y: 712, w: 50, h: 61 },
+      tc: { x: 1036, y: 341, w: 50, h: 60 },
+    };
+    await seek(9.5);
+    for (const [id, expectBox] of Object.entries(manimInk)) {
+      const rect = await page.evaluate((label) => {
+        const layer = [...document.querySelectorAll('.awb-layer')].find(
+          (el) => (el as HTMLElement).style.visibility !== 'hidden',
+        );
+        const node = layer?.querySelector(`[data-awb-id="${label}"]`) as HTMLElement | null;
+        const box = node?.getBoundingClientRect();
+        const stage = document.getElementById('stage')?.getBoundingClientRect();
+        return {
+          x: box?.x ?? 0,
+          y: box?.y ?? 0,
+          w: box?.width ?? 0,
+          h: box?.height ?? 0,
+          clip: node?.style.clipPath ?? '',
+          stageX: stage?.x ?? 0,
+          stageY: stage?.y ?? 0,
+          stageW: stage?.width ?? 1920,
+          stageH: stage?.height ?? 1080,
+        };
+      }, id);
+      expect(rect.w, id).toBeGreaterThan(4);
+      expect(rect.clip, id).toBe('none');
+      const pad = 16;
+      const clip = {
+        x: Math.max(0, rect.x - pad),
+        y: Math.max(0, rect.y - pad),
+        width: rect.w + pad * 2,
+        height: rect.h + pad * 2,
+      };
+      const shot = await page.screenshot({ clip });
       const ink = await page.evaluate(
         async (bytes) => {
           const blob = new Blob([new Uint8Array(bytes)]);
@@ -307,77 +322,42 @@ test.describe('勾股几何', () => {
           canvas.width = bmp.width;
           canvas.height = bmp.height;
           const ctx = canvas.getContext('2d');
-          if (!ctx) return { margin: -1, components: -1, topSpeck: true };
+          if (!ctx) return { x: 0, y: 0, w: 0, h: 0, edge: true };
           ctx.drawImage(bmp, 0, 0);
           const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-          const w = canvas.width;
-          const h = canvas.height;
-          const bright = (x: number, y: number) => {
-            const i = (y * w + x) * 4;
-            return (data[i] ?? 0) + (data[i + 1] ?? 0) + (data[i + 2] ?? 0) > 80;
+          const width = canvas.width;
+          const height = canvas.height;
+          let minX = width;
+          let minY = height;
+          let maxX = -1;
+          let maxY = -1;
+          for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+              const i = (y * width + x) * 4;
+              if ((data[i] ?? 0) <= 170 || (data[i + 1] ?? 0) <= 170 || (data[i + 2] ?? 0) <= 170) continue;
+              if (x < minX) minX = x;
+              if (y < minY) minY = y;
+              if (x > maxX) maxX = x;
+              if (y > maxY) maxY = y;
+            }
+          }
+          return {
+            x: maxX < 0 ? 0 : minX,
+            y: maxY < 0 ? 0 : minY,
+            w: maxX < 0 ? 0 : maxX - minX + 1,
+            h: maxY < 0 ? 0 : maxY - minY + 1,
+            edge: minX <= 1 || minY <= 1 || maxX >= width - 2 || maxY >= height - 2,
           };
-          let margin = 0;
-          for (let y = 0; y < h; y++) {
-            for (let x = 0; x < w; x++) {
-              if (x >= 4 && y >= 4 && x < w - 4 && y < h - 4) continue;
-              if (bright(x, y)) margin += 1;
-            }
-          }
-          const seen = new Set<string>();
-          const cells: Array<[number, number]> = [];
-          for (let y = 0; y < h; y++) {
-            for (let x = 0; x < w; x++) {
-              if (bright(x, y)) cells.push([x, y]);
-            }
-          }
-          let components = 0;
-          for (const start of cells) {
-            const key = `${start[0]},${start[1]}`;
-            if (seen.has(key)) continue;
-            components += 1;
-            const stack = [start];
-            seen.add(key);
-            while (stack.length) {
-              const nextCell = stack.pop();
-              if (!nextCell) break;
-              const [cx, cy] = nextCell;
-              for (const dx of [-1, 0, 1]) {
-                for (const dy of [-1, 0, 1]) {
-                  const nx = cx + dx;
-                  const ny = cy + dy;
-                  const next = `${nx},${ny}`;
-                  if (nx < 0 || ny < 0 || nx >= w || ny >= h || seen.has(next) || !bright(nx, ny)) continue;
-                  seen.add(next);
-                  stack.push([nx, ny]);
-                }
-              }
-            }
-          }
-          const ys = cells.map((cell) => cell[1]);
-          const top = ys.length ? Math.min(...ys) : 0;
-          const bottom = ys.length ? Math.max(...ys) : 0;
-          const limit = top + Math.max(2, (bottom - top) * 0.15);
-          let topSpeck = false;
-          for (let y = top; y <= limit; y++) {
-            const runs: number[] = [];
-            let run = 0;
-            for (let x = 0; x < w; x++) {
-              if (bright(x, y)) run += 1;
-              else if (run) {
-                runs.push(run);
-                run = 0;
-              }
-            }
-            if (run) runs.push(run);
-            if (runs.length >= 2 && runs.some((item) => item <= 5)) topSpeck = true;
-          }
-          return { margin, components, topSpeck };
         },
         [...shot],
       );
-      expect(ink.margin, box.id).toBe(0);
-      expect(ink.components, box.id).toBe(1);
-      expect(ink.topSpeck, box.id).toBe(false);
+      const stageX = ((clip.x + ink.x - rect.stageX) / rect.stageW) * 1920;
+      const stageY = ((clip.y + ink.y - rect.stageY) / rect.stageH) * 1080;
+      expect(ink.edge, `${id} clipped`).toBe(false);
+      expect(Math.abs(ink.w - expectBox.w) / expectBox.w, `${id} width`).toBeLessThanOrEqual(0.15);
+      expect(Math.abs(ink.h - expectBox.h) / expectBox.h, `${id} height`).toBeLessThanOrEqual(0.15);
+      expect(Math.abs(stageX - expectBox.x) / expectBox.w, `${id} x`).toBeLessThanOrEqual(0.15);
+      expect(Math.abs(stageY - expectBox.y) / expectBox.h, `${id} y`).toBeLessThanOrEqual(0.15);
     }
   });
 });

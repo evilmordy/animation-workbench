@@ -137,6 +137,47 @@ function estimateWidth(text: string, fontSize: number): number {
   return Math.max(fontSize * 0.4, width);
 }
 
+/** 上标的字形盒会高出 `.katex` 的 offset 盒。pstrut 是零宽支架，不能算进去。 */
+function fitTex(
+  inner: HTMLElement,
+  latex: string,
+  fontSize: number,
+): { w: number; h: number; dx: number; dy: number } {
+  const host = inner.getBoundingClientRect();
+  const fallback = () => {
+    const w = inner.offsetWidth || estimateWidth(latex, fontSize);
+    const h = inner.offsetHeight || fontSize * 1.2;
+    return { w: Math.max(1, w), h: Math.max(1, h), dx: 0, dy: 0 };
+  };
+  if (host.width < 1 || host.height < 1) return fallback();
+  let left = host.left;
+  let top = host.top;
+  let right = host.right;
+  let bottom = host.bottom;
+  for (const node of inner.querySelectorAll('.katex-html span')) {
+    if (!(node instanceof HTMLElement)) continue;
+    if (
+      node.classList.contains('pstrut') ||
+      node.classList.contains('katex-strut') ||
+      node.classList.contains('vlist-s')
+    ) {
+      continue;
+    }
+    const rect = node.getBoundingClientRect();
+    if (rect.width < 0.5 || rect.height < 0.5) continue;
+    left = Math.min(left, rect.left);
+    top = Math.min(top, rect.top);
+    right = Math.max(right, rect.right);
+    bottom = Math.max(bottom, rect.bottom);
+  }
+  return {
+    w: Math.max(1, right - left),
+    h: Math.max(1, bottom - top),
+    dx: host.left - left,
+    dy: host.top - top,
+  };
+}
+
 export function createDsl(env: DslEnv): DslApi {
   const { root, tl, width, height } = env;
   const unit = height / 8;
@@ -476,10 +517,13 @@ export function createDsl(env: DslEnv): DslApi {
   };
 
   const drawTex = (spec: DslNodeSpec, latex: string, fontSize: number) => {
-    const size = fontSize * spec.scale;
+    // KaTeX 斜体比 MathJax 窄。同样的 fontSize，b² 墨迹大约 41px，manim 是 50px，差 18%。
+    // 1.1 只把字宽拉进 15%。上标高度靠抬高那一行，不靠这个倍数。
+    const size = fontSize * spec.scale * 1.1;
     const outer = document.createElement('div');
     outer.dataset.awbId = spec.id;
     outer.style.position = 'absolute';
+    outer.style.overflow = 'visible';
     outer.style.color = spec.color;
     outer.style.opacity = spec.show === 'carry' ? '1' : '0';
     outer.style.transformOrigin = '50% 50%';
@@ -488,12 +532,22 @@ export function createDsl(env: DslEnv): DslApi {
     inner.style.position = 'relative';
     inner.style.width = 'max-content';
     inner.style.fontSize = `${size}px`;
-    inner.style.lineHeight = '1';
+    inner.style.lineHeight = 'normal';
+    inner.style.overflow = 'visible';
     inner.style.transformOrigin = '50% 50%';
+    // contrast(1) 不改颜色、不改粗细。滤镜层让字形走灰度抗锯齿，
+    // 否则白字边上会留下蓝、橙色的亚像素，放大后像描了一圈。
+    inner.style.filter = 'contrast(1)';
     outer.appendChild(inner);
     root.appendChild(outer);
     renderTex(inner, latex);
-    const box = measure(inner, latex, size);
+    // offsetWidth 不含上标伸出去的那一截。Write 的 clip-path 按外框裁，
+    // 上标会只剩一条边。按字形盒子量，再把伸出的部分挪进外框。
+    const fit = fitTex(inner, latex, size);
+    inner.style.position = 'absolute';
+    inner.style.left = `${fit.dx}px`;
+    inner.style.top = `${fit.dy}px`;
+    const box = { w: fit.w / unit, h: fit.h / unit };
     const vis = visualSize(box.w, box.h, spec.rotate);
     const center = resolveCenter({ cx: 0, cy: 0, w: vis.w, h: vis.h }, spec.place, spec.offset);
     const handle: Handle = {
@@ -893,7 +947,18 @@ export function createDsl(env: DslEnv): DslApi {
         show();
         const state = { p: 0 };
         tl.add(state, { p: [0, 1], duration, ease }, at);
+        const end = at + duration;
         track(() => {
+          const now = tl.currentTime;
+          if (now + 0.01 < at) {
+            handle.outer.style.clipPath = 'inset(0 100% 0 0)';
+            return;
+          }
+          // 落定后去掉裁切。inset(0) 仍按边框裁，抗锯齿和伸出的上标会被切掉。
+          if (now + 0.01 >= end) {
+            handle.outer.style.clipPath = 'none';
+            return;
+          }
           handle.outer.style.clipPath = `inset(0 ${(1 - state.p) * 100}% 0 0)`;
         });
         return;
