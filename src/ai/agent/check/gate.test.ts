@@ -159,6 +159,32 @@ describe('运行门', () => {
     }
   });
 
+  it('three3d 场能建出来并量到时长，写错的 3D 代码仍被拒', async () => {
+    const passed = await runScene(`
+      const { THREE, scene, camera, renderer } = three3d({ fov: 40, camera: [0, 4, 9], target: [0, 0, 0] });
+      scene.add(new THREE.Mesh(new THREE.SphereGeometry(1, 8, 6), new THREE.MeshBasicMaterial()));
+      renderer.setPixelRatio(1);
+      renderer.setSize(W, H);
+      renderer.render(scene, camera);
+      wait(1500);
+    `);
+    expect(passed.ok).toBe(true);
+    if (passed.ok) expect(passed.durationMs).toBe(1500);
+    expect(document.querySelectorAll('canvas')).toHaveLength(0);
+
+    const broken = await runScene(`
+      const { scene } = three3d();
+      scene.add(missingMesh);
+      wait(800);
+    `);
+    expect(broken.ok).toBe(false);
+    if (!broken.ok) {
+      expect(broken.error.code).toBe('RUNTIME_ERROR');
+      expect(broken.error.message).toContain('missingMesh');
+    }
+    expect(document.querySelectorAll('canvas')).toHaveLength(0);
+  });
+
   it('短于 0.1 秒和整片超过 600 秒都不通过', async () => {
     const brief = await runScene('wait(50);');
     expect(brief.ok).toBe(false);

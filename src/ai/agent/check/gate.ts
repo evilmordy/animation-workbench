@@ -1,5 +1,12 @@
 import { AWB_HELPER_SOURCE, wrapSceneCode } from '../../../runtime/anime/awb';
-import { animeApi, STAGE_HEIGHT, STAGE_WIDTH, type AnimeApi } from '../../../runtime/anime/player';
+import {
+  animeApi,
+  mountGateThree,
+  STAGE_HEIGHT,
+  STAGE_WIDTH,
+  type AnimeApi,
+  type GateThree,
+} from '../../../runtime/anime/player';
 
 type Timeline = ReturnType<AnimeApi['createTimeline']>;
 
@@ -373,7 +380,9 @@ function settleTimeline(tl: Timeline) {
   timer.cancel?.();
 }
 
-function sceneContext(ctx: GateContext) {
+function sceneContext(ctx: GateContext, root: HTMLElement, held: GateThree[]) {
+  const width = ctx.width ?? STAGE_WIDTH;
+  const height = ctx.height ?? STAGE_HEIGHT;
   return {
     theme: {
       primary: '#58C4DD',
@@ -387,8 +396,19 @@ function sceneContext(ctx: GateContext) {
     title: ctx.title ?? '',
     hold: Number.isFinite(ctx.hold) ? Math.max(0, ctx.hold ?? 0) : 0,
     enter: ctx.enter ?? 'fresh',
-    width: ctx.width ?? STAGE_WIDTH,
-    height: ctx.height ?? STAGE_HEIGHT,
+    width,
+    height,
+    three3d(opts?: { fov?: number; camera?: [number, number, number]; target?: [number, number, number] }) {
+      const view = mountGateThree(root, width, height, opts);
+      held.push(view);
+      return {
+        THREE: view.THREE,
+        scene: view.scene,
+        camera: view.camera,
+        renderer: view.renderer,
+        canvas: view.canvas,
+      };
+    },
   };
 }
 
@@ -448,7 +468,8 @@ export async function runScene(code: string, ctx: GateContext = {}): Promise<Gat
 
   const root = document.createElement('div');
   const tl = animeApi.createTimeline({ autoplay: false });
-  const sceneCtx = sceneContext(ctx);
+  const held: GateThree[] = [];
+  const sceneCtx = sceneContext(ctx, root, held);
   let durationMs = 0;
   let thrown: unknown;
   try {
@@ -460,6 +481,8 @@ export async function runScene(code: string, ctx: GateContext = {}): Promise<Gat
     thrown = e;
   } finally {
     settleTimeline(tl);
+    for (const view of held) view.release();
+    held.length = 0;
     root.remove();
   }
   if (thrown) {

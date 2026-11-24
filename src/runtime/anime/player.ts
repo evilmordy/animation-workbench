@@ -14,6 +14,9 @@ import {
   type ThreeView,
 } from './three';
 
+export { mountGateThree } from './three';
+export type { GateThree } from './three';
+
 /** 16:9 舞台。其它宽高比用 stageSize。预览页按容器缩放，时间线仍按这组像素写。 */
 export const STAGE_WIDTH = 1920;
 export const STAGE_HEIGHT = 1080;

@@ -276,3 +276,75 @@ test('导出页离线可播，CSP 指令不变、只换哈希', async ({ page })
   expect(hits).toEqual([]);
   expect(errors).toEqual([]);
 });
+
+test('隐藏预览 iframe 的体检探针能带回 3D 像素', async ({ page }) => {
+  const external = await serveRuntime(page);
+  await page.goto('http://host.test/harness.html');
+  await page.waitForFunction(() =>
+    ((window as unknown as { __msgs?: { type: string }[] }).__msgs ?? []).some((msg) => msg.type === 'ready'),
+  );
+  await page.evaluate(() => {
+    const frame = document.getElementById('preview');
+    if (frame)
+      frame.style.cssText =
+        'position:fixed;left:0;top:0;width:960px;height:540px;opacity:0.01;pointer-events:none;border:0';
+  });
+  await page.evaluate((storyboard) => {
+    (window as unknown as { send?: (msg: unknown) => void }).send?.({ type: 'load', storyboard });
+  }, board);
+  await page.waitForFunction(() =>
+    ((window as unknown as { __msgs?: { type: string }[] }).__msgs ?? []).some(
+      (msg) => msg.type === 'loaded' || msg.type === 'error',
+    ),
+  );
+  const loaded = await page.evaluate(() => {
+    const msgs = (window as unknown as { __msgs?: { type: string; message?: string }[] }).__msgs ?? [];
+    return {
+      loaded: msgs.some((msg) => msg.type === 'loaded'),
+      errors: msgs.filter((msg) => msg.type === 'error').map((msg) => msg.message ?? ''),
+    };
+  });
+  expect(loaded.errors).toEqual([]);
+  expect(loaded.loaded).toBe(true);
+  await page.evaluate(() => {
+    const send = (window as unknown as { send?: (msg: unknown) => void }).send;
+    send?.({ type: 'seek', t: 2.8 });
+    send?.({ type: 'probe', id: 'hemi', raster: true });
+  });
+  await page.waitForFunction(() =>
+    ((window as unknown as { __msgs?: { type: string; id?: string }[] }).__msgs ?? []).some(
+      (msg) => msg.type === 'probed' && msg.id === 'hemi',
+    ),
+  );
+  const shot = await page.evaluate(async () => {
+    const probed = (
+      (
+        window as unknown as {
+          __msgs?: { type: string; id?: string; raster?: string | null; rasterError?: string }[];
+        }
+      ).__msgs ?? []
+    ).find((msg) => msg.type === 'probed' && msg.id === 'hemi');
+    if (!probed?.raster) return { lit: 0, error: probed?.rasterError ?? '没有像素' };
+    const img = new Image();
+    img.src = probed.raster;
+    await img.decode();
+    const canvas = document.createElement('canvas');
+    canvas.width = img.naturalWidth || 1;
+    canvas.height = img.naturalHeight || 1;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return { lit: 0, error: '没有 2d canvas' };
+    ctx.drawImage(img, 0, 0);
+    const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+    let lit = 0;
+    for (let i = 0; i < data.length; i += 16) {
+      const r = data[i] ?? 0;
+      const g = data[i + 1] ?? 0;
+      const b = data[i + 2] ?? 0;
+      if (r + g + b > 48) lit += 1;
+    }
+    return { lit, error: probed.rasterError ?? '' };
+  });
+  expect(shot.error).toBe('');
+  expect(shot.lit).toBeGreaterThan(400);
+  expect(external).toEqual([]);
+});
