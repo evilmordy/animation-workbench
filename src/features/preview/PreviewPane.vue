@@ -5,7 +5,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { platform } from '../../platform';
 import { PreviewMessage } from '../../shared/protocol';
 import { useProjectStore } from '../../stores/project';
-import { usePreviewStore } from '../../stores/preview';
+import { usePreviewStore, type PreciseHit } from '../../stores/preview';
 import { useGenerationStore } from '../../stores/generation';
 import { formatTime } from '../../shared/format';
 
@@ -70,7 +70,34 @@ function onMessage(e: MessageEvent) {
     case 'log':
       console.warn('[preview]', m.message);
       break;
+    case 'picked': {
+      const wait = picks.get(m.id);
+      picks.delete(m.id);
+      wait?.(m);
+      break;
+    }
   }
+}
+
+const picks = new Map<
+  string,
+  (msg: { point: { x: number; y: number } | null; element: PreciseHit['element'] }) => void
+>();
+let pickSeq = 0;
+
+function onPick(event: MouseEvent) {
+  const iframe = frame.value;
+  if (!iframe || preview.playing) return;
+  const rect = iframe.getBoundingClientRect();
+  const x = event.clientX - rect.left;
+  const y = event.clientY - rect.top;
+  const id = `k${++pickSeq}`;
+  const timer = window.setTimeout(() => picks.delete(id), 2000);
+  picks.set(id, (msg) => {
+    window.clearTimeout(timer);
+    preview.setHit({ point: msg.point, element: msg.element });
+  });
+  post({ type: 'pick', id, x, y });
 }
 
 function reload() {
@@ -127,6 +154,14 @@ const timeText = computed(() => `${formatTime(preview.time)} / ${formatTime(prev
         sandbox="allow-scripts"
         :src="previewSrc"
         data-testid="preview-frame"
+      />
+      <button
+        v-if="!preview.playing && project.storyboard?.scenes.length"
+        type="button"
+        class="pick"
+        data-testid="preview-pick"
+        aria-label="点选画面上的元素"
+        @click="onPick"
       />
       <div v-if="preview.stalled" class="overlay" role="alert">
         <p>预览无响应：动画运行时可能卡住了。</p>
@@ -191,6 +226,14 @@ iframe {
   height: 100%;
   border: 0;
   display: block;
+}
+.pick {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: crosshair;
 }
 .overlay {
   position: absolute;

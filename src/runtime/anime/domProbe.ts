@@ -118,7 +118,13 @@ export async function spikeRaster(stage: HTMLElement): Promise<RasterSpike> {
       .map((node) => node.textContent ?? '')
       .join('\n');
     const clone = stage.cloneNode(true);
-    if (clone instanceof HTMLElement) clone.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
+    if (clone instanceof HTMLElement) {
+      clone.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
+      // SVG 图片里的百分宽高是 0，舞台会空。写成当前像素尺寸，文字才进得了图。
+      clone.style.width = `${width}px`;
+      clone.style.height = `${height}px`;
+      clone.style.margin = '0';
+    }
     foreign.append(style, clone);
     svg.appendChild(foreign);
     const xml = new XMLSerializer().serializeToString(svg);

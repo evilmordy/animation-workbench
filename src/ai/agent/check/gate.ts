@@ -27,6 +27,16 @@ export const FILM_MAX_MS = 600_000;
 
 const USER_LINE_OFFSET = `${AWB_HELPER_SOURCE}\n{\n`.split('\n').length - 1;
 
+/** helper 在建场时记下的元素序号和动画区间。行号由源码调用顺序另配。 */
+export interface TraceEvent {
+  kind: 'node' | 'call';
+  n?: number;
+  t?: number;
+  name?: string;
+  start?: number;
+  end?: number;
+}
+
 export interface GateContext {
   width?: number;
   height?: number;
@@ -37,6 +47,8 @@ export interface GateContext {
   sceneId?: string;
   title?: string;
   enter?: 'fresh' | 'keep';
+  /** 传入数组时，建场成功或失败都会把轨迹抄进来。 */
+  trace?: TraceEvent[];
 }
 
 export interface BanMatch {
@@ -480,6 +492,12 @@ export async function runScene(code: string, ctx: GateContext = {}): Promise<Gat
   } catch (e) {
     thrown = e;
   } finally {
+    if (ctx.trace) {
+      const raw = (root as HTMLElement & { __awbTrace?: TraceEvent[] }).__awbTrace;
+      if (Array.isArray(raw)) {
+        for (const event of raw) ctx.trace.push({ ...event });
+      }
+    }
     settleTimeline(tl);
     for (const view of held) view.release();
     held.length = 0;
@@ -531,4 +549,14 @@ export async function runScene(code: string, ctx: GateContext = {}): Promise<Gat
     };
   }
   return { ok: true, durationMs };
+}
+
+/** 跑一场并带回元素序号和动画区间。给精确编辑的行号高亮用，不另写一套执行。 */
+export async function sceneTrace(
+  code: string,
+  ctx: GateContext = {},
+): Promise<GateResult & { trace: TraceEvent[] }> {
+  const trace: TraceEvent[] = [];
+  const result = await runScene(code, { ...ctx, trace });
+  return { ...result, trace };
 }

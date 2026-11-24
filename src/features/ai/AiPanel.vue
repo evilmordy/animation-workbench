@@ -17,6 +17,7 @@ import { computed, ref, watch } from 'vue';
 import { checkStoryboardInApp } from '../../ai/agent/check/backend-app';
 import { dispatchGenerate, usesAgenticEngine } from '../../ai/agent/engine';
 import { budgetFromSettings, lineFromEvent, type AgentLogLine } from '../../ai/agent/log';
+import { editRequests, type EditRequest } from '../../ai/agent/precise';
 import { runProjectAgent } from '../../ai/agent/run';
 import type { Outline } from '../../ai/prompts';
 import { checkScene } from '../../ai/validators';
@@ -27,6 +28,7 @@ import type { Scene } from '../../shared/schema';
 import { useAiStore } from '../../stores/ai';
 import { useEditorStore } from '../../stores/editor';
 import { useGenerationStore, type SceneJobState } from '../../stores/generation';
+import { usePreviewStore } from '../../stores/preview';
 import { useProjectStore } from '../../stores/project';
 import { useSettingsStore } from '../../stores/settings';
 import { platform } from '../../platform';
@@ -35,6 +37,7 @@ import ManualFixDialog from './ManualFixDialog.vue';
 
 const gen = useGenerationStore();
 const project = useProjectStore();
+const preview = usePreviewStore();
 const editor = useEditorStore();
 const ai = useAiStore();
 const message = useMessage();
@@ -69,6 +72,11 @@ const agentNote = ref('');
 const agentLog = ref<AgentLogLine[]>([]);
 const agentTurns = ref(0);
 const agentTokens = ref(0);
+const preciseText = ref('');
+const preciseQueue = ref<EditRequest[]>([]);
+const preciseAwaiting = ref(false);
+const preciseBlocked = ref('');
+const shiftNote = ref('');
 let agentAbort: AbortController | null = null;
 
 /** 只有 engine=agentic 且代码场景打开时才离开旧大纲管线。 */
@@ -141,6 +149,142 @@ async function runAgentEntry() {
 
 function cancelAgent() {
   agentAbort?.abort();
+}
+
+const hitLabel = computed(() => {
+  const hit = preview.hit;
+  if (!hit) return '';
+  if (hit.element) {
+    const text = hit.element.text || hit.element.tag;
+    return `已点选 n=${hit.element.awb_n}「${text}」`;
+  }
+  if (hit.point) return `已点 ${Math.round(hit.point.x)}, ${Math.round(hit.point.y)}`;
+  return '';
+});
+const rangeLabel = computed(() => {
+  const range = preview.range;
+  if (!range) return '';
+  return `区间 ${range[0].toFixed(2)}s–${range[1].toFixed(2)}s`;
+});
+const queueLabel = computed(() => {
+  if (!preciseAwaiting.value) return '';
+  const next = preciseQueue.value[0];
+  if (!next) return '';
+  const scene = project.storyboard?.scenes.find((item) => item.id === next.scene_id);
+  const title = scene?.title || next.scene_id;
+  const span = `场内 ${next.range_ms[0]}–${next.range_ms[1]} ms`;
+  if (preciseQueue.value.length > 1) {
+    return `这一段跨了 ${preciseQueue.value.length} 场，先改「${title}」（${span}）。确认后才改下一场。`;
+  }
+  return `还剩「${title}」（${span}）。确认后改这一场。`;
+});
+
+function takeRequest(): EditRequest | null {
+  const request = preciseQueue.value[0];
+  if (!request) return null;
+  const scene = project.storyboard?.scenes.find((item) => item.id === request.scene_id);
+  if (!scene) {
+    preciseBlocked.value = '没有这一场';
+    return null;
+  }
+  if (scene.locked) {
+    preciseBlocked.value = '这一场锁着';
+    return null;
+  }
+  if (scene.kind !== 'code' || !scene.code?.trim()) {
+    preciseBlocked.value = '这一场还是分镜，精确编辑只改代码场';
+    return null;
+  }
+  preciseBlocked.value = '';
+  return request;
+}
+
+async function runPrecise(request: EditRequest) {
+  if (agentBusy.value) return;
+  if (preview.playing) preview.pause();
+  agentBusy.value = true;
+  agentNote.value = '';
+  agentLog.value = [];
+  agentTurns.value = 0;
+  agentTokens.value = 0;
+  shiftNote.value = '';
+  const ac = new AbortController();
+  agentAbort = ac;
+  try {
+    const result = await runProjectAgent(
+      { intent: gen.intent, source: gen.source },
+      {
+        signal: ac.signal,
+        budget: budgetFromSettings(settings.agentBudget),
+        edit: { sceneId: request.scene_id, instruction: request.instruction, request },
+        onLog: (event) => {
+          if (event.type === 'usage') {
+            agentTurns.value = event.turns;
+            agentTokens.value = event.usage[0] + event.usage[1];
+          }
+          if (event.type === 'tool') {
+            const shift = /本场时长 \d+ms → \d+ms，后面的场会整体后移/.exec(event.result);
+            if (shift) shiftNote.value = shift[0];
+          }
+          const line = lineFromEvent(event, agentLog.value.length + 1);
+          if (line) agentLog.value = [...agentLog.value, line];
+          if (event.type === 'phase') agentNote.value = line?.title ?? agentNote.value;
+          if (event.type === 'status') agentNote.value = event.message;
+        },
+      },
+    );
+    if (result.error === '这一场锁着') preciseBlocked.value = '这一场锁着';
+    if (result.error === '这一场还是分镜，精确编辑只改代码场') {
+      preciseBlocked.value = result.error;
+    }
+  } finally {
+    agentBusy.value = false;
+    if (agentAbort === ac) agentAbort = null;
+    preciseQueue.value = preciseQueue.value.slice(1);
+    preciseAwaiting.value = preciseQueue.value.length > 0;
+  }
+}
+
+function startPrecise() {
+  if (agentBusy.value) return;
+  if (preview.playing) preview.pause();
+  preciseBlocked.value = '';
+  shiftNote.value = '';
+  const requests = editRequests({
+    spans: preview.spans,
+    time: preview.time,
+    range: preview.range,
+    point: preview.hit?.point ?? null,
+    element: preview.hit?.element ?? null,
+    instruction: preciseText.value,
+  });
+  if (!requests.length) {
+    preciseBlocked.value = preview.spans.length ? '先写要改什么' : '等预览出来后再改';
+    preciseQueue.value = [];
+    preciseAwaiting.value = false;
+    return;
+  }
+  preciseQueue.value = requests;
+  if (requests.length > 1) {
+    preciseAwaiting.value = true;
+    return;
+  }
+  preciseAwaiting.value = false;
+  const request = takeRequest();
+  if (request) void runPrecise(request);
+}
+
+function confirmPrecise() {
+  const request = takeRequest();
+  if (!request) return;
+  preciseAwaiting.value = false;
+  void runPrecise(request);
+}
+
+function skipPrecise() {
+  preciseBlocked.value = '';
+  preciseQueue.value = preciseQueue.value.slice(1);
+  preciseAwaiting.value = preciseQueue.value.length > 0;
 }
 
 async function runCheck() {
@@ -338,6 +482,16 @@ function applyFix(scene: Scene) {
       :lines="agentLog"
       :turns="agentTurns"
       :tokens="agentTokens"
+      :precise-text="preciseText"
+      :hit-label="hitLabel"
+      :range-label="rangeLabel"
+      :queue-label="queueLabel"
+      :blocked-note="preciseBlocked"
+      :shift-note="shiftNote"
+      @update:precise-text="(value) => (preciseText = value)"
+      @precise="startPrecise"
+      @confirm="confirmPrecise"
+      @skip="skipPrecise"
       @cancel="cancelAgent"
       @check="runCheck"
     />

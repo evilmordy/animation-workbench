@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from 'vitest';
-import { runScene, syntaxError, type BanMatch } from './gate';
+import { runScene, sceneTrace, syntaxError, type BanMatch } from './gate';
 
 const okScene = `
 const box = el('div', { left: 80, top: 80, width: 200, height: 80, background: C.blue }, 'ok');
@@ -27,6 +27,21 @@ describe('运行门', () => {
 
     const titled = await runScene("head('这一行全是中文标题', 0);");
     expect(titled.ok).toBe(true);
+  });
+
+  it('建元素时打上 data-awb-n，head 只记一次，不把内部的 fadeIn 再记一笔', async () => {
+    const stamped = await runScene(
+      "const node = txt('甲', 10, 20, 32);\nif (node.getAttribute('data-awb-n') !== '1') throw new Error('missing');\nwait(400);",
+    );
+    expect(stamped.ok).toBe(true);
+    const traced = await sceneTrace("head('标题', 0);\nwait(400);");
+    expect(traced.trace.filter((event) => event.kind === 'node')).toEqual([{ kind: 'node', n: 1, t: 0 }]);
+    expect(traced.trace.filter((event) => event.kind === 'call').map((event) => event.name)).toEqual([
+      'head',
+      'wait',
+    ]);
+    expect(traced.trace.find((event) => event.name === 'head')).toMatchObject({ start: 0, end: 500 });
+    expect(traced.trace.find((event) => event.name === 'wait')).toMatchObject({ start: 500, end: 900 });
   });
 
   it('loop:true、setTimeout、整行中文、anime.timeline()、200 秒各报错误码和行号', async () => {

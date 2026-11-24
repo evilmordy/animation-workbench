@@ -1,6 +1,6 @@
 import fixture from '../../tests/fixtures/pythagoras.json';
 import type { MockLlm } from '../platform/mock';
-import { messageText, type ChatMessage, type LlmMessage } from '../platform/types';
+import { messageText, type ChatMessage, type LlmMessage, type ToolCall } from '../platform/types';
 import type { Scene, Storyboard } from '../shared/schema';
 import { taskOf } from './prompts';
 
@@ -117,10 +117,89 @@ function answer(messages: LlmMessage[]): string {
   return text.at(-1)?.content ?? '';
 }
 
+function toolCall(name: string, args: Record<string, unknown>): ToolCall {
+  return { id: `call_${name}`, type: 'function', function: { name, arguments: JSON.stringify(args) } };
+}
+
+function numberedBlock(user: string): { n: number; text: string }[] {
+  const lines: { n: number; text: string }[] = [];
+  let started = false;
+  for (const line of user.split('\n')) {
+    const match = /^\s*(\d+)\| (.*)$/.exec(line);
+    if (!match) {
+      if (started) break;
+      continue;
+    }
+    started = true;
+    lines.push({ n: Number(match[1]), text: match[2] ?? '' });
+  }
+  return lines;
+}
+
+/** 浏览器里的精确编辑。按指令改一行；颜色题先用过期哈希，逼出重读。 */
+function preciseEdit(user: string): { text: string; toolCalls: ToolCall[] } | null {
+  if (!user.includes('精确编辑') || !user.includes('base_hash:')) return null;
+  const instruction = /"instruction":"([^"]*)"/.exec(user)?.[1] ?? '';
+  const sceneId = /"scene_id":"([^"]+)"/.exec(user)?.[1] ?? '';
+  const hash = /base_hash: ([0-9a-f]+)/.exec(user)?.[1] ?? '';
+  const lines = numberedBlock(user);
+  const edit = (line: { n: number; text: string } | undefined, next: string, base: string) => {
+    if (!line) return { text: '没有找到要改的行', toolCalls: [toolCall('finish', { summary: '没改' })] };
+    return {
+      text: '改这一行',
+      toolCalls: [
+        toolCall('edit_range', {
+          scene_id: sceneId,
+          base_hash: base,
+          start_line: line.n,
+          end_line: line.n,
+          replacement: next,
+        }),
+      ],
+    };
+  };
+  if (user.includes('"gate":"pass"'))
+    return { text: '改完了', toolCalls: [toolCall('finish', { summary: '改好了' })] };
+  if (instruction.includes('颜色') || instruction.includes('蓝')) {
+    if (user.includes('"code_numbered"')) {
+      const fresh = /"hash":"([0-9a-f]+)"/.exec(user)?.[1] ?? hash;
+      const line = lines.find((item) => item.text.includes('#ffffff'));
+      return edit(line, line?.text.replace('#ffffff', '#3b82f6') ?? '', fresh);
+    }
+    if (user.includes('STALE'))
+      return { text: '先重读', toolCalls: [toolCall('read_scene', { scene_id: sceneId })] };
+    const line = lines.find((item) => item.text.includes('#ffffff'));
+    return edit(line, line?.text ?? '', 'stale');
+  }
+  if (instruction.includes('挪开')) {
+    const line = lines.find((item) => item.text.includes(', 220,'));
+    return edit(line, line?.text.replace(', 220,', ', 1100,') ?? '', hash);
+  }
+  if (instruction.includes('慢一点')) {
+    const line = lines.find((item) => /wait\(\d+\)/.test(item.text));
+    return edit(line, line?.text.replace(/wait\(\d+\)/, 'wait(1600)') ?? '', hash);
+  }
+  if (instruction.includes('待改')) {
+    const line = lines.find((item) => item.text.includes('待改'));
+    return edit(line, line?.text.replace('待改', '已改') ?? '', hash);
+  }
+  const renamed = /改成(\S+)/.exec(instruction)?.[1];
+  if (renamed) {
+    const line = lines.find((item) => item.text.includes('旧标题') || item.text.includes('head('));
+    return edit(line, line?.text.replace(/'[^']*'/, `'${renamed}'`) ?? '', hash);
+  }
+  return { text: '没有对应的改法', toolCalls: [toolCall('finish', { summary: '没改' })] };
+}
+
 export const mockLlm: MockLlm = async (req, emit) => {
   const blob = req.messages.map((m) => messageText(m.content)).join('\n');
   if (blob.includes(WAIT_CANCEL)) {
     for (;;) await emit('…');
+  }
+  const precise = preciseEdit(blob);
+  if (precise) {
+    await emit(precise.text);
+    return precise;
   }
   const text = answer(req.messages);
   for (let i = 0; i < text.length; i += 40) await emit(text.slice(i, i + 40));

@@ -27,7 +27,13 @@ export type AgentStopStatus = 'done' | 'done_with_issues' | 'stuck' | 'cancelled
 export type AgentLogEvent =
   | { type: 'phase'; phase: 'plan' | 'scene' | 'film' | 'edit'; turn: number }
   | { type: 'note'; message: string }
-  | { type: 'tool'; name: string; arguments: string; result: string }
+  | {
+      type: 'tool';
+      name: string;
+      arguments: string;
+      result: string;
+      images?: { dataUrl: string; caption: string }[];
+    }
   | { type: 'usage'; turns: number; usage: [number, number]; maxTurns: number; maxTokens?: number }
   | { type: 'status'; status: AgentStopStatus; message: string };
 
@@ -36,6 +42,7 @@ export interface AgentLogLine {
   kind: 'phase' | 'note' | 'tool' | 'status';
   title: string;
   detail?: string;
+  images?: { dataUrl: string; caption: string }[];
 }
 
 export function normalizeAgentBudget(value: unknown): AgentBudgetSettings {
@@ -135,7 +142,13 @@ export function lineFromEvent(event: AgentLogEvent, id: number): AgentLogLine | 
   if (event.type === 'note') return { id, kind: 'note', title: event.message };
   if (event.type === 'tool') {
     const formatted = formatToolLog(event);
-    return { id, kind: 'tool', title: formatted.title, detail: formatted.detail };
+    return {
+      id,
+      kind: 'tool',
+      title: formatted.title,
+      detail: formatted.detail,
+      ...(event.images?.length ? { images: event.images } : {}),
+    };
   }
   return { id, kind: 'status', title: event.message };
 }

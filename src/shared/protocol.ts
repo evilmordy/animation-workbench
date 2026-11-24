@@ -16,6 +16,13 @@ export const HostMessage = z.discriminatedUnion('type', [
     id: z.string().min(1).max(64),
     raster: z.boolean().optional(),
   }),
+  /** 暂停后点选。x/y 是预览页视口里的 CSS 像素。 */
+  z.object({
+    type: z.literal('pick'),
+    id: z.string().min(1).max(64),
+    x: z.number(),
+    y: z.number(),
+  }),
 ]);
 
 export const SceneSpan = z.object({ id: z.string(), start: z.number(), end: z.number() });
@@ -51,6 +58,19 @@ export const PreviewMessage = z.discriminatedUnion('type', [
     raster: z.string().nullable(),
     rasterMs: z.number(),
     rasterError: z.string().optional(),
+  }),
+  z.object({
+    type: z.literal('picked'),
+    id: z.string(),
+    point: z.object({ x: z.number(), y: z.number() }).nullable(),
+    element: z
+      .object({
+        tag: z.string(),
+        text: z.string(),
+        bbox: z.tuple([z.number(), z.number(), z.number(), z.number()]),
+        awb_n: z.number(),
+      })
+      .nullable(),
   }),
 ]);
 

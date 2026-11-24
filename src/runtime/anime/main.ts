@@ -1,6 +1,7 @@
 import { HostMessage, type PreviewMessage, type SceneSpan } from '../../shared/protocol';
 import { parseStoryboard } from '../../shared/schema';
 import { collectStageElements, spikeRaster } from './domProbe';
+import { hitAt } from './pick';
 import { playHtmlStoryboard, type HtmlShow } from './player';
 
 const RUNTIME_VERSION = '1.0.0';
@@ -181,8 +182,16 @@ function startPreview(stageEl: HTMLElement) {
       case 'probe':
         void replyProbe(m.data.id, m.data.raster !== false);
         break;
+      case 'pick':
+        replyPick(m.data.id, m.data.x, m.data.y);
+        break;
     }
   });
+
+  function replyPick(id: string, x: number, y: number) {
+    const hit = hitAt(stageEl, x, y);
+    post({ type: 'picked', id, point: hit.point, element: hit.element });
+  }
 
   async function replyProbe(id: string, raster: boolean) {
     await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));

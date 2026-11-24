@@ -1,10 +1,21 @@
 import type { LlmMessage, ContentPart } from '../../platform/types';
 import type { Storyboard } from '../../shared/schema';
+import { contentHash } from './hash';
 import type { Memory } from './memory';
+import type { EditRequest } from './precise';
 import { taskCard } from './prompts';
 import { splitSource } from './source';
 import { formatNumbered } from './tools/code';
 import type { Phase } from './tools/defs';
+
+export interface EditContext {
+  sceneId: string;
+  instruction: string;
+  request?: EditRequest;
+  highlight?: string;
+  createLine?: string;
+  frames?: { dataUrl: string; caption: string }[];
+}
 
 /** 单轮输入目标。超了就按设计书的顺序裁，不在这里写模型名。 */
 export const CONTEXT_BUDGET = 60_000;
@@ -28,7 +39,7 @@ export function projectContext(input: {
   intent: string;
   source: string;
   system: string;
-  edit?: { sceneId: string; instruction: string };
+  edit?: EditContext;
   budgetTokens?: number;
 }): LlmMessage[] {
   const sb = input.storyboard;
@@ -36,6 +47,7 @@ export function projectContext(input: {
   const shrink = input.mem.shrink;
   const currentId = input.edit?.sceneId ?? input.mem.currentSceneId;
   const current = sb?.scenes.find((scene) => scene.id === currentId);
+  if (input.edit?.request) return editMessages(input, current, budget);
   const currentState = current ? input.mem.scenes[current.id] : undefined;
   const cited = new Set<number>();
   for (const state of Object.values(input.mem.scenes)) {
@@ -153,6 +165,63 @@ export function projectContext(input: {
       }
     : { role: 'user', content: body };
 
+  return [{ role: 'system', content: input.system }, user];
+}
+
+function editMessages(
+  input: {
+    intent: string;
+    system: string;
+    mem: Memory;
+    edit?: EditContext;
+  },
+  current: Storyboard['scenes'][number] | undefined,
+  budget: number,
+): LlmMessage[] {
+  const request = input.edit?.request;
+  const hash = contentHash(current?.code ?? '');
+  const code = current ? formatNumbered(current.code ?? '') : '';
+  const issues = input.mem.issues
+    .filter(
+      (issue) =>
+        issue.scene_id === request?.scene_id && (issue.status === 'open' || issue.status === 'stuck'),
+    )
+    .map((issue) => `${issue.id} ${issue.severity} ${issue.kind} ${issue.evidence.text ?? ''}`)
+    .join('\n');
+  const recent = clip(
+    input.mem.turns
+      .slice(-2)
+      .map((turn) => turn.detail || turn.line)
+      .join('\n\n'),
+    16_000,
+  );
+  const sections = [
+    input.intent.trim() ? `需求原文：\n${input.intent.trim()}` : '',
+    request ? `精确编辑\n${JSON.stringify(request)}` : '',
+    current
+      ? `目标场 ${current.id} base_hash: ${hash}\nhold ${current.hold}${current.locked ? ' 锁定' : ''}\n${clip(code, 12_000)}`
+      : '目标场不在分镜里',
+    input.edit?.highlight?.trim() ? `落在区间内的调用：\n${input.edit.highlight}` : '落在区间内的调用：无',
+    input.edit?.createLine?.trim() ? `命中元素的创建行：\n${input.edit.createLine}` : '',
+    issues ? `未关闭问题：\n${issues}` : '未关闭问题：无',
+    recent.trim() ? `最近：\n${recent}` : '',
+  ].filter((part) => part.trim().length > 0);
+  let body = sections.join('\n\n');
+  if (tokens(body) > budget) body = sections.filter((part) => !part.startsWith('最近')).join('\n\n');
+  const carried = input.mem.turns.flatMap((turn) => turn.images).slice(-8);
+  const frames = (carried.length ? carried : (input.edit?.frames ?? [])).slice(0, 8);
+  const user: LlmMessage = frames.length
+    ? {
+        role: 'user',
+        content: [
+          { type: 'text', text: body },
+          ...frames.flatMap((image) => [
+            { type: 'text', text: image.caption } satisfies ContentPart,
+            { type: 'image_url', image_url: { url: image.dataUrl } } satisfies ContentPart,
+          ]),
+        ],
+      }
+    : { role: 'user', content: body };
   return [{ role: 'system', content: input.system }, user];
 }
 

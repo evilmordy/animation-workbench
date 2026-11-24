@@ -5,6 +5,7 @@ import { aiSession } from '../session';
 import { appFrameCapture, checkStoryboardInApp } from './check/backend-app';
 import type { AgentLogEvent } from './log';
 import { budgetFromSettings } from './log';
+import type { EditContext } from './context';
 import type { AgentBudget, AgentHost, AgentResult, RunAgentOpts } from './loop';
 import { runAgent } from './loop';
 import { isAnimPath } from './paths';
@@ -64,6 +65,7 @@ export function appInspect(): RunAgentOpts['inspect'] {
             tMs: Math.round(frame.t * 1000),
             caption: `${frame.sceneId} ${Math.round(frame.t * 1000)}ms`,
             ...(png ? { png } : {}),
+            ...(frame.pixels !== false && frame.raster?.width > 1 ? { raster: frame.raster } : {}),
             boxes: frame.boxes.length,
           });
         }
@@ -92,6 +94,7 @@ export async function runProjectAgent(
     budget?: Partial<AgentBudget>;
     onPhase?: RunAgentOpts['onPhase'];
     onLog?: (event: AgentLogEvent) => void;
+    edit?: EditContext;
   } = {},
 ): Promise<AgentResult> {
   const session = aiSession();
@@ -111,6 +114,7 @@ export async function runProjectAgent(
     budget,
     inspect: appInspect(),
     signal: opts.signal,
+    ...(opts.edit ? { edit: opts.edit } : {}),
     onPhase: opts.onPhase,
     onLog: opts.onLog,
     onCancelRequest: (id) => session.cancel(id),

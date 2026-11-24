@@ -245,6 +245,46 @@ export function diffPixels(a: Raster, b: Raster, tolerance: number): { count: nu
   return { count, ratio: count / total };
 }
 
+/** 变了的像素的包围盒。尺寸不同时无法比较。没有差异时 count 为 0。 */
+export function changedBounds(
+  a: Raster,
+  b: Raster,
+  tolerance: number,
+): { count: number; ratio: number; bbox: [number, number, number, number] } | null {
+  if (a.width !== b.width || a.height !== b.height || !a.width || !a.height) return null;
+  let count = 0;
+  let minX = a.width;
+  let minY = a.height;
+  let maxX = -1;
+  let maxY = -1;
+  for (let y = 0; y < a.height; y++) {
+    for (let x = 0; x < a.width; x++) {
+      const index = y * a.width + x;
+      const left = pixel(a, index);
+      const right = pixel(b, index);
+      if (
+        Math.abs(left.r - right.r) <= tolerance &&
+        Math.abs(left.g - right.g) <= tolerance &&
+        Math.abs(left.b - right.b) <= tolerance
+      ) {
+        continue;
+      }
+      count += 1;
+      if (x < minX) minX = x;
+      if (y < minY) minY = y;
+      if (x > maxX) maxX = x;
+      if (y > maxY) maxY = y;
+    }
+  }
+  const total = a.width * a.height;
+  if (!count) return { count: 0, ratio: 0, bbox: [0, 0, 0, 0] };
+  return {
+    count,
+    ratio: count / total,
+    bbox: [minX, minY, maxX - minX + 1, maxY - minY + 1],
+  };
+}
+
 /** 和背景不一样的像素占比。 */
 export function contentRatio(raster: Raster, background = sampleBackground(raster), tolerance = 18): number {
   const total = raster.width * raster.height;
