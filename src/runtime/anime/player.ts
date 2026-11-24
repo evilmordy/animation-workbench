@@ -5,6 +5,17 @@ import { AWB_BINDS, wrapSceneCode } from './awb';
 import { translateStoryboard } from './dsl';
 import { createDsl } from './dsl-lib';
 import { loadKatexFonts, renderTex } from './katex';
+import {
+  disposeThree,
+  mountThree,
+  renderThree,
+  type Three3dOpts,
+  type ThreeHandle,
+  type ThreeView,
+} from './three';
+
+export { mountGateThree } from './three';
+export type { GateThree } from './three';
 
 /** 16:9 舞台。其它宽高比用 stageSize。预览页按容器缩放，时间线仍按这组像素写。 */
 export const STAGE_WIDTH = 1920;
@@ -66,6 +77,7 @@ interface HtmlContext {
   height: number;
   renderTex?: (node: HTMLElement, latex: string) => void;
   dsl?: ReturnType<typeof createDsl>;
+  three3d?: (opts?: Three3dOpts) => ThreeHandle;
 }
 
 type SceneFn = (root: HTMLElement, anime: AnimeApi, tl: Timeline, ctx: HtmlContext) => Promise<unknown>;
@@ -84,6 +96,20 @@ function bindsOf(root: HTMLElement): Array<() => void> {
   const value = (root as HTMLElement & Record<string, unknown>)[AWB_BINDS];
   if (!Array.isArray(value)) return [];
   return value.filter((item) => typeof item === 'function') as Array<() => void>;
+}
+
+const GL_VIEWS = '__awbGl';
+
+function glViews(stage: HTMLElement): ThreeView[] {
+  const host = stage as HTMLElement & { [GL_VIEWS]?: ThreeView[] };
+  if (!host[GL_VIEWS]) host[GL_VIEWS] = [];
+  return host[GL_VIEWS];
+}
+
+/** 换场重建或 kill 时丢掉上一份 WebGL。列表先清空，避免 dispose 里再入。 */
+function releaseGl(stage: HTMLElement) {
+  const views = glViews(stage).splice(0);
+  for (const view of views) disposeThree(view);
 }
 
 function layer(sceneId: string): HTMLDivElement {
@@ -117,6 +143,7 @@ export async function playHtmlStoryboard(
   const palette = resolvePalette(sb.meta);
   const bg = resolveColor(sb.meta.background, palette);
   const theme = { ...palette, bg };
+  releaseGl(stage);
   stage.replaceChildren();
   stage.style.position = 'relative';
   stage.style.overflow = 'hidden';
@@ -210,6 +237,7 @@ export async function playHtmlStoryboard(
       height: box.height,
       renderTex,
       dsl: createDsl({ root, tl, width: box.width, height: box.height }),
+      three3d: (opts) => mountThree(root, box.width, box.height, opts, glViews(stage)),
     };
     // 场代码会换掉 tl.add。hold 和最短时长仍走原来的 add，避免被场景里的包装改掉。
     const addTail = tl.add.bind(tl);
@@ -244,6 +272,9 @@ export async function playHtmlStoryboard(
       span.root.style.visibility = on ? 'visible' : 'hidden';
       if (!on) continue;
       for (const draw of span.binds) draw();
+      for (const view of glViews(stage)) {
+        if (view.root === span.root) renderThree(view);
+      }
     }
   };
 
@@ -275,6 +306,7 @@ export async function playHtmlStoryboard(
     kill() {
       master.cancel();
       observer?.disconnect();
+      releaseGl(stage);
       stage.replaceChildren();
     },
   };
