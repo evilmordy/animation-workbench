@@ -3,7 +3,7 @@ import { freshStart, openSample } from './helpers';
 
 test.use({ baseURL: 'http://localhost:1420' });
 
-test('默认引擎仍是旧大纲，勾股预览仍走原来的页', async ({ page }) => {
+test('默认引擎仍是旧大纲，勾股预览走 anime 页', async ({ page }) => {
   await freshStart(page);
   await page.getByTestId('open-settings').click();
   await expect(page.getByTestId('generation-engine').getByText('旧大纲')).toBeVisible();
@@ -13,6 +13,6 @@ test('默认引擎仍是旧大纲，勾股预览仍走原来的页', async ({ pa
 
   await openSample(page);
   const src = await page.getByTestId('preview-frame').getAttribute('src');
-  expect(src ?? '').toContain('index.html');
-  expect(src ?? '').not.toContain('anime.html');
+  expect(src ?? '').toContain('anime.html');
+  expect(src ?? '').not.toContain('index.html');
 });

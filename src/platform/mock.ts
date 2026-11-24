@@ -135,7 +135,7 @@ export const mockPlatform: Platform = {
     persist();
   },
 
-  previewSrc: () => '/__awpreview/index.html',
+  previewSrc: () => '/__awpreview/anime.html',
 
   async secretSet(providerId, baseUrl, apiKey) {
     secrets.set(providerId, { baseUrl, apiKey });

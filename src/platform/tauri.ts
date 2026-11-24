@@ -56,7 +56,7 @@ export const tauriPlatform: Platform = {
     await (await settings()).set(key, value);
   },
 
-  previewSrc: () => convertFileSrc('index.html', 'awpreview'),
+  previewSrc: () => convertFileSrc('anime.html', 'awpreview'),
 
   secretSet: (providerId, baseUrl, apiKey) => invoke('secret_set', { providerId, baseUrl, apiKey }),
   secretStatus: (providerId) => invoke('secret_status', { providerId }),

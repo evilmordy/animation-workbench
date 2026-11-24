@@ -7,9 +7,7 @@ import { PreviewMessage } from '../../shared/protocol';
 import { useProjectStore } from '../../stores/project';
 import { usePreviewStore } from '../../stores/preview';
 import { useGenerationStore } from '../../stores/generation';
-import { useSettingsStore } from '../../stores/settings';
 import { formatTime } from '../../shared/format';
-import { filmUsesAnime, previewPageUrl } from '../../ai/agent/renderer';
 
 /** 两次重建之间至少间隔 300ms：单次编辑立即重建，连续编辑合并，最后一次一定会加载 */
 const LOAD_INTERVAL_MS = 300;
@@ -18,18 +16,11 @@ const STALL_MS = 3000;
 const project = useProjectStore();
 const preview = usePreviewStore();
 const gen = useGenerationStore();
-const settings = useSettingsStore();
 /** 有待确认的 AI 修改时，可以切换预览修改后的版本 */
 const shown = computed(() =>
   gen.pending && gen.previewProposed ? gen.pending.result.storyboard : project.storyboard,
 );
-/** 开关关掉、空片、或还夹着分镜场时，地址与原来一样。整片都是代码场才换成 anime.html。 */
-const previewSrc = computed(() =>
-  previewPageUrl(
-    platform.previewSrc(),
-    filmUsesAnime(settings.runtime.codeScenes, shown.value?.scenes ?? []),
-  ),
-);
+const previewSrc = computed(() => platform.previewSrc());
 const frame = ref<HTMLIFrameElement | null>(null);
 const frameKey = ref(0);
 let lastBeat = 0;

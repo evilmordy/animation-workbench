@@ -13,7 +13,7 @@ test('M4：导出单文件 HTML，file:// 打开能播放且网络请求为 0', 
   await expect(page.getByTestId('export-done')).toBeVisible({ timeout: 30_000 });
   const path = await page.getByTestId('export-done').locator('.path').innerText();
   const html = await page.evaluate((p) => (window as any).__awbMock.platform.readText(p), path);
-  expect(html.length).toBeGreaterThan(1_000_000);
+  expect(html.length).toBeGreaterThan(800_000);
   expect(html).toContain("connect-src 'none'");
   const file = join(tmpdir(), 'awb-export-test.html');
   writeFileSync(file, html);
@@ -29,10 +29,44 @@ test('M4：导出单文件 HTML，file:// 打开能播放且网络请求为 0', 
   await viewer.waitForFunction(() => (window as any).__awbExport, null, { timeout: 30_000 });
   const r = await viewer.evaluate(() => (window as any).__awbExport);
   expect(r.scenes.map((s: any) => s.end)).toEqual([4.5, 10, 17]);
+  await viewer.evaluate(() => (window as any).__awbExport.seek(3));
+  await expect(viewer.locator('#stage')).toHaveCount(1);
+  await expect(viewer.locator('[data-player-bar]')).toHaveCount(0);
   expect(requests).toEqual([]);
   expect(errors).toEqual([]);
-  // Player 自带控件（含导出按钮）在导出文件里保留
-  await expect(viewer.locator('[data-player-bar]')).toHaveCount(1);
+});
+
+test('M4：幻灯片模式在场景结束处暂停，→ 进入下一场', async ({ page, context }) => {
+  await openSample(page);
+  await page.keyboard.press('Control+e');
+  await page.getByRole('switch', { name: '幻灯片模式' }).click();
+  await page.getByTestId('do-export').click();
+  await expect(page.getByTestId('export-done')).toBeVisible({ timeout: 30_000 });
+  const path = await page.getByTestId('export-done').locator('.path').innerText();
+  const html = await page.evaluate((p) => (window as any).__awbMock.platform.readText(p), path);
+  expect(html).toContain('data-slides="true"');
+  const file = join(tmpdir(), 'awb-export-slides.html');
+  writeFileSync(file, html);
+
+  const viewer = await context.newPage();
+  await viewer.goto(`file://${file}`);
+  await viewer.waitForFunction(() => (window as any).__awbExport, null, { timeout: 30_000 });
+  const heldNear = async (target: number) => {
+    await viewer.waitForFunction(
+      (end) => {
+        const t = (window as any).__awbExport.time() as number;
+        return t > end - 0.1 && t < end + 0.05;
+      },
+      target,
+      { timeout: 15_000 },
+    );
+    await viewer.waitForTimeout(400);
+    expect(await viewer.evaluate(() => (window as any).__awbExport.time() as number)).toBeCloseTo(target, 1);
+  };
+  await heldNear(4.5);
+  await viewer.locator('#stage').click();
+  await viewer.keyboard.press('ArrowRight');
+  await heldNear(10);
 });
 
 test('M4：有错误时不能导出', async ({ page }) => {

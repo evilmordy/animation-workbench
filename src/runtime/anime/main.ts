@@ -20,6 +20,7 @@ interface HtmlPage {
     scenes: SceneSpan[];
     duration: number;
     seek: (t: number) => void;
+    time: () => number;
   };
 }
 
@@ -32,18 +33,51 @@ function spansOf(show: HtmlShow): SceneSpan[] {
   return show.scenes.map((scene) => ({ id: scene.id, start: scene.start, end: scene.end }));
 }
 
+/** 导出页幻灯片：每场播到自己的 end 就停。→ / 空格下一场，← 上一场开头。loop 时首尾相接。 */
+function playSlides(show: HtmlShow, loop: boolean) {
+  const scenes = show.scenes;
+  if (!scenes.length) return;
+  let index = 0;
+  const playAt = (i: number) => {
+    index = i;
+    show.seek(scenes[i]!.start);
+    show.play();
+  };
+  const hold = () => {
+    const end = scenes[index]!.end;
+    show.pause();
+    // 非最后一场的 end 同时是下一场的 start；停在边界前一毫秒，这一场仍留在画面上
+    show.seek(index < scenes.length - 1 ? end - 0.001 : end);
+    if (show.playing()) show.pause();
+  };
+  window.setInterval(() => {
+    if (show.playing() && show.time() >= scenes[index]!.end) hold();
+  }, 32);
+  window.addEventListener('keydown', (event) => {
+    const dir = event.key === 'ArrowRight' || event.key === ' ' ? 1 : event.key === 'ArrowLeft' ? -1 : 0;
+    if (dir === 0) return;
+    event.preventDefault();
+    const dest = index + dir;
+    if (dest >= 0 && dest < scenes.length) playAt(dest);
+    else if (loop) playAt((dest + scenes.length) % scenes.length);
+  });
+  playAt(0);
+}
+
 if (stage && embedded) {
   const sb = parseStoryboard(JSON.parse(embedded.textContent ?? 'null'));
   if (sb.ok) {
-    void playHtmlStoryboard(sb.value, stage, { loop: embedded.dataset.loop === 'true' }).then((show) => {
+    const slides = embedded.dataset.slides === 'true';
+    const loop = embedded.dataset.loop === 'true';
+    void playHtmlStoryboard(sb.value, stage, { loop: loop && !slides }).then((show) => {
       page.__awbExport = {
         scenes: spansOf(show),
         duration: show.duration,
-        seek: (t) => {
-          show.seek(t);
-        },
+        seek: (t) => show.seek(t),
+        time: () => show.time(),
       };
-      show.play();
+      if (slides) playSlides(show, loop);
+      else show.play();
     });
   } else console.error('分镜数据损坏', sb.issues);
 } else if (stage && window.parent !== window) {
@@ -179,7 +213,6 @@ function startPreview(stageEl: HTMLElement) {
   post({
     type: 'ready',
     runtimeVersion: RUNTIME_VERSION,
-    manimWebVersion: 'animejs@4.5.0',
     caps: { webcodecs: typeof VideoEncoder !== 'undefined' },
   });
 }

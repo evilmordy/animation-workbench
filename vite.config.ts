@@ -31,8 +31,6 @@ function pdfCmaps(): Plugin {
 function devPreview(): Plugin {
   const csp = `default-src 'none'; script-src ${DEV_ORIGIN} 'unsafe-eval'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; worker-src blob:; connect-src 'none'; base-uri 'none'; form-action 'none'`;
   const files: Record<string, string> = {
-    '/index.html': 'text/html',
-    '/runtime.js': 'text/javascript',
     '/anime.html': 'text/html',
     '/anime-runtime.js': 'text/javascript',
   };

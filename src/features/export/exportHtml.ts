@@ -55,13 +55,3 @@ export async function assembleExportHtml(
 </html>
 `;
 }
-
-/**
- * 生成单文件 HTML（PLAN T4.2）：内联运行时和分镜，离线可用。
- * meta CSP 只放行这一段内联脚本（按哈希），并禁止一切网络请求。
- */
-export async function buildExportHtml(sb: Storyboard, opts: ExportOptions): Promise<string> {
-  // 运行时有十几 MB，只在导出时才加载
-  const runtime = (await import('../../../dist-runtime/runtime.js?raw')).default as string;
-  return assembleExportHtml(runtime, sb, opts);
-}
